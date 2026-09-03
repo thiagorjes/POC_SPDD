@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Permissoes.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kanban</a> &gt; <a href="index.source.html" class="el_package">br.com.crudao.kanban.rbac</a> &gt; <span class="el_source">Permissoes.java</span></div><h1>Permissoes.java</h1><pre class="source lang-java linenums">package br.com.crudao.kanban.rbac;
+
+import java.util.Set;
+
+/** Catalogo fechado de permissoes (RF-013 / BDR-001). Nenhuma permissao fora desta lista existe. */
+public final class Permissoes {
+
+  public static final String PROJETO_ADMINISTRAR = &quot;projeto:administrar&quot;;
+  public static final String PROJETO_VISUALIZAR = &quot;projeto:visualizar&quot;;
+  public static final String WORKFLOW_GERENCIAR = &quot;workflow:gerenciar&quot;;
+  public static final String RAIA_GERENCIAR = &quot;raia:gerenciar&quot;;
+  public static final String USUARIO_ASSOCIAR = &quot;usuario:associar&quot;;
+  public static final String TAREFA_GERENCIAR = &quot;tarefa:gerenciar&quot;;
+  public static final String TAREFA_MOVER = &quot;tarefa:mover&quot;;
+  public static final String TAREFA_FINALIZAR = &quot;tarefa:finalizar&quot;;
+  public static final String TAREFA_IMPEDIR = &quot;tarefa:impedir&quot;;
+  public static final String TAREFA_ATRIBUIR = &quot;tarefa:atribuir&quot;;
+  public static final String DASHBOARD_VISUALIZAR = &quot;dashboard:visualizar&quot;;
+
+<span class="fc" id="L20">  public static final Set&lt;String&gt; TODAS =</span>
+<span class="fc" id="L21">      Set.of(</span>
+          PROJETO_ADMINISTRAR,
+          PROJETO_VISUALIZAR,
+          WORKFLOW_GERENCIAR,
+          RAIA_GERENCIAR,
+          USUARIO_ASSOCIAR,
+          TAREFA_GERENCIAR,
+          TAREFA_MOVER,
+          TAREFA_FINALIZAR,
+          TAREFA_IMPEDIR,
+          TAREFA_ATRIBUIR,
+          DASHBOARD_VISUALIZAR);
+
+  private Permissoes() {}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

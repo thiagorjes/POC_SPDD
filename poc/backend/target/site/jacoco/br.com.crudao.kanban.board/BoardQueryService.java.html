@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BoardQueryService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kanban</a> &gt; <a href="index.source.html" class="el_package">br.com.crudao.kanban.board</a> &gt; <span class="el_source">BoardQueryService.java</span></div><h1>BoardQueryService.java</h1><pre class="source lang-java linenums">package br.com.crudao.kanban.board;
+
+import br.com.crudao.kanban.common.ConfiguracaoWorkflowInvalidaException;
+import br.com.crudao.kanban.common.RecursoNaoEncontradoException;
+import br.com.crudao.kanban.evento.SequenciaProjeto;
+import br.com.crudao.kanban.evento.SequenciaProjetoRepository;
+import br.com.crudao.kanban.projeto.ChaveToggle;
+import br.com.crudao.kanban.projeto.Projeto;
+import br.com.crudao.kanban.projeto.ProjetoRepository;
+import br.com.crudao.kanban.raia.RaiaMapper;
+import br.com.crudao.kanban.raia.RaiaRepository;
+import br.com.crudao.kanban.rbac.Papeis;
+import br.com.crudao.kanban.rbac.Permissoes;
+import br.com.crudao.kanban.rbac.Usuario;
+import br.com.crudao.kanban.rbac.UsuarioRepository;
+import br.com.crudao.kanban.security.PermissaoGuard;
+import br.com.crudao.kanban.tarefa.Tarefa;
+import br.com.crudao.kanban.tarefa.TarefaMapper;
+import br.com.crudao.kanban.tarefa.TarefaRepository;
+import br.com.crudao.kanban.tarefa.TarefaService;
+import br.com.crudao.kanban.tarefa.dto.TarefaResumoResponse;
+import br.com.crudao.kanban.workflow.Etapa;
+import br.com.crudao.kanban.workflow.EtapaRepository;
+import br.com.crudao.kanban.workflow.Transicao;
+import br.com.crudao.kanban.workflow.TransicaoRepository;
+import br.com.crudao.kanban.workflow.Workflow;
+import br.com.crudao.kanban.workflow.WorkflowMapper;
+import br.com.crudao.kanban.workflow.WorkflowRepository;
+import br.com.crudao.kanban.common.PermissaoNegadaException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Snapshot do board (RF-001, RF-011) e base do resync (ADR-004).
+ *
+ * &lt;p&gt;O grafo de transicoes e carregado uma unica vez e indexado em memoria: calcular {@code
+ * destinosPermitidos} por card via repositorio seria N+1 no caminho mais quente do sistema.
+ */
+@Service
+@RequiredArgsConstructor
+public class BoardQueryService {
+
+  private final ProjetoRepository projetoRepository;
+  private final WorkflowRepository workflowRepository;
+  private final EtapaRepository etapaRepository;
+  private final TransicaoRepository transicaoRepository;
+  private final RaiaRepository raiaRepository;
+  private final TarefaRepository tarefaRepository;
+  private final UsuarioRepository usuarioRepository;
+  private final SequenciaProjetoRepository sequenciaProjetoRepository;
+  private final PermissaoGuard permissaoGuard;
+  private final WorkflowMapper workflowMapper;
+  private final RaiaMapper raiaMapper;
+  private final TarefaMapper tarefaMapper;
+
+  @Transactional(readOnly = true)
+  public BoardSnapshotResponse snapshot(UUID projetoId) {
+<span class="fc" id="L67">    permissaoGuard.exigir(Permissoes.PROJETO_VISUALIZAR, projetoId);</span>
+<span class="fc" id="L68">    exigirToggleGestor(projetoId);</span>
+
+<span class="fc" id="L70">    Projeto projeto =</span>
+        projetoRepository
+<span class="fc" id="L72">            .findById(projetoId)</span>
+<span class="pc" id="L73">            .orElseThrow(() -&gt; RecursoNaoEncontradoException.de(&quot;Projeto&quot;, projetoId));</span>
+
+<span class="fc" id="L75">    Workflow workflow =</span>
+        workflowRepository
+<span class="fc" id="L77">            .findByProjetoIdAndAtivoTrue(projetoId)</span>
+<span class="fc" id="L78">            .orElseThrow(</span>
+                () -&gt;
+<span class="nc" id="L80">                    new ConfiguracaoWorkflowInvalidaException(</span>
+                        &quot;O projeto nao possui workflow ativo configurado.&quot;));
+
+<span class="fc" id="L83">    List&lt;Etapa&gt; etapas = etapaRepository.findByWorkflowIdOrderByOrdemAsc(workflow.getId());</span>
+<span class="fc" id="L84">    Map&lt;UUID, Etapa&gt; etapasPorId =</span>
+<span class="fc" id="L85">        etapas.stream().collect(Collectors.toMap(Etapa::getId, Function.identity()));</span>
+
+<span class="fc" id="L87">    Map&lt;UUID, List&lt;UUID&gt;&gt; saidas = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L88">    Map&lt;UUID, List&lt;UUID&gt;&gt; entradas = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L89" title="All 2 branches covered.">    for (Transicao transicao : transicaoRepository.findByWorkflowId(workflow.getId())) {</span>
+<span class="fc" id="L90">      saidas</span>
+<span class="fc" id="L91">          .computeIfAbsent(transicao.getEtapaOrigemId(), k -&gt; new ArrayList&lt;&gt;())</span>
+<span class="fc" id="L92">          .add(transicao.getEtapaDestinoId());</span>
+<span class="fc" id="L93">      entradas</span>
+<span class="fc" id="L94">          .computeIfAbsent(transicao.getEtapaDestinoId(), k -&gt; new ArrayList&lt;&gt;())</span>
+<span class="fc" id="L95">          .add(transicao.getEtapaOrigemId());</span>
+<span class="fc" id="L96">    }</span>
+
+<span class="fc" id="L98">    Set&lt;String&gt; permissoes = permissaoGuard.permissoesEfetivas(projetoId);</span>
+<span class="fc" id="L99">    boolean podeMover = permissoes.contains(Permissoes.TAREFA_MOVER);</span>
+<span class="fc" id="L100">    boolean podeFinalizar = permissoes.contains(Permissoes.TAREFA_FINALIZAR);</span>
+
+<span class="fc" id="L102">    List&lt;Tarefa&gt; tarefas = tarefaRepository.findByProjetoId(projetoId);</span>
+<span class="fc" id="L103">    Map&lt;UUID, String&gt; nomes = nomesDeResponsaveis(tarefas);</span>
+
+<span class="fc" id="L105">    List&lt;TarefaResumoResponse&gt; cards = new ArrayList&lt;&gt;(tarefas.size());</span>
+<span class="fc bfc" id="L106" title="All 2 branches covered.">    for (Tarefa tarefa : tarefas) {</span>
+<span class="fc" id="L107">      cards.add(</span>
+<span class="fc" id="L108">          tarefaMapper.paraResumo(</span>
+              tarefa,
+              // Card sem responsavel e o estado normal apos a criacao (RF-018) e
+              // Map.of() nao aceita chave nula.
+<span class="pc bpc" id="L112" title="1 of 2 branches missed.">              tarefa.getResponsavelId() == null ? null : nomes.get(tarefa.getResponsavelId()),</span>
+<span class="fc" id="L113">              destinos(tarefa, etapasPorId, saidas, entradas, podeMover, podeFinalizar)));</span>
+<span class="fc" id="L114">    }</span>
+
+<span class="fc" id="L116">    long seq =</span>
+        sequenciaProjetoRepository
+<span class="fc" id="L118">            .findById(projetoId)</span>
+<span class="fc" id="L119">            .map(SequenciaProjeto::getUltimoSeq)</span>
+<span class="fc" id="L120">            .orElse(0L);</span>
+
+<span class="fc" id="L122">    return new BoardSnapshotResponse(</span>
+        projetoId,
+<span class="fc" id="L124">        workflow.getId(),</span>
+        seq,
+<span class="pc bpc" id="L126" title="1 of 2 branches missed.">        !projeto.isAtivo(),</span>
+<span class="fc" id="L127">        workflowMapper.paraEtapaResponse(etapas),</span>
+<span class="fc" id="L128">        raiaMapper.paraResponse(raiaRepository.findByProjetoIdOrderByOrdemAsc(projetoId)),</span>
+        cards,
+        permissoes);
+  }
+
+  /**
+   * Destinos validos do card: arestas do grafo filtradas pela permissao. Na etapa final o unico
+   * caminho e voltar para uma predecessora direta (desfinalizar), e so com {@code tarefa:finalizar}.
+   *
+   * @see TarefaService#destinosPermitidos
+   */
+  private List&lt;UUID&gt; destinos(
+      Tarefa tarefa,
+      Map&lt;UUID, Etapa&gt; etapasPorId,
+      Map&lt;UUID, List&lt;UUID&gt;&gt; saidas,
+      Map&lt;UUID, List&lt;UUID&gt;&gt; entradas,
+      boolean podeMover,
+      boolean podeFinalizar) {
+<span class="pc bpc" id="L146" title="1 of 2 branches missed.">    if (!podeMover) {</span>
+<span class="nc" id="L147">      return List.of();</span>
+    }
+<span class="fc" id="L149">    Etapa atual = etapasPorId.get(tarefa.getEtapaId());</span>
+<span class="pc bpc" id="L150" title="1 of 2 branches missed.">    if (atual == null) {</span>
+<span class="nc" id="L151">      return List.of();</span>
+    }
+<span class="pc bpc" id="L153" title="1 of 2 branches missed.">    if (atual.isEtapaFinal()) {</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">      return podeFinalizar ? List.copyOf(entradas.getOrDefault(atual.getId(), List.of())) : List.of();</span>
+    }
+<span class="fc" id="L156">    List&lt;UUID&gt; candidatos = saidas.getOrDefault(atual.getId(), List.of());</span>
+<span class="pc bpc" id="L157" title="1 of 2 branches missed.">    if (podeFinalizar) {</span>
+<span class="nc" id="L158">      return List.copyOf(candidatos);</span>
+    }
+<span class="fc" id="L160">    return candidatos.stream()</span>
+<span class="pc bpc" id="L161" title="2 of 4 branches missed.">        .filter(id -&gt; etapasPorId.get(id) != null &amp;&amp; !etapasPorId.get(id).isEtapaFinal())</span>
+<span class="fc" id="L162">        .toList();</span>
+  }
+
+  /** Gestor so ve o board se o projeto liberar o toggle (RN-013). */
+  private void exigirToggleGestor(UUID projetoId) {
+<span class="fc" id="L167">    Usuario usuario = permissaoGuard.usuarioAtual();</span>
+<span class="pc bpc" id="L168" title="1 of 2 branches missed.">    if (usuario.isAdminGlobal()) {</span>
+<span class="nc" id="L169">      return;</span>
+    }
+<span class="fc" id="L171">    Set&lt;String&gt; papeis = permissaoGuard.papeisNoProjeto(projetoId);</span>
+<span class="pc bpc" id="L172" title="2 of 4 branches missed.">    boolean somenteGestor = papeis.size() == 1 &amp;&amp; papeis.contains(Papeis.GESTOR);</span>
+<span class="pc bpc" id="L173" title="1 of 2 branches missed.">    if (somenteGestor</span>
+<span class="nc bnc" id="L174" title="All 2 branches missed.">        &amp;&amp; !permissaoGuard.toggleHabilitado(projetoId, ChaveToggle.GESTOR_PODE_VER_BOARD)) {</span>
+<span class="nc" id="L175">      throw new PermissaoNegadaException(</span>
+          &quot;A visualizacao do board esta desabilitada para o seu papel na configuracao do projeto.&quot;);
+    }
+<span class="fc" id="L178">  }</span>
+
+  private Map&lt;UUID, String&gt; nomesDeResponsaveis(List&lt;Tarefa&gt; tarefas) {
+<span class="fc" id="L181">    Set&lt;UUID&gt; ids =</span>
+<span class="fc" id="L182">        tarefas.stream()</span>
+<span class="fc" id="L183">            .map(Tarefa::getResponsavelId)</span>
+<span class="fc" id="L184">            .filter(java.util.Objects::nonNull)</span>
+<span class="fc" id="L185">            .collect(Collectors.toSet());</span>
+<span class="pc bpc" id="L186" title="1 of 2 branches missed.">    if (ids.isEmpty()) {</span>
+<span class="fc" id="L187">      return Map.of();</span>
+    }
+<span class="nc" id="L189">    return usuarioRepository.findAllById(ids).stream()</span>
+<span class="nc" id="L190">        .collect(Collectors.toMap(Usuario::getId, Usuario::getNome));</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: br.com.crudao.kanban.workflow.WorkflowServiceTest
+-------------------------------------------------------------------------------
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.040 s -- in br.com.crudao.kanban.workflow.WorkflowServiceTest

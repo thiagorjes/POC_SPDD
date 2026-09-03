@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TarefaMapperImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kanban</a> &gt; <a href="index.source.html" class="el_package">br.com.crudao.kanban.tarefa</a> &gt; <span class="el_source">TarefaMapperImpl.java</span></div><h1>TarefaMapperImpl.java</h1><pre class="source lang-java linenums">package br.com.crudao.kanban.tarefa;
+
+import br.com.crudao.kanban.auditoria.AuditoriaTarefa;
+import br.com.crudao.kanban.auditoria.CampoAuditado;
+import br.com.crudao.kanban.leadtime.dto.LeadTimeEtapaResponse;
+import br.com.crudao.kanban.tarefa.dto.AuditoriaResponse;
+import br.com.crudao.kanban.tarefa.dto.TarefaDetalheResponse;
+import br.com.crudao.kanban.tarefa.dto.TarefaResumoResponse;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import javax.annotation.processing.Generated;
+import org.springframework.stereotype.Component;
+
+@Generated(
+    value = &quot;org.mapstruct.ap.MappingProcessor&quot;,
+    date = &quot;2026-09-03T16:34:55-0300&quot;,
+    comments = &quot;version: 1.6.3, compiler: javac, environment: Java 21 (Oracle Corporation)&quot;
+)
+@Component
+<span class="fc" id="L24">public class TarefaMapperImpl implements TarefaMapper {</span>
+
+    @Override
+    public TarefaResumoResponse paraResumo(Tarefa tarefa, String responsavelNome, List&lt;UUID&gt; destinosPermitidos) {
+<span class="pc bpc" id="L28" title="5 of 6 branches missed.">        if ( tarefa == null &amp;&amp; responsavelNome == null &amp;&amp; destinosPermitidos == null ) {</span>
+<span class="nc" id="L29">            return null;</span>
+        }
+
+<span class="fc" id="L32">        UUID id = null;</span>
+<span class="fc" id="L33">        String titulo = null;</span>
+<span class="fc" id="L34">        TipoTarefa tipo = null;</span>
+<span class="fc" id="L35">        PrioridadeTarefa prioridade = null;</span>
+<span class="fc" id="L36">        UUID etapaId = null;</span>
+<span class="fc" id="L37">        UUID raiaId = null;</span>
+<span class="fc" id="L38">        UUID responsavelId = null;</span>
+<span class="fc" id="L39">        boolean iniciada = false;</span>
+<span class="fc" id="L40">        boolean impedida = false;</span>
+<span class="fc" id="L41">        long versao = 0L;</span>
+<span class="pc bpc" id="L42" title="1 of 2 branches missed.">        if ( tarefa != null ) {</span>
+<span class="fc" id="L43">            id = tarefa.getId();</span>
+<span class="fc" id="L44">            titulo = tarefa.getTitulo();</span>
+<span class="fc" id="L45">            tipo = tarefa.getTipo();</span>
+<span class="fc" id="L46">            prioridade = tarefa.getPrioridade();</span>
+<span class="fc" id="L47">            etapaId = tarefa.getEtapaId();</span>
+<span class="fc" id="L48">            raiaId = tarefa.getRaiaId();</span>
+<span class="fc" id="L49">            responsavelId = tarefa.getResponsavelId();</span>
+<span class="fc" id="L50">            iniciada = tarefa.isIniciada();</span>
+<span class="fc" id="L51">            impedida = tarefa.isImpedida();</span>
+<span class="fc" id="L52">            versao = tarefa.getVersao();</span>
+        }
+<span class="fc" id="L54">        String responsavelNome1 = null;</span>
+<span class="fc" id="L55">        responsavelNome1 = responsavelNome;</span>
+<span class="fc" id="L56">        List&lt;UUID&gt; destinosPermitidos1 = null;</span>
+<span class="fc" id="L57">        List&lt;UUID&gt; list = destinosPermitidos;</span>
+<span class="pc bpc" id="L58" title="1 of 2 branches missed.">        if ( list != null ) {</span>
+<span class="fc" id="L59">            destinosPermitidos1 = new ArrayList&lt;UUID&gt;( list );</span>
+        }
+
+<span class="fc" id="L62">        TarefaResumoResponse tarefaResumoResponse = new TarefaResumoResponse( id, titulo, tipo, prioridade, etapaId, raiaId, responsavelId, responsavelNome1, iniciada, impedida, versao, destinosPermitidos1 );</span>
+
+<span class="fc" id="L64">        return tarefaResumoResponse;</span>
+    }
+
+    @Override
+    public TarefaDetalheResponse paraDetalhe(Tarefa tarefa, String responsavelNome, String motivoImpedimento, List&lt;LeadTimeEtapaResponse&gt; leadTimePorEtapa, long impedimentoTotalSegundos, List&lt;AuditoriaResponse&gt; historico, List&lt;UUID&gt; destinosPermitidos, Set&lt;String&gt; acoesPermitidas, boolean observando) {
+<span class="pc bpc" id="L69" title="13 of 14 branches missed.">        if ( tarefa == null &amp;&amp; responsavelNome == null &amp;&amp; motivoImpedimento == null &amp;&amp; leadTimePorEtapa == null &amp;&amp; historico == null &amp;&amp; destinosPermitidos == null &amp;&amp; acoesPermitidas == null ) {</span>
+<span class="nc" id="L70">            return null;</span>
+        }
+
+<span class="fc" id="L73">        UUID id = null;</span>
+<span class="fc" id="L74">        UUID projetoId = null;</span>
+<span class="fc" id="L75">        UUID workflowId = null;</span>
+<span class="fc" id="L76">        UUID etapaId = null;</span>
+<span class="fc" id="L77">        UUID raiaId = null;</span>
+<span class="fc" id="L78">        String titulo = null;</span>
+<span class="fc" id="L79">        String descricao = null;</span>
+<span class="fc" id="L80">        TipoTarefa tipo = null;</span>
+<span class="fc" id="L81">        PrioridadeTarefa prioridade = null;</span>
+<span class="fc" id="L82">        UUID responsavelId = null;</span>
+<span class="fc" id="L83">        UUID criadorId = null;</span>
+<span class="fc" id="L84">        boolean iniciada = false;</span>
+<span class="fc" id="L85">        boolean impedida = false;</span>
+<span class="fc" id="L86">        Instant criadaEm = null;</span>
+<span class="fc" id="L87">        long versao = 0L;</span>
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">        if ( tarefa != null ) {</span>
+<span class="fc" id="L89">            id = tarefa.getId();</span>
+<span class="fc" id="L90">            projetoId = tarefa.getProjetoId();</span>
+<span class="fc" id="L91">            workflowId = tarefa.getWorkflowId();</span>
+<span class="fc" id="L92">            etapaId = tarefa.getEtapaId();</span>
+<span class="fc" id="L93">            raiaId = tarefa.getRaiaId();</span>
+<span class="fc" id="L94">            titulo = tarefa.getTitulo();</span>
+<span class="fc" id="L95">            descricao = tarefa.getDescricao();</span>
+<span class="fc" id="L96">            tipo = tarefa.getTipo();</span>
+<span class="fc" id="L97">            prioridade = tarefa.getPrioridade();</span>
+<span class="fc" id="L98">            responsavelId = tarefa.getResponsavelId();</span>
+<span class="fc" id="L99">            criadorId = tarefa.getCriadorId();</span>
+<span class="fc" id="L100">            iniciada = tarefa.isIniciada();</span>
+<span class="fc" id="L101">            impedida = tarefa.isImpedida();</span>
+<span class="fc" id="L102">            criadaEm = tarefa.getCriadaEm();</span>
+<span class="fc" id="L103">            versao = tarefa.getVersao();</span>
+        }
+<span class="fc" id="L105">        String responsavelNome1 = null;</span>
+<span class="fc" id="L106">        responsavelNome1 = responsavelNome;</span>
+<span class="fc" id="L107">        String motivoImpedimento1 = null;</span>
+<span class="fc" id="L108">        motivoImpedimento1 = motivoImpedimento;</span>
+<span class="fc" id="L109">        List&lt;LeadTimeEtapaResponse&gt; leadTimePorEtapa1 = null;</span>
+<span class="fc" id="L110">        List&lt;LeadTimeEtapaResponse&gt; list = leadTimePorEtapa;</span>
+<span class="pc bpc" id="L111" title="1 of 2 branches missed.">        if ( list != null ) {</span>
+<span class="fc" id="L112">            leadTimePorEtapa1 = new ArrayList&lt;LeadTimeEtapaResponse&gt;( list );</span>
+        }
+<span class="fc" id="L114">        long impedimentoTotalSegundos1 = 0L;</span>
+<span class="fc" id="L115">        impedimentoTotalSegundos1 = impedimentoTotalSegundos;</span>
+<span class="fc" id="L116">        List&lt;AuditoriaResponse&gt; historico1 = null;</span>
+<span class="fc" id="L117">        List&lt;AuditoriaResponse&gt; list1 = historico;</span>
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">        if ( list1 != null ) {</span>
+<span class="fc" id="L119">            historico1 = new ArrayList&lt;AuditoriaResponse&gt;( list1 );</span>
+        }
+<span class="fc" id="L121">        List&lt;UUID&gt; destinosPermitidos1 = null;</span>
+<span class="fc" id="L122">        List&lt;UUID&gt; list2 = destinosPermitidos;</span>
+<span class="pc bpc" id="L123" title="1 of 2 branches missed.">        if ( list2 != null ) {</span>
+<span class="fc" id="L124">            destinosPermitidos1 = new ArrayList&lt;UUID&gt;( list2 );</span>
+        }
+<span class="fc" id="L126">        Set&lt;String&gt; acoesPermitidas1 = null;</span>
+<span class="fc" id="L127">        Set&lt;String&gt; set = acoesPermitidas;</span>
+<span class="pc bpc" id="L128" title="1 of 2 branches missed.">        if ( set != null ) {</span>
+<span class="fc" id="L129">            acoesPermitidas1 = new LinkedHashSet&lt;String&gt;( set );</span>
+        }
+<span class="fc" id="L131">        boolean observando1 = false;</span>
+<span class="fc" id="L132">        observando1 = observando;</span>
+
+<span class="fc" id="L134">        TarefaDetalheResponse tarefaDetalheResponse = new TarefaDetalheResponse( id, projetoId, workflowId, etapaId, raiaId, titulo, descricao, tipo, prioridade, responsavelId, responsavelNome1, criadorId, iniciada, impedida, motivoImpedimento1, criadaEm, versao, leadTimePorEtapa1, impedimentoTotalSegundos1, historico1, destinosPermitidos1, acoesPermitidas1, observando1 );</span>
+
+<span class="fc" id="L136">        return tarefaDetalheResponse;</span>
+    }
+
+    @Override
+    public AuditoriaResponse paraAuditoria(AuditoriaTarefa auditoria, String autorNome) {
+<span class="pc bpc" id="L141" title="3 of 4 branches missed.">        if ( auditoria == null &amp;&amp; autorNome == null ) {</span>
+<span class="nc" id="L142">            return null;</span>
+        }
+
+<span class="fc" id="L145">        UUID id = null;</span>
+<span class="fc" id="L146">        UUID autorId = null;</span>
+<span class="fc" id="L147">        CampoAuditado campo = null;</span>
+<span class="fc" id="L148">        String valorAnterior = null;</span>
+<span class="fc" id="L149">        String valorNovo = null;</span>
+<span class="fc" id="L150">        Instant ocorridoEm = null;</span>
+<span class="pc bpc" id="L151" title="1 of 2 branches missed.">        if ( auditoria != null ) {</span>
+<span class="fc" id="L152">            id = auditoria.getId();</span>
+<span class="fc" id="L153">            autorId = auditoria.getAutorId();</span>
+<span class="fc" id="L154">            campo = auditoria.getCampo();</span>
+<span class="fc" id="L155">            valorAnterior = auditoria.getValorAnterior();</span>
+<span class="fc" id="L156">            valorNovo = auditoria.getValorNovo();</span>
+<span class="fc" id="L157">            ocorridoEm = auditoria.getOcorridoEm();</span>
+        }
+<span class="fc" id="L159">        String autorNome1 = null;</span>
+<span class="fc" id="L160">        autorNome1 = autorNome;</span>
+
+<span class="fc" id="L162">        AuditoriaResponse auditoriaResponse = new AuditoriaResponse( id, autorId, autorNome1, campo, valorAnterior, valorNovo, ocorridoEm );</span>
+
+<span class="fc" id="L164">        return auditoriaResponse;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

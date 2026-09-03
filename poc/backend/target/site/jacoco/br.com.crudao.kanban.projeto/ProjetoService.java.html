@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProjetoService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kanban</a> &gt; <a href="index.source.html" class="el_package">br.com.crudao.kanban.projeto</a> &gt; <span class="el_source">ProjetoService.java</span></div><h1>ProjetoService.java</h1><pre class="source lang-java linenums">package br.com.crudao.kanban.projeto;
+
+import br.com.crudao.kanban.common.BusinessException;
+import br.com.crudao.kanban.common.PermissaoNegadaException;
+import br.com.crudao.kanban.common.RecursoEmUsoException;
+import br.com.crudao.kanban.common.RecursoNaoEncontradoException;
+import br.com.crudao.kanban.evento.EventoBoard;
+import br.com.crudao.kanban.evento.EventoBoardPublisher;
+import br.com.crudao.kanban.evento.SequenciaProjetoRepository;
+import br.com.crudao.kanban.evento.TipoEventoBoard;
+import br.com.crudao.kanban.projeto.dto.AtualizarProjetoRequest;
+import br.com.crudao.kanban.projeto.dto.CriarProjetoRequest;
+import br.com.crudao.kanban.projeto.dto.PermissoesEfetivasResponse;
+import br.com.crudao.kanban.raia.Raia;
+import br.com.crudao.kanban.raia.RaiaRepository;
+import br.com.crudao.kanban.rbac.Papeis;
+import br.com.crudao.kanban.rbac.PapelRepository;
+import br.com.crudao.kanban.rbac.Usuario;
+import br.com.crudao.kanban.rbac.UsuarioProjetoPapel;
+import br.com.crudao.kanban.rbac.UsuarioProjetoPapelRepository;
+import br.com.crudao.kanban.security.PermissaoGuard;
+import br.com.crudao.kanban.tarefa.TarefaRepository;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/** Ciclo de vida do projeto (RF-008) e sua configuracao inicial. */
+<span class="fc" id="L33">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class ProjetoService {
+
+  /** Nome da raia criada automaticamente com o projeto — resolve o &quot;default&quot; de RN-CB-005 (A-7). */
+  private static final String RAIA_PADRAO = &quot;Geral&quot;;
+
+  private final ProjetoRepository projetoRepository;
+  private final ProjetoToggleService projetoToggleService;
+  private final RaiaRepository raiaRepository;
+  private final SequenciaProjetoRepository sequenciaProjetoRepository;
+  private final UsuarioProjetoPapelRepository usuarioProjetoPapelRepository;
+  private final PapelRepository papelRepository;
+  private final TarefaRepository tarefaRepository;
+  private final EventoBoardPublisher eventoBoardPublisher;
+  private final PermissaoGuard permissaoGuard;
+
+  /**
+   * Cria o projeto ja configurado: sequencia de eventos, os 4 toggles default, a raia padrao e o
+   * autor como {@code project_admin}.
+   *
+   * &lt;p&gt;A permissao e checada aqui, e nao pelo aspecto: nao existe projeto ao qual escopar a
+   * verificacao, entao apenas admin global cria projeto (ADR-007).
+   */
+  @Transactional
+  public Projeto criar(CriarProjetoRequest request, Usuario autor) {
+<span class="fc bfc" id="L60" title="All 2 branches covered.">    if (!autor.isAdminGlobal()) {</span>
+<span class="fc" id="L61">      throw new PermissaoNegadaException(&quot;Apenas o administrador global pode criar projetos.&quot;);</span>
+    }
+<span class="fc bfc" id="L63" title="All 2 branches covered.">    if (projetoRepository.existsByNomeIgnoreCase(request.nome())) {</span>
+<span class="fc" id="L64">      throw new BusinessException(</span>
+          &quot;NOME_PROJETO_DUPLICADO&quot;,
+          &quot;Ja existe um projeto com este nome.&quot;,
+          HttpStatus.CONFLICT);
+    }
+
+<span class="fc" id="L70">    Projeto projeto =</span>
+<span class="fc" id="L71">        projetoRepository.save(</span>
+<span class="fc" id="L72">            Projeto.builder()</span>
+<span class="fc" id="L73">                .nome(request.nome())</span>
+<span class="fc" id="L74">                .descricao(request.descricao())</span>
+<span class="fc" id="L75">                .status(StatusProjeto.ATIVO)</span>
+<span class="fc" id="L76">                .build());</span>
+
+<span class="fc" id="L78">    sequenciaProjetoRepository.criarSeAusente(projeto.getId());</span>
+<span class="fc" id="L79">    projetoToggleService.criarDefaults(projeto.getId());</span>
+<span class="fc" id="L80">    raiaRepository.save(</span>
+<span class="fc" id="L81">        Raia.builder().projetoId(projeto.getId()).nome(RAIA_PADRAO).ordem(0).padrao(true).build());</span>
+<span class="fc" id="L82">    associar(projeto.getId(), autor.getId(), Papeis.PROJECT_ADMIN, autor.getId());</span>
+
+<span class="fc" id="L84">    log.info(&quot;Projeto {} criado&quot;, projeto.getId());</span>
+<span class="fc" id="L85">    return projeto;</span>
+  }
+
+  @Transactional
+  public Projeto atualizar(UUID id, AtualizarProjetoRequest request) {
+<span class="fc" id="L90">    Projeto projeto = buscar(id);</span>
+<span class="fc bfc" id="L91" title="All 2 branches covered.">    if (!projeto.getNome().equalsIgnoreCase(request.nome())</span>
+<span class="fc bfc" id="L92" title="All 2 branches covered.">        &amp;&amp; projetoRepository.existsByNomeIgnoreCase(request.nome())) {</span>
+<span class="fc" id="L93">      throw new BusinessException(</span>
+          &quot;NOME_PROJETO_DUPLICADO&quot;, &quot;Ja existe um projeto com este nome.&quot;, HttpStatus.CONFLICT);
+    }
+<span class="fc" id="L96">    projeto.setNome(request.nome());</span>
+<span class="fc" id="L97">    projeto.setDescricao(request.descricao());</span>
+<span class="fc" id="L98">    return projeto;</span>
+  }
+
+  /**
+   * Finaliza o projeto (RN-015). Idempotente. &lt;b&gt;Nao&lt;/b&gt; encerra periodos abertos: finalizar
+   * bloqueia escrita, nao interrompe a contagem de lead-time.
+   */
+  @Transactional
+  public Projeto finalizar(UUID id) {
+<span class="fc" id="L107">    Projeto projeto = buscar(id);</span>
+<span class="fc bfc" id="L108" title="All 2 branches covered.">    if (projeto.getStatus() == StatusProjeto.FINALIZADO) {</span>
+<span class="fc" id="L109">      return projeto;</span>
+    }
+<span class="fc" id="L111">    projeto.setStatus(StatusProjeto.FINALIZADO);</span>
+<span class="fc" id="L112">    projeto.setFinalizadoEm(Instant.now());</span>
+<span class="fc" id="L113">    eventoBoardPublisher.publicar(</span>
+<span class="fc" id="L114">        EventoBoard.de(projeto.getId(), TipoEventoBoard.PROJETO_STATUS_ALTERADO, null));</span>
+<span class="fc" id="L115">    log.info(&quot;Projeto {} finalizado&quot;, id);</span>
+<span class="fc" id="L116">    return projeto;</span>
+  }
+
+  @Transactional
+  public Projeto reabrir(UUID id) {
+<span class="fc" id="L121">    Projeto projeto = buscar(id);</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">    if (projeto.getStatus() == StatusProjeto.ATIVO) {</span>
+<span class="fc" id="L123">      return projeto;</span>
+    }
+<span class="fc" id="L125">    projeto.setStatus(StatusProjeto.ATIVO);</span>
+<span class="fc" id="L126">    projeto.setFinalizadoEm(null);</span>
+<span class="fc" id="L127">    eventoBoardPublisher.publicar(</span>
+<span class="fc" id="L128">        EventoBoard.de(projeto.getId(), TipoEventoBoard.PROJETO_STATUS_ALTERADO, null));</span>
+<span class="fc" id="L129">    log.info(&quot;Projeto {} reaberto&quot;, id);</span>
+<span class="fc" id="L130">    return projeto;</span>
+  }
+
+  /** Bloqueia a exclusao enquanto houver qualquer tarefa ativa vinculada (RN-005). */
+  @Transactional
+  public void excluir(UUID id) {
+<span class="fc" id="L136">    Projeto projeto = buscar(id);</span>
+<span class="fc" id="L137">    long ativas = tarefaRepository.contarAtivasNoProjeto(id);</span>
+<span class="fc bfc" id="L138" title="All 2 branches covered.">    if (ativas &gt; 0) {</span>
+<span class="fc" id="L139">      throw new RecursoEmUsoException(</span>
+<span class="fc" id="L140">          &quot;O projeto possui %d tarefa(s) ativa(s) e nao pode ser excluido.&quot;.formatted(ativas));</span>
+    }
+<span class="fc" id="L142">    projetoRepository.delete(projeto);</span>
+<span class="fc" id="L143">    log.info(&quot;Projeto {} excluido&quot;, id);</span>
+<span class="fc" id="L144">  }</span>
+
+  @Transactional(readOnly = true)
+  public List&lt;Projeto&gt; listarDoUsuario(Usuario usuario) {
+<span class="fc bfc" id="L148" title="All 2 branches covered.">    if (usuario.isAdminGlobal()) {</span>
+<span class="fc" id="L149">      return projetoRepository.findAllByOrderByNomeAsc();</span>
+    }
+<span class="fc" id="L151">    List&lt;UUID&gt; ids = usuarioProjetoPapelRepository.findProjetoIdsDoUsuario(usuario.getId());</span>
+<span class="fc bfc" id="L152" title="All 2 branches covered.">    return ids.isEmpty() ? List.of() : projetoRepository.findByIdInOrderByNomeAsc(ids);</span>
+  }
+
+  @Transactional(readOnly = true)
+  public Projeto buscar(UUID id) {
+<span class="fc" id="L157">    return projetoRepository</span>
+<span class="fc" id="L158">        .findById(id)</span>
+<span class="fc" id="L159">        .orElseThrow(() -&gt; RecursoNaoEncontradoException.de(&quot;Projeto&quot;, id));</span>
+  }
+
+  /** Permissoes efetivas do usuario atual naquele projeto — alimenta a UI condicional (RNF-003). */
+  @Transactional(readOnly = true)
+  public PermissoesEfetivasResponse permissoesEfetivas(UUID projetoId) {
+<span class="fc" id="L165">    Projeto projeto = buscar(projetoId);</span>
+<span class="fc" id="L166">    Usuario usuario = permissaoGuard.usuarioAtual();</span>
+<span class="fc" id="L167">    return new PermissoesEfetivasResponse(</span>
+        projetoId,
+<span class="fc" id="L169">        usuario.isAdminGlobal(),</span>
+<span class="fc" id="L170">        projeto.isAtivo(),</span>
+<span class="fc" id="L171">        permissaoGuard.permissoesEfetivas(projetoId),</span>
+<span class="fc" id="L172">        permissaoGuard.papeisNoProjeto(projetoId),</span>
+<span class="fc" id="L173">        projetoToggleService.obterComoMapa(projetoId));</span>
+  }
+
+  @Transactional
+  public void associar(UUID projetoId, UUID usuarioId, String codigoPapel, UUID atribuidoPorId) {
+<span class="fc" id="L178">    UUID papelId =</span>
+        papelRepository
+<span class="fc" id="L180">            .findByCodigo(codigoPapel)</span>
+<span class="fc" id="L181">            .orElseThrow(</span>
+<span class="fc" id="L182">                () -&gt; new RecursoNaoEncontradoException(&quot;Papel nao encontrado: &quot; + codigoPapel))</span>
+<span class="fc" id="L183">            .getId();</span>
+<span class="fc" id="L184">    usuarioProjetoPapelRepository.save(</span>
+        new UsuarioProjetoPapel(usuarioId, projetoId, papelId, atribuidoPorId));
+<span class="fc" id="L186">  }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

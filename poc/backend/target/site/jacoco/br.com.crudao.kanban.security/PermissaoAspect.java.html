@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PermissaoAspect.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kanban</a> &gt; <a href="index.source.html" class="el_package">br.com.crudao.kanban.security</a> &gt; <span class="el_source">PermissaoAspect.java</span></div><h1>PermissaoAspect.java</h1><pre class="source lang-java linenums">package br.com.crudao.kanban.security;
+
+import br.com.crudao.kanban.common.PermissaoNegadaException;
+import java.lang.reflect.Method;
+import java.util.UUID;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.context.expression.MethodBasedEvaluationContext;
+import org.springframework.core.DefaultParameterNameDiscoverer;
+import org.springframework.core.ParameterNameDiscoverer;
+import org.springframework.expression.ExpressionParser;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.stereotype.Component;
+
+/**
+ * Intercepta {@link ExigePermissao} e aplica as tres checagens na ordem fixa: permissao efetiva,
+ * toggle do projeto (quando declarado pela permissao) e projeto ativo.
+ */
+@Aspect
+@Component
+public class PermissaoAspect {
+
+  private final PermissaoGuard permissaoGuard;
+  private final EscopoProjetoResolver resolvedor;
+<span class="fc" id="L27">  private final ExpressionParser parser = new SpelExpressionParser();</span>
+<span class="fc" id="L28">  private final ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();</span>
+
+<span class="fc" id="L30">  public PermissaoAspect(PermissaoGuard permissaoGuard, EscopoProjetoResolver resolvedor) {</span>
+<span class="fc" id="L31">    this.permissaoGuard = permissaoGuard;</span>
+<span class="fc" id="L32">    this.resolvedor = resolvedor;</span>
+<span class="fc" id="L33">  }</span>
+
+  @Around(&quot;@annotation(exigePermissao)&quot;)
+  public Object verificar(ProceedingJoinPoint joinPoint, ExigePermissao exigePermissao)
+      throws Throwable {
+<span class="fc" id="L38">    UUID projetoId = resolverProjeto(joinPoint, exigePermissao.escopoProjeto());</span>
+
+<span class="fc" id="L40">    permissaoGuard.exigir(exigePermissao.valor(), projetoId);</span>
+
+<span class="fc bfc" id="L42" title="All 2 branches covered.">    if (exigePermissao.escrita()) {</span>
+<span class="fc" id="L43">      permissaoGuard.exigirProjetoAtivo(projetoId);</span>
+    }
+<span class="fc" id="L45">    return joinPoint.proceed();</span>
+  }
+
+  private UUID resolverProjeto(ProceedingJoinPoint joinPoint, String expressao) {
+<span class="fc" id="L49">    MethodSignature signature = (MethodSignature) joinPoint.getSignature();</span>
+<span class="fc" id="L50">    Method method = signature.getMethod();</span>
+
+<span class="fc" id="L52">    MethodBasedEvaluationContext context =</span>
+        new MethodBasedEvaluationContext(
+<span class="fc" id="L54">            joinPoint.getTarget(), method, joinPoint.getArgs(), parameterNameDiscoverer);</span>
+<span class="fc" id="L55">    context.setVariable(&quot;resolvedor&quot;, resolvedor);</span>
+
+<span class="fc" id="L57">    Object valor = parser.parseExpression(expressao).getValue(context);</span>
+<span class="pc bpc" id="L58" title="1 of 2 branches missed.">    if (valor instanceof UUID uuid) {</span>
+<span class="fc" id="L59">      return uuid;</span>
+    }
+<span class="nc bnc" id="L61" title="All 2 branches missed.">    if (valor instanceof String texto) {</span>
+<span class="nc" id="L62">      return UUID.fromString(texto);</span>
+    }
+<span class="nc" id="L64">    throw new PermissaoNegadaException(&quot;Nao foi possivel determinar o projeto do recurso.&quot;);</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

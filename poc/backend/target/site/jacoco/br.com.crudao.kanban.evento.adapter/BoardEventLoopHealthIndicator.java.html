@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BoardEventLoopHealthIndicator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kanban</a> &gt; <a href="index.source.html" class="el_package">br.com.crudao.kanban.evento.adapter</a> &gt; <span class="el_source">BoardEventLoopHealthIndicator.java</span></div><h1>BoardEventLoopHealthIndicator.java</h1><pre class="source lang-java linenums">package br.com.crudao.kanban.evento.adapter;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.boot.actuate.health.Health;
+import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.stereotype.Component;
+
+/** Readiness reflete o estado da conexao do listener de eventos. */
+// O nome do bean vira o id do health indicator em /actuator/health; nao pode colidir com o
+// proprio BoardEventLoop.
+@Component(&quot;boardEventLoopCanal&quot;)
+@RequiredArgsConstructor
+public class BoardEventLoopHealthIndicator implements HealthIndicator {
+
+  private final BoardEventLoop boardEventLoop;
+
+  @Override
+  public Health health() {
+<span class="nc bnc" id="L19" title="All 2 branches missed.">    return boardEventLoop.isConectado()</span>
+<span class="nc" id="L20">        ? Health.up().withDetail(&quot;canal&quot;, &quot;conectado&quot;).build()</span>
+<span class="nc" id="L21">        : Health.down().withDetail(&quot;canal&quot;, &quot;desconectado&quot;).build();</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

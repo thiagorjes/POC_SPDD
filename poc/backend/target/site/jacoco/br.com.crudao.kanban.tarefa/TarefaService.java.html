@@ -1,0 +1,569 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TarefaService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kanban</a> &gt; <a href="index.source.html" class="el_package">br.com.crudao.kanban.tarefa</a> &gt; <span class="el_source">TarefaService.java</span></div><h1>TarefaService.java</h1><pre class="source lang-java linenums">package br.com.crudao.kanban.tarefa;
+
+import br.com.crudao.kanban.auditoria.AuditoriaService;
+import br.com.crudao.kanban.auditoria.AuditoriaTarefa;
+import br.com.crudao.kanban.auditoria.CampoAuditado;
+import br.com.crudao.kanban.common.ConfiguracaoWorkflowInvalidaException;
+import br.com.crudao.kanban.common.ConflitoConcorrenciaException;
+import br.com.crudao.kanban.common.PermissaoNegadaException;
+import br.com.crudao.kanban.common.RecursoNaoEncontradoException;
+import br.com.crudao.kanban.common.TarefaIniciadaException;
+import br.com.crudao.kanban.common.TransicaoNaoPermitidaException;
+import br.com.crudao.kanban.evento.EventoBoard;
+import br.com.crudao.kanban.evento.EventoBoardPublisher;
+import br.com.crudao.kanban.evento.TipoEventoBoard;
+import br.com.crudao.kanban.leadtime.LeadTimeService;
+import br.com.crudao.kanban.leadtime.PeriodoEtapaRepository;
+import br.com.crudao.kanban.leadtime.PeriodoImpedimento;
+import br.com.crudao.kanban.leadtime.PeriodoImpedimentoRepository;
+import br.com.crudao.kanban.leadtime.dto.LeadTimeDetalhe;
+import br.com.crudao.kanban.notificacao.NotificacaoService;
+import br.com.crudao.kanban.notificacao.TipoNotificacao;
+import br.com.crudao.kanban.projeto.ChaveToggle;
+import br.com.crudao.kanban.raia.Raia;
+import br.com.crudao.kanban.raia.RaiaRepository;
+import br.com.crudao.kanban.rbac.Papeis;
+import br.com.crudao.kanban.rbac.Permissoes;
+import br.com.crudao.kanban.rbac.Usuario;
+import br.com.crudao.kanban.rbac.UsuarioRepository;
+import br.com.crudao.kanban.security.PermissaoGuard;
+import br.com.crudao.kanban.tarefa.dto.AtualizarTarefaRequest;
+import br.com.crudao.kanban.tarefa.dto.AuditoriaResponse;
+import br.com.crudao.kanban.tarefa.dto.CriarTarefaRequest;
+import br.com.crudao.kanban.tarefa.dto.MoverTarefaRequest;
+import br.com.crudao.kanban.tarefa.dto.TarefaDetalheResponse;
+import br.com.crudao.kanban.workflow.Etapa;
+import br.com.crudao.kanban.workflow.EtapaRepository;
+import br.com.crudao.kanban.workflow.Transicao;
+import br.com.crudao.kanban.workflow.TransicaoRepository;
+import br.com.crudao.kanban.workflow.Workflow;
+import br.com.crudao.kanban.workflow.WorkflowRepository;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Nucleo de regras da tarefa. Escrita, auditoria, intervalos de lead-time e incremento de {@code
+ * seq} acontecem na mesma transacao; apenas a publicacao do evento sai dela ({@code afterCommit}).
+ */
+<span class="fc" id="L58">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class TarefaService {
+
+  private final TarefaRepository tarefaRepository;
+  private final TarefaObservadorRepository tarefaObservadorRepository;
+  private final EtapaRepository etapaRepository;
+  private final TransicaoRepository transicaoRepository;
+  private final WorkflowRepository workflowRepository;
+  private final RaiaRepository raiaRepository;
+  private final PeriodoEtapaRepository periodoEtapaRepository;
+  private final PeriodoImpedimentoRepository periodoImpedimentoRepository;
+  private final LeadTimeService leadTimeService;
+  private final AuditoriaService auditoriaService;
+  private final NotificacaoService notificacaoService;
+  private final EventoBoardPublisher eventoBoardPublisher;
+  private final PermissaoGuard permissaoGuard;
+  private final UsuarioRepository usuarioRepository;
+  private final TarefaMapper tarefaMapper;
+
+  /**
+   * Cria a tarefa na etapa de menor ordem do workflow ativo e na raia padrao do projeto quando nao
+   * informadas (RN-CB-004/005). Nao gera auditoria: RN-016 cobre alteracoes, nao a criacao.
+   *
+   * @see CriarTarefaRequest
+   */
+  @Transactional
+  public Tarefa criar(UUID projetoId, CriarTarefaRequest request, Usuario autor) {
+<span class="fc" id="L87">    Workflow workflow =</span>
+        workflowRepository
+<span class="fc" id="L89">            .findByProjetoIdAndAtivoTrue(projetoId)</span>
+<span class="fc" id="L90">            .orElseThrow(</span>
+                () -&gt;
+<span class="fc" id="L92">                    new ConfiguracaoWorkflowInvalidaException(</span>
+                        &quot;O projeto nao possui workflow ativo configurado.&quot;));
+
+<span class="fc" id="L95">    Etapa etapaInicial =</span>
+        etapaRepository
+<span class="fc" id="L97">            .findFirstByWorkflowIdOrderByOrdemAsc(workflow.getId())</span>
+<span class="fc" id="L98">            .orElseThrow(</span>
+                () -&gt;
+<span class="nc" id="L100">                    new ConfiguracaoWorkflowInvalidaException(</span>
+                        &quot;O workflow ativo nao possui nenhuma etapa configurada.&quot;));
+
+<span class="fc" id="L103">    Raia raia = resolverRaia(projetoId, request.raiaId());</span>
+<span class="fc" id="L104">    UUID responsavelId = resolverResponsavelNaCriacao(projetoId, request.responsavelId(), autor);</span>
+
+<span class="fc" id="L106">    Tarefa tarefa =</span>
+<span class="fc" id="L107">        tarefaRepository.save(</span>
+<span class="fc" id="L108">            Tarefa.builder()</span>
+<span class="fc" id="L109">                .projetoId(projetoId)</span>
+<span class="fc" id="L110">                .workflowId(workflow.getId())</span>
+<span class="fc" id="L111">                .etapaId(etapaInicial.getId())</span>
+<span class="fc" id="L112">                .raiaId(raia.getId())</span>
+<span class="fc" id="L113">                .responsavelId(responsavelId)</span>
+<span class="fc" id="L114">                .criadorId(autor.getId())</span>
+<span class="fc" id="L115">                .titulo(request.titulo())</span>
+<span class="fc" id="L116">                .descricao(request.descricao())</span>
+<span class="fc" id="L117">                .tipo(request.tipo())</span>
+<span class="fc" id="L118">                .prioridade(request.prioridadeOuPadrao())</span>
+<span class="fc" id="L119">                .iniciada(false)</span>
+<span class="fc" id="L120">                .impedida(false)</span>
+<span class="fc" id="L121">                .build());</span>
+
+<span class="fc" id="L123">    leadTimeService.abrirPeriodoEtapa(tarefa, etapaInicial.getId());</span>
+
+<span class="fc" id="L125">    registrarObservador(tarefa.getId(), autor.getId(), OrigemObservacao.CRIADOR);</span>
+<span class="pc bpc" id="L126" title="1 of 4 branches missed.">    if (responsavelId != null &amp;&amp; !responsavelId.equals(autor.getId())) {</span>
+<span class="fc" id="L127">      registrarObservador(tarefa.getId(), responsavelId, OrigemObservacao.RESPONSAVEL);</span>
+    }
+
+<span class="fc" id="L130">    eventoBoardPublisher.publicar(</span>
+<span class="fc" id="L131">        EventoBoard.de(</span>
+            projetoId,
+            TipoEventoBoard.TAREFA_CRIADA,
+<span class="fc" id="L134">            tarefa.getId(),</span>
+<span class="fc" id="L135">            etapaInicial.getId(),</span>
+<span class="fc" id="L136">            raia.getId()));</span>
+<span class="fc" id="L137">    log.info(&quot;Tarefa {} criada no projeto {}&quot;, tarefa.getId(), projetoId);</span>
+<span class="fc" id="L138">    return tarefa;</span>
+  }
+
+  /**
+   * Movimentacao validada contra a etapa de origem &lt;b&gt;relida na transacao&lt;/b&gt;, nunca contra a etapa
+   * que o cliente acredita ser a atual (RN-001/RN-004/RN-011).
+   *
+   * &lt;p&gt;Desfinalizar e o unico caminho que nao usa uma aresta direta: o destino valido e qualquer
+   * predecessora direta da etapa final, o que impede que o retorno contorne o grafo.
+   */
+  @Transactional
+  public Tarefa mover(UUID tarefaId, MoverTarefaRequest request, Usuario autor) {
+<span class="fc" id="L150">    Tarefa tarefa = buscar(tarefaId);</span>
+<span class="fc" id="L151">    verificarVersao(tarefa, request.versaoEsperada());</span>
+
+<span class="fc" id="L153">    Etapa origem = etapa(tarefa.getEtapaId());</span>
+<span class="fc" id="L154">    Etapa destino = etapa(request.etapaDestinoId());</span>
+
+<span class="fc bfc" id="L156" title="All 2 branches covered.">    if (!destino.getWorkflowId().equals(tarefa.getWorkflowId())) {</span>
+<span class="fc" id="L157">      throw new TransicaoNaoPermitidaException(</span>
+          &quot;A etapa de destino nao pertence ao workflow da tarefa.&quot;);
+    }
+<span class="fc bfc" id="L160" title="All 4 branches covered.">    if (origem.getId().equals(destino.getId()) &amp;&amp; request.raiaDestinoId() == null) {</span>
+<span class="fc" id="L161">      return tarefa;</span>
+    }
+
+<span class="fc bfc" id="L164" title="All 4 branches covered.">    if (origem.isEtapaFinal() || destino.isEtapaFinal()) {</span>
+<span class="fc" id="L165">      exigirPermissaoFinalizar(tarefa.getProjetoId());</span>
+    }
+
+<span class="fc bfc" id="L168" title="All 2 branches covered.">    if (origem.isEtapaFinal()) {</span>
+<span class="fc" id="L169">      boolean predecessoraDireta =</span>
+<span class="fc" id="L170">          transicaoRepository.existsByEtapaOrigemIdAndEtapaDestinoId(destino.getId(), origem.getId());</span>
+<span class="fc bfc" id="L171" title="All 2 branches covered.">      if (!predecessoraDireta) {</span>
+<span class="fc" id="L172">        throw new TransicaoNaoPermitidaException(</span>
+            &quot;So e possivel desfinalizar retornando para uma etapa que leva diretamente a \&quot;%s\&quot;.&quot;
+<span class="fc" id="L174">                .formatted(origem.getNome()));</span>
+      }
+<span class="fc bfc" id="L176" title="All 2 branches covered.">    } else if (!origem.getId().equals(destino.getId())</span>
+<span class="fc bfc" id="L177" title="All 2 branches covered.">        &amp;&amp; !transicaoRepository.existsByEtapaOrigemIdAndEtapaDestinoId(</span>
+<span class="fc" id="L178">            origem.getId(), destino.getId())) {</span>
+<span class="fc" id="L179">      throw TransicaoNaoPermitidaException.entre(origem.getNome(), destino.getNome());</span>
+    }
+
+<span class="fc bfc" id="L182" title="All 2 branches covered.">    boolean mudouEtapa = !origem.getId().equals(destino.getId());</span>
+<span class="fc bfc" id="L183" title="All 2 branches covered.">    if (mudouEtapa) {</span>
+<span class="fc" id="L184">      leadTimeService.encerrarPeriodoEtapa(tarefa);</span>
+<span class="fc" id="L185">      tarefa.setEtapaId(destino.getId());</span>
+<span class="fc" id="L186">      tarefaRepository.saveAndFlush(tarefa);</span>
+<span class="fc" id="L187">      leadTimeService.abrirPeriodoEtapa(tarefa, destino.getId());</span>
+
+<span class="fc bfc" id="L189" title="All 2 branches covered.">      if (tarefa.isImpedida()) {</span>
+<span class="fc" id="L190">        leadTimeService.reancorarImpedimento(tarefa, destino.getId());</span>
+      }
+
+      // Sticky: sai da primeira etapa uma vez e nunca mais destrava (A-4).
+<span class="fc bfc" id="L194" title="All 4 branches covered.">      if (!tarefa.isIniciada() &amp;&amp; ehPrimeiraEtapa(origem)) {</span>
+<span class="fc" id="L195">        tarefa.setIniciada(true);</span>
+      }
+<span class="fc" id="L197">      auditoriaService.registrar(</span>
+<span class="fc" id="L198">          tarefa, CampoAuditado.ETAPA, origem.getNome(), destino.getNome(), autor);</span>
+    }
+
+<span class="pc bpc" id="L201" title="1 of 4 branches missed.">    if (request.raiaDestinoId() != null &amp;&amp; !request.raiaDestinoId().equals(tarefa.getRaiaId())) {</span>
+      // Movimento entre raias e livre: raia nao participa do grafo de transicoes.
+<span class="fc" id="L203">      tarefa.setRaiaId(resolverRaia(tarefa.getProjetoId(), request.raiaDestinoId()).getId());</span>
+    }
+
+<span class="fc bfc" id="L206" title="All 2 branches covered.">    if (mudouEtapa) {</span>
+<span class="fc" id="L207">      notificacaoService.notificarObservadores(tarefa, TipoNotificacao.ETAPA_ALTERADA, autor);</span>
+    }
+<span class="fc" id="L209">    eventoBoardPublisher.publicar(</span>
+<span class="fc" id="L210">        EventoBoard.de(</span>
+<span class="fc" id="L211">            tarefa.getProjetoId(),</span>
+            TipoEventoBoard.TAREFA_MOVIDA,
+<span class="fc" id="L213">            tarefa.getId(),</span>
+<span class="fc" id="L214">            tarefa.getEtapaId(),</span>
+<span class="fc" id="L215">            tarefa.getRaiaId()));</span>
+<span class="fc" id="L216">    return tarefa;</span>
+  }
+
+  /**
+   * Com {@code iniciada == true}, {@code descricao} e {@code tipo} sao imutaveis salvo o toggle
+   * {@code DEV_PODE_EDITAR_TAREFA_INICIADA} ou papel administrativo (RF-003, A-3).
+   *
+   * &lt;p&gt;{@code titulo} permanece editavel: RN-016 exige audita-lo, o que so faz sentido se ele puder
+   * mudar.
+   */
+  @Transactional
+  public Tarefa atualizar(UUID tarefaId, AtualizarTarefaRequest request, Usuario autor) {
+<span class="fc" id="L228">    Tarefa tarefa = buscar(tarefaId);</span>
+<span class="fc" id="L229">    verificarVersao(tarefa, request.versaoEsperada());</span>
+
+<span class="fc" id="L231">    boolean alterouEstrutural =</span>
+<span class="fc bfc" id="L232" title="All 2 branches covered.">        !Objects.equals(tarefa.getDescricao(), request.descricao())</span>
+<span class="pc bpc" id="L233" title="1 of 2 branches missed.">            || tarefa.getTipo() != request.tipo();</span>
+
+<span class="pc bpc" id="L235" title="1 of 6 branches missed.">    if (tarefa.isIniciada() &amp;&amp; alterouEstrutural &amp;&amp; !podeEditarIniciada(tarefa.getProjetoId())) {</span>
+<span class="fc" id="L236">      throw new TarefaIniciadaException(</span>
+          &quot;A tarefa ja foi iniciada: descricao e tipo nao podem mais ser alterados.&quot;);
+    }
+
+<span class="fc" id="L240">    String tituloAnterior = tarefa.getTitulo();</span>
+<span class="fc" id="L241">    tarefa.setTitulo(request.titulo());</span>
+<span class="fc" id="L242">    tarefa.setDescricao(request.descricao());</span>
+<span class="fc" id="L243">    tarefa.setTipo(request.tipo());</span>
+<span class="fc" id="L244">    tarefa.setPrioridade(request.prioridade());</span>
+<span class="pc bpc" id="L245" title="1 of 2 branches missed.">    if (request.raiaId() != null) {</span>
+<span class="nc" id="L246">      tarefa.setRaiaId(resolverRaia(tarefa.getProjetoId(), request.raiaId()).getId());</span>
+    }
+
+<span class="fc" id="L249">    auditoriaService.registrar(</span>
+<span class="fc" id="L250">        tarefa, CampoAuditado.TITULO, tituloAnterior, request.titulo(), autor);</span>
+
+<span class="fc" id="L252">    eventoBoardPublisher.publicar(</span>
+<span class="fc" id="L253">        EventoBoard.de(</span>
+<span class="fc" id="L254">            tarefa.getProjetoId(),</span>
+            TipoEventoBoard.TAREFA_ATUALIZADA,
+<span class="fc" id="L256">            tarefa.getId(),</span>
+<span class="fc" id="L257">            tarefa.getEtapaId(),</span>
+<span class="fc" id="L258">            tarefa.getRaiaId()));</span>
+<span class="fc" id="L259">    return tarefa;</span>
+  }
+
+  /**
+   * Autoatribuicao e livre para quem tem {@code tarefa:mover}, &lt;b&gt;mesmo que a tarefa ja esteja
+   * atribuida a outra pessoa&lt;/b&gt;; atribuir a terceiros exige {@code tarefa:atribuir} (RN-012).
+   */
+  @Transactional
+  public Tarefa atribuir(UUID tarefaId, UUID novoResponsavelId, Usuario autor) {
+<span class="fc" id="L268">    Tarefa tarefa = buscar(tarefaId);</span>
+<span class="fc" id="L269">    boolean autoatribuicao = autor.getId().equals(novoResponsavelId);</span>
+
+<span class="fc bfc" id="L271" title="All 2 branches covered.">    if (autoatribuicao) {</span>
+<span class="fc" id="L272">      permissaoGuard.exigir(Permissoes.TAREFA_MOVER, tarefa.getProjetoId());</span>
+    } else {
+<span class="fc" id="L274">      permissaoGuard.exigir(Permissoes.TAREFA_ATRIBUIR, tarefa.getProjetoId());</span>
+    }
+<span class="fc" id="L276">    permissaoGuard.exigirProjetoAtivo(tarefa.getProjetoId());</span>
+
+<span class="fc" id="L278">    UUID anterior = tarefa.getResponsavelId();</span>
+<span class="fc bfc" id="L279" title="All 2 branches covered.">    if (Objects.equals(anterior, novoResponsavelId)) {</span>
+<span class="fc" id="L280">      return tarefa;</span>
+    }
+<span class="fc" id="L282">    tarefa.setResponsavelId(novoResponsavelId);</span>
+
+<span class="pc bpc" id="L284" title="1 of 2 branches missed.">    if (novoResponsavelId != null) {</span>
+<span class="fc" id="L285">      registrarObservador(tarefa.getId(), novoResponsavelId, OrigemObservacao.RESPONSAVEL);</span>
+    }
+<span class="fc" id="L287">    auditoriaService.registrar(</span>
+        tarefa,
+        CampoAuditado.RESPONSAVEL,
+<span class="fc bfc" id="L290" title="All 2 branches covered.">        anterior != null ? anterior.toString() : null,</span>
+<span class="pc bpc" id="L291" title="1 of 2 branches missed.">        novoResponsavelId != null ? novoResponsavelId.toString() : null,</span>
+        autor);
+
+<span class="fc" id="L294">    eventoBoardPublisher.publicar(</span>
+<span class="fc" id="L295">        EventoBoard.de(</span>
+<span class="fc" id="L296">            tarefa.getProjetoId(),</span>
+            TipoEventoBoard.TAREFA_ATUALIZADA,
+<span class="fc" id="L298">            tarefa.getId(),</span>
+<span class="fc" id="L299">            tarefa.getEtapaId(),</span>
+<span class="fc" id="L300">            tarefa.getRaiaId()));</span>
+<span class="fc" id="L301">    return tarefa;</span>
+  }
+
+  /**
+   * Marcar e idempotente: marcar tarefa ja impedida nao abre um segundo periodo. Impedimento
+   * &lt;b&gt;nao&lt;/b&gt; bloqueia nem libera movimentacao (DDR-002).
+   */
+  @Transactional
+  public Tarefa marcarImpedimento(UUID tarefaId, String motivo, Usuario autor) {
+<span class="fc" id="L310">    Tarefa tarefa = buscar(tarefaId);</span>
+<span class="fc bfc" id="L311" title="All 2 branches covered.">    if (tarefa.isImpedida()) {</span>
+<span class="fc" id="L312">      return tarefa;</span>
+    }
+<span class="fc" id="L314">    leadTimeService.abrirImpedimento(tarefa, motivo);</span>
+<span class="fc" id="L315">    tarefa.setImpedida(true);</span>
+
+<span class="fc" id="L317">    auditoriaService.registrar(</span>
+        tarefa, CampoAuditado.IMPEDIMENTO, &quot;false&quot;, &quot;true&quot;, autor);
+<span class="fc" id="L319">    notificacaoService.notificarObservadores(tarefa, TipoNotificacao.IMPEDIMENTO_MARCADO, autor);</span>
+<span class="fc" id="L320">    eventoBoardPublisher.publicar(</span>
+<span class="fc" id="L321">        EventoBoard.de(</span>
+<span class="fc" id="L322">            tarefa.getProjetoId(),</span>
+            TipoEventoBoard.TAREFA_IMPEDIDA,
+<span class="fc" id="L324">            tarefa.getId(),</span>
+<span class="fc" id="L325">            tarefa.getEtapaId(),</span>
+<span class="fc" id="L326">            tarefa.getRaiaId()));</span>
+<span class="fc" id="L327">    return tarefa;</span>
+  }
+
+  @Transactional
+  public Tarefa desmarcarImpedimento(UUID tarefaId, Usuario autor) {
+<span class="fc" id="L332">    Tarefa tarefa = buscar(tarefaId);</span>
+<span class="fc bfc" id="L333" title="All 2 branches covered.">    if (!tarefa.isImpedida()) {</span>
+<span class="fc" id="L334">      return tarefa;</span>
+    }
+<span class="fc" id="L336">    leadTimeService.encerrarImpedimento(tarefa);</span>
+<span class="fc" id="L337">    tarefa.setImpedida(false);</span>
+
+<span class="fc" id="L339">    auditoriaService.registrar(tarefa, CampoAuditado.IMPEDIMENTO, &quot;true&quot;, &quot;false&quot;, autor);</span>
+<span class="fc" id="L340">    notificacaoService.notificarObservadores(tarefa, TipoNotificacao.IMPEDIMENTO_DESMARCADO, autor);</span>
+<span class="fc" id="L341">    eventoBoardPublisher.publicar(</span>
+<span class="fc" id="L342">        EventoBoard.de(</span>
+<span class="fc" id="L343">            tarefa.getProjetoId(),</span>
+            TipoEventoBoard.TAREFA_DESIMPEDIDA,
+<span class="fc" id="L345">            tarefa.getId(),</span>
+<span class="fc" id="L346">            tarefa.getEtapaId(),</span>
+<span class="fc" id="L347">            tarefa.getRaiaId()));</span>
+<span class="fc" id="L348">    return tarefa;</span>
+  }
+
+  /**
+   * Fecha os periodos abertos antes de excluir, para nao contaminar as medias com intervalo aberto
+   * orfao. A auditoria e preservada (append-only) — por isso ela nao tem FK para a tarefa.
+   */
+  @Transactional
+  public void excluir(UUID tarefaId, Usuario autor) {
+<span class="fc" id="L357">    Tarefa tarefa = buscar(tarefaId);</span>
+<span class="fc" id="L358">    permissaoGuard.exigirToggle(</span>
+<span class="fc" id="L359">        ChaveToggle.DEV_PODE_EXCLUIR_TAREFA, tarefa.getProjetoId(), Papeis.DEV);</span>
+
+<span class="fc" id="L361">    leadTimeService.encerrarTudo(tarefa);</span>
+<span class="fc" id="L362">    tarefaRepository.saveAndFlush(tarefa);</span>
+
+<span class="fc" id="L364">    notificacaoService.removerDaTarefa(tarefaId);</span>
+<span class="fc" id="L365">    tarefaObservadorRepository.deleteByIdTarefaId(tarefaId);</span>
+<span class="fc" id="L366">    periodoEtapaRepository.deleteByTarefaId(tarefaId);</span>
+<span class="fc" id="L367">    periodoImpedimentoRepository.deleteByTarefaId(tarefaId);</span>
+<span class="fc" id="L368">    tarefaRepository.delete(tarefa);</span>
+
+<span class="fc" id="L370">    eventoBoardPublisher.publicar(</span>
+<span class="fc" id="L371">        EventoBoard.de(tarefa.getProjetoId(), TipoEventoBoard.TAREFA_EXCLUIDA, tarefaId));</span>
+<span class="fc" id="L372">    log.info(&quot;Tarefa {} excluida por {}&quot;, tarefaId, autor.getId());</span>
+<span class="fc" id="L373">  }</span>
+
+  /** Observacao explicita (RF-005, A-5). Observadores implicitos nao sao removiveis por aqui. */
+  @Transactional
+  public void observar(UUID tarefaId, Usuario usuario) {
+<span class="fc" id="L378">    buscar(tarefaId);</span>
+<span class="fc" id="L379">    registrarObservador(tarefaId, usuario.getId(), OrigemObservacao.EXPLICITO);</span>
+<span class="fc" id="L380">  }</span>
+
+  @Transactional
+  public void desobservar(UUID tarefaId, Usuario usuario) {
+<span class="fc" id="L384">    buscar(tarefaId);</span>
+<span class="fc" id="L385">    tarefaObservadorRepository</span>
+<span class="fc" id="L386">        .findByIdTarefaIdAndIdUsuarioId(tarefaId, usuario.getId())</span>
+<span class="pc bpc" id="L387" title="1 of 2 branches missed.">        .filter(observador -&gt; observador.getOrigem() == OrigemObservacao.EXPLICITO)</span>
+<span class="fc" id="L388">        .ifPresent(tarefaObservadorRepository::delete);</span>
+<span class="fc" id="L389">  }</span>
+
+  /** Detalhe da TL-04: lead-time por etapa, historico de auditoria e acoes disponiveis (RF-006). */
+  @Transactional(readOnly = true)
+  public TarefaDetalheResponse detalhar(UUID tarefaId, Usuario usuario, Pageable paginaHistorico) {
+<span class="fc" id="L394">    Tarefa tarefa = buscar(tarefaId);</span>
+<span class="fc" id="L395">    permissaoGuard.exigir(Permissoes.PROJETO_VISUALIZAR, tarefa.getProjetoId());</span>
+
+<span class="fc" id="L397">    Set&lt;String&gt; permissoes = permissaoGuard.permissoesEfetivas(tarefa.getProjetoId());</span>
+<span class="fc" id="L398">    LeadTimeDetalhe leadTime = leadTimeService.calcularDetalhe(tarefaId, tarefa.getWorkflowId());</span>
+
+<span class="fc" id="L400">    List&lt;AuditoriaTarefa&gt; registros =</span>
+<span class="fc" id="L401">        auditoriaService.historico(tarefaId, paginaHistorico).getContent();</span>
+<span class="fc" id="L402">    Map&lt;UUID, String&gt; nomes = nomes(registros, tarefa.getResponsavelId());</span>
+<span class="fc" id="L403">    List&lt;AuditoriaResponse&gt; historico =</span>
+<span class="fc" id="L404">        registros.stream()</span>
+<span class="fc" id="L405">            .map(registro -&gt; tarefaMapper.paraAuditoria(registro, nomeDe(nomes, registro.getAutorId())))</span>
+<span class="fc" id="L406">            .toList();</span>
+
+<span class="fc" id="L408">    String motivo =</span>
+        periodoImpedimentoRepository
+<span class="fc" id="L410">            .findByTarefaIdAndEncerradoEmIsNull(tarefaId)</span>
+<span class="fc" id="L411">            .map(PeriodoImpedimento::getMotivo)</span>
+<span class="fc" id="L412">            .orElse(null);</span>
+
+<span class="fc" id="L414">    boolean observando =</span>
+        tarefaObservadorRepository
+<span class="fc" id="L416">            .findByIdTarefaIdAndIdUsuarioId(tarefaId, usuario.getId())</span>
+<span class="fc" id="L417">            .isPresent();</span>
+
+<span class="fc" id="L419">    return tarefaMapper.paraDetalhe(</span>
+        tarefa,
+<span class="fc" id="L421">        nomeDe(nomes, tarefa.getResponsavelId()),</span>
+        motivo,
+<span class="fc" id="L423">        leadTime.porEtapa(),</span>
+<span class="fc" id="L424">        leadTime.impedimentoTotalSegundos(),</span>
+        historico,
+<span class="fc" id="L426">        destinosPermitidos(tarefa, permissoes),</span>
+        permissoes,
+        observando);
+  }
+
+  @Transactional(readOnly = true)
+  public Tarefa buscar(UUID tarefaId) {
+<span class="fc" id="L433">    return tarefaRepository</span>
+<span class="fc" id="L434">        .findById(tarefaId)</span>
+<span class="pc" id="L435">        .orElseThrow(() -&gt; RecursoNaoEncontradoException.de(&quot;Tarefa&quot;, tarefaId));</span>
+  }
+
+  /**
+   * Destinos validos para o card: arestas do grafo filtradas pela permissao do usuario. Alimenta o
+   * destaque de colunas durante o drag sem round-trip extra (DDR-002).
+   */
+  @Transactional(readOnly = true)
+  public List&lt;UUID&gt; destinosPermitidos(Tarefa tarefa, Set&lt;String&gt; permissoes) {
+<span class="fc bfc" id="L444" title="All 2 branches covered.">    if (!permissoes.contains(Permissoes.TAREFA_MOVER)) {</span>
+<span class="fc" id="L445">      return List.of();</span>
+    }
+<span class="fc" id="L447">    Etapa atual = etapa(tarefa.getEtapaId());</span>
+<span class="fc" id="L448">    boolean podeFinalizar = permissoes.contains(Permissoes.TAREFA_FINALIZAR);</span>
+
+<span class="fc bfc" id="L450" title="All 2 branches covered.">    if (atual.isEtapaFinal()) {</span>
+<span class="fc bfc" id="L451" title="All 2 branches covered.">      if (!podeFinalizar) {</span>
+<span class="fc" id="L452">        return List.of();</span>
+      }
+<span class="fc" id="L454">      return transicaoRepository.findByEtapaDestinoId(atual.getId()).stream()</span>
+<span class="fc" id="L455">          .map(Transicao::getEtapaOrigemId)</span>
+<span class="fc" id="L456">          .toList();</span>
+    }
+
+<span class="fc" id="L459">    List&lt;UUID&gt; destinos =</span>
+<span class="fc" id="L460">        transicaoRepository.findByEtapaOrigemId(atual.getId()).stream()</span>
+<span class="fc" id="L461">            .map(Transicao::getEtapaDestinoId)</span>
+<span class="fc" id="L462">            .toList();</span>
+<span class="pc bpc" id="L463" title="1 of 2 branches missed.">    if (podeFinalizar) {</span>
+<span class="nc" id="L464">      return destinos;</span>
+    }
+<span class="fc bfc" id="L466" title="All 2 branches covered.">    return destinos.stream().filter(id -&gt; !etapa(id).isEtapaFinal()).toList();</span>
+  }
+
+  private void exigirPermissaoFinalizar(UUID projetoId) {
+<span class="fc bfc" id="L470" title="All 2 branches covered.">    if (permissaoGuard.possui(Permissoes.TAREFA_FINALIZAR, projetoId)) {</span>
+<span class="fc" id="L471">      return;</span>
+    }
+    // dev so finaliza se o projeto liberar o toggle (RN-011).
+<span class="fc" id="L474">    Set&lt;String&gt; papeis = permissaoGuard.papeisNoProjeto(projetoId);</span>
+<span class="pc bpc" id="L475" title="1 of 2 branches missed.">    if (papeis.contains(Papeis.DEV)</span>
+<span class="fc bfc" id="L476" title="All 2 branches covered.">        &amp;&amp; permissaoGuard.toggleHabilitado(projetoId, ChaveToggle.DEV_PODE_FINALIZAR_TAREFA)) {</span>
+<span class="fc" id="L477">      return;</span>
+    }
+<span class="fc" id="L479">    throw new PermissaoNegadaException(</span>
+        &quot;Voce nao tem permissao para finalizar ou desfinalizar tarefas neste projeto.&quot;);
+  }
+
+  private boolean podeEditarIniciada(UUID projetoId) {
+<span class="pc bpc" id="L484" title="1 of 2 branches missed.">    if (permissaoGuard.usuarioAtual().isAdminGlobal()) {</span>
+<span class="nc" id="L485">      return true;</span>
+    }
+<span class="fc" id="L487">    Set&lt;String&gt; papeis = permissaoGuard.papeisNoProjeto(projetoId);</span>
+<span class="pc bpc" id="L488" title="1 of 2 branches missed.">    if (papeis.stream().anyMatch(Papeis.ADMINISTRATIVOS::contains)) {</span>
+<span class="nc" id="L489">      return true;</span>
+    }
+<span class="fc" id="L491">    return permissaoGuard.toggleHabilitado(projetoId, ChaveToggle.DEV_PODE_EDITAR_TAREFA_INICIADA);</span>
+  }
+
+  private boolean ehPrimeiraEtapa(Etapa etapa) {
+<span class="fc" id="L495">    return etapaRepository</span>
+<span class="fc" id="L496">        .findFirstByWorkflowIdOrderByOrdemAsc(etapa.getWorkflowId())</span>
+<span class="fc" id="L497">        .map(primeira -&gt; primeira.getId().equals(etapa.getId()))</span>
+<span class="fc" id="L498">        .orElse(false);</span>
+  }
+
+  private void verificarVersao(Tarefa tarefa, Long versaoEsperada) {
+<span class="pc bpc" id="L502" title="1 of 4 branches missed.">    if (versaoEsperada == null || tarefa.getVersao() != versaoEsperada) {</span>
+<span class="fc" id="L503">      throw ConflitoConcorrenciaException.padrao();</span>
+    }
+<span class="fc" id="L505">  }</span>
+
+  private Raia resolverRaia(UUID projetoId, UUID raiaId) {
+<span class="fc bfc" id="L508" title="All 2 branches covered.">    if (raiaId == null) {</span>
+<span class="fc" id="L509">      return raiaRepository</span>
+<span class="fc" id="L510">          .findByProjetoIdAndPadraoTrue(projetoId)</span>
+<span class="fc" id="L511">          .orElseThrow(</span>
+              () -&gt;
+<span class="nc" id="L513">                  new ConfiguracaoWorkflowInvalidaException(</span>
+                      &quot;O projeto nao possui raia padrao configurada.&quot;));
+    }
+<span class="fc" id="L516">    Raia raia =</span>
+        raiaRepository
+<span class="fc" id="L518">            .findById(raiaId)</span>
+<span class="pc" id="L519">            .orElseThrow(() -&gt; RecursoNaoEncontradoException.de(&quot;Raia&quot;, raiaId));</span>
+<span class="pc bpc" id="L520" title="1 of 2 branches missed.">    if (!raia.getProjetoId().equals(projetoId)) {</span>
+<span class="nc" id="L521">      throw RecursoNaoEncontradoException.de(&quot;Raia&quot;, raiaId);</span>
+    }
+<span class="fc" id="L523">    return raia;</span>
+  }
+
+  private UUID resolverResponsavelNaCriacao(UUID projetoId, UUID responsavelId, Usuario autor) {
+<span class="fc bfc" id="L527" title="All 2 branches covered.">    if (responsavelId == null) {</span>
+<span class="fc" id="L528">      return null;</span>
+    }
+<span class="pc bpc" id="L530" title="1 of 2 branches missed.">    if (!responsavelId.equals(autor.getId())) {</span>
+<span class="fc" id="L531">      permissaoGuard.exigir(Permissoes.TAREFA_ATRIBUIR, projetoId);</span>
+    }
+<span class="fc" id="L533">    return responsavelId;</span>
+  }
+
+  /**
+   * Tarefa sem responsavel e o estado normal logo apos a criacao (RF-018), e {@code Map.of()} nao
+   * aceita chave nula — a consulta precisa tolerar id ausente.
+   */
+  private String nomeDe(Map&lt;UUID, String&gt; nomes, UUID id) {
+<span class="fc bfc" id="L541" title="All 2 branches covered.">    return id == null ? null : nomes.get(id);</span>
+  }
+
+  private Map&lt;UUID, String&gt; nomes(List&lt;AuditoriaTarefa&gt; registros, UUID responsavelId) {
+<span class="fc" id="L545">    Set&lt;UUID&gt; ids =</span>
+<span class="fc" id="L546">        registros.stream().map(AuditoriaTarefa::getAutorId).collect(Collectors.toCollection(HashSet::new));</span>
+<span class="pc bpc" id="L547" title="1 of 2 branches missed.">    if (responsavelId != null) {</span>
+<span class="nc" id="L548">      ids.add(responsavelId);</span>
+    }
+<span class="fc bfc" id="L550" title="All 2 branches covered.">    if (ids.isEmpty()) {</span>
+<span class="fc" id="L551">      return Map.of();</span>
+    }
+<span class="fc" id="L553">    return usuarioRepository.findAllById(ids).stream()</span>
+<span class="fc" id="L554">        .collect(Collectors.toMap(Usuario::getId, Usuario::getNome));</span>
+  }
+
+  private Etapa etapa(UUID etapaId) {
+<span class="fc" id="L558">    return etapaRepository</span>
+<span class="fc" id="L559">        .findById(etapaId)</span>
+<span class="pc" id="L560">        .orElseThrow(() -&gt; RecursoNaoEncontradoException.de(&quot;Etapa&quot;, etapaId));</span>
+  }
+
+  private void registrarObservador(UUID tarefaId, UUID usuarioId, OrigemObservacao origem) {
+<span class="fc bfc" id="L564" title="All 2 branches covered.">    if (tarefaObservadorRepository.findByIdTarefaIdAndIdUsuarioId(tarefaId, usuarioId).isEmpty()) {</span>
+<span class="fc" id="L565">      tarefaObservadorRepository.save(new TarefaObservador(tarefaId, usuarioId, origem));</span>
+    }
+<span class="fc" id="L567">  }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

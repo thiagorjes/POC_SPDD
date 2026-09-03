@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: br.com.crudao.kanban.integracao.EventoBoardSeqIT
+-------------------------------------------------------------------------------
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.297 s -- in br.com.crudao.kanban.integracao.EventoBoardSeqIT

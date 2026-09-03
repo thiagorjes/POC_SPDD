@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LeadTimeService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">kanban</a> &gt; <a href="index.source.html" class="el_package">br.com.crudao.kanban.leadtime</a> &gt; <span class="el_source">LeadTimeService.java</span></div><h1>LeadTimeService.java</h1><pre class="source lang-java linenums">package br.com.crudao.kanban.leadtime;
+
+import br.com.crudao.kanban.common.ClockProvider;
+import br.com.crudao.kanban.leadtime.dto.LeadTimeDetalhe;
+import br.com.crudao.kanban.leadtime.dto.LeadTimeEtapaResponse;
+import br.com.crudao.kanban.tarefa.Tarefa;
+import br.com.crudao.kanban.workflow.Etapa;
+import br.com.crudao.kanban.workflow.EtapaRepository;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Gestao dos intervalos temporais que sustentam RF-006/RF-007 e RN-002.
+ *
+ * &lt;p&gt;Invariante: uma tarefa tem no maximo um {@link PeriodoEtapa} aberto e no maximo um {@link
+ * PeriodoImpedimento} aberto — garantido tambem por indice unico parcial no banco.
+ *
+ * &lt;p&gt;Nenhum {@code Instant} e gerado na JVM: todo carimbo vem do {@code now()} transacional do
+ * PostgreSQL via {@link ClockProvider} (R-6).
+ */
+<span class="fc" id="L31">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class LeadTimeService {
+
+  private final PeriodoEtapaRepository periodoEtapaRepository;
+  private final PeriodoImpedimentoRepository periodoImpedimentoRepository;
+  private final EtapaRepository etapaRepository;
+  private final ClockProvider clockProvider;
+
+  /** Abre o periodo de permanencia na etapa. Falha se ja houver periodo aberto (invariante). */
+  @Transactional
+  public PeriodoEtapa abrirPeriodoEtapa(Tarefa tarefa, UUID etapaId) {
+<span class="fc" id="L44">    periodoEtapaRepository</span>
+<span class="fc" id="L45">        .findByTarefaIdAndEncerradoEmIsNull(tarefa.getId())</span>
+<span class="fc" id="L46">        .ifPresent(</span>
+            aberto -&gt; {
+<span class="fc" id="L48">              throw new IllegalStateException(</span>
+<span class="fc" id="L49">                  &quot;Ja existe periodo de etapa aberto para a tarefa &quot; + tarefa.getId());</span>
+            });
+<span class="fc" id="L51">    return periodoEtapaRepository.save(</span>
+<span class="fc" id="L52">        PeriodoEtapa.builder()</span>
+<span class="fc" id="L53">            .tarefaId(tarefa.getId())</span>
+<span class="fc" id="L54">            .projetoId(tarefa.getProjetoId())</span>
+<span class="fc" id="L55">            .etapaId(etapaId)</span>
+<span class="fc" id="L56">            .build());</span>
+  }
+
+  /** Encerra o periodo de etapa aberto, se houver. Idempotente. */
+  @Transactional
+  public void encerrarPeriodoEtapa(Tarefa tarefa) {
+<span class="fc" id="L62">    periodoEtapaRepository</span>
+<span class="fc" id="L63">        .findByTarefaIdAndEncerradoEmIsNull(tarefa.getId())</span>
+<span class="fc" id="L64">        .ifPresent(periodo -&gt; periodo.setEncerradoEm(clockProvider.agora()));</span>
+<span class="fc" id="L65">  }</span>
+
+  /** Abre o periodo de impedimento carimbado com a etapa vigente. Idempotente (RF-004). */
+  @Transactional
+  public Optional&lt;PeriodoImpedimento&gt; abrirImpedimento(Tarefa tarefa, String motivo) {
+<span class="fc bfc" id="L70" title="All 2 branches covered.">    if (periodoImpedimentoRepository.findByTarefaIdAndEncerradoEmIsNull(tarefa.getId()).isPresent()) {</span>
+<span class="fc" id="L71">      return Optional.empty();</span>
+    }
+<span class="fc" id="L73">    return Optional.of(</span>
+<span class="fc" id="L74">        periodoImpedimentoRepository.save(</span>
+<span class="fc" id="L75">            PeriodoImpedimento.builder()</span>
+<span class="fc" id="L76">                .tarefaId(tarefa.getId())</span>
+<span class="fc" id="L77">                .projetoId(tarefa.getProjetoId())</span>
+<span class="fc" id="L78">                .etapaId(tarefa.getEtapaId())</span>
+<span class="fc" id="L79">                .motivo(motivo)</span>
+<span class="fc" id="L80">                .build()));</span>
+  }
+
+  /** Encerra o impedimento aberto, se houver. Idempotente. */
+  @Transactional
+  public boolean encerrarImpedimento(Tarefa tarefa) {
+<span class="fc" id="L86">    Optional&lt;PeriodoImpedimento&gt; aberto =</span>
+<span class="fc" id="L87">        periodoImpedimentoRepository.findByTarefaIdAndEncerradoEmIsNull(tarefa.getId());</span>
+<span class="pc" id="L88">    aberto.ifPresent(periodo -&gt; periodo.setEncerradoEm(clockProvider.agora()));</span>
+<span class="fc" id="L89">    return aberto.isPresent();</span>
+  }
+
+  /**
+   * Fecha o impedimento na etapa antiga e reabre na nova, preservando o motivo. Sem isso, RN-002
+   * nao conseguiria atribuir o tempo impedido a etapa correta.
+   */
+  @Transactional
+  public void reancorarImpedimento(Tarefa tarefa, UUID novaEtapaId) {
+<span class="fc" id="L98">    Optional&lt;PeriodoImpedimento&gt; aberto =</span>
+<span class="fc" id="L99">        periodoImpedimentoRepository.findByTarefaIdAndEncerradoEmIsNull(tarefa.getId());</span>
+<span class="fc bfc" id="L100" title="All 2 branches covered.">    if (aberto.isEmpty()) {</span>
+<span class="fc" id="L101">      return;</span>
+    }
+<span class="fc" id="L103">    PeriodoImpedimento anterior = aberto.get();</span>
+<span class="fc" id="L104">    anterior.setEncerradoEm(clockProvider.agora());</span>
+<span class="fc" id="L105">    periodoImpedimentoRepository.saveAndFlush(anterior);</span>
+<span class="fc" id="L106">    periodoImpedimentoRepository.save(</span>
+<span class="fc" id="L107">        PeriodoImpedimento.builder()</span>
+<span class="fc" id="L108">            .tarefaId(tarefa.getId())</span>
+<span class="fc" id="L109">            .projetoId(tarefa.getProjetoId())</span>
+<span class="fc" id="L110">            .etapaId(novaEtapaId)</span>
+<span class="fc" id="L111">            .motivo(anterior.getMotivo())</span>
+<span class="fc" id="L112">            .build());</span>
+<span class="fc" id="L113">  }</span>
+
+  /** Fecha todos os intervalos abertos — usado antes da exclusao, para nao contaminar medias. */
+  @Transactional
+  public void encerrarTudo(Tarefa tarefa) {
+<span class="fc" id="L118">    encerrarPeriodoEtapa(tarefa);</span>
+<span class="fc" id="L119">    encerrarImpedimento(tarefa);</span>
+<span class="fc" id="L120">  }</span>
+
+  /** Soma por etapa; intervalo aberto computado ate {@code now()} do banco (RF-006). */
+  @Transactional(readOnly = true)
+  public LeadTimeDetalhe calcularDetalhe(UUID tarefaId, UUID workflowId) {
+<span class="fc" id="L125">    Instant agora = clockProvider.agora();</span>
+
+<span class="fc" id="L127">    Map&lt;UUID, Duration&gt; permanencia = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L128" title="All 2 branches covered.">    for (PeriodoEtapa periodo : periodoEtapaRepository.findByTarefaIdOrderByIniciadoEmAsc(tarefaId)) {</span>
+<span class="fc" id="L129">      permanencia.merge(periodo.getEtapaId(), periodo.duracao(agora), Duration::plus);</span>
+<span class="fc" id="L130">    }</span>
+
+<span class="fc" id="L132">    Map&lt;UUID, Duration&gt; impedimento = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L133">    Duration impedimentoTotal = Duration.ZERO;</span>
+    for (PeriodoImpedimento periodo :
+<span class="fc bfc" id="L135" title="All 2 branches covered.">        periodoImpedimentoRepository.findByTarefaIdOrderByIniciadoEmAsc(tarefaId)) {</span>
+<span class="fc" id="L136">      Duration duracao = periodo.duracao(agora);</span>
+<span class="fc" id="L137">      impedimento.merge(periodo.getEtapaId(), duracao, Duration::plus);</span>
+<span class="fc" id="L138">      impedimentoTotal = impedimentoTotal.plus(duracao);</span>
+<span class="fc" id="L139">    }</span>
+
+<span class="fc" id="L141">    List&lt;Etapa&gt; etapas = etapaRepository.findByWorkflowIdOrderByOrdemAsc(workflowId);</span>
+<span class="fc" id="L142">    List&lt;LeadTimeEtapaResponse&gt; porEtapa = new ArrayList&lt;&gt;(etapas.size());</span>
+<span class="fc bfc" id="L143" title="All 2 branches covered.">    for (Etapa etapa : etapas) {</span>
+<span class="fc" id="L144">      porEtapa.add(</span>
+          new LeadTimeEtapaResponse(
+<span class="fc" id="L146">              etapa.getId(),</span>
+<span class="fc" id="L147">              etapa.getNome(),</span>
+<span class="fc" id="L148">              permanencia.getOrDefault(etapa.getId(), Duration.ZERO).toSeconds(),</span>
+<span class="fc" id="L149">              impedimento.getOrDefault(etapa.getId(), Duration.ZERO).toSeconds()));</span>
+<span class="fc" id="L150">    }</span>
+<span class="fc" id="L151">    return new LeadTimeDetalhe(porEtapa, impedimentoTotal.toSeconds());</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
