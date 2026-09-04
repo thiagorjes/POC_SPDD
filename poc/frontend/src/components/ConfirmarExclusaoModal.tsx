@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Botao } from './ui/Botao';
 import { ApiError } from '@/lib/api';
 
 /**
@@ -22,19 +23,35 @@ export function ConfirmarExclusaoModal({
   const [executando, setExecutando] = useState(false);
 
   return (
-    <div className="backdrop" role="alertdialog" aria-modal="true" aria-label="Confirmar exclusao">
-      <div className="modal">
-        <h2>Excluir {titulo}?</h2>
-        <p>{impacto}</p>
+    <div className="modal-overlay">
+      <div
+        className="modal"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="exclusao-titulo"
+        aria-describedby="exclusao-desc"
+      >
+        <h1 id="exclusao-titulo" style={{ fontSize: 'var(--fonte-scale-lg)' }}>
+          Excluir card
+        </h1>
+        <p id="exclusao-desc">
+          Tem certeza de que deseja excluir <strong>&quot;{titulo}&quot;</strong>? {impacto}
+        </p>
+
         {erro && (
-          <p className="erro-inline" role="alert">
+          <div className="toast toast-error" role="alert">
             {erro}
-          </p>
+          </div>
         )}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            className="perigo"
-            disabled={executando}
+
+        <div className="modal-actions">
+          <Botao variante="outline" onClick={aoFechar}>
+            Cancelar
+          </Botao>
+          <Botao
+            variante="danger"
+            carregando={executando}
+            disabled={erro !== null}
             onClick={async () => {
               setExecutando(true);
               setErro(null);
@@ -48,9 +65,8 @@ export function ConfirmarExclusaoModal({
               }
             }}
           >
-            Excluir
-          </button>
-          <button onClick={aoFechar}>Cancelar</button>
+            {executando ? 'Excluindo…' : 'Excluir'}
+          </Botao>
         </div>
       </div>
     </div>

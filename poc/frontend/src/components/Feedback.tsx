@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { Botao } from './ui/Botao';
 import { ApiError, exigeModal } from '@/lib/api';
 
 interface Aviso {
@@ -35,6 +36,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
       erro instanceof ApiError || erro instanceof Error
         ? erro.message
         : 'Ocorreu um erro inesperado.';
+
     if (exigeModal(erro)) {
       setBloqueio(texto);
       return;
@@ -51,20 +53,20 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
       {children}
       <div className="toasts" role="status" aria-live="polite">
         {avisos.map((aviso) => (
-          <div key={aviso.id} className={aviso.erro ? 'toast erro' : 'toast'}>
+          <div key={aviso.id} className={aviso.erro ? 'toast toast-error' : 'toast toast-success'}>
             {aviso.texto}
           </div>
         ))}
       </div>
       {bloqueio && (
-        <div className="backdrop" role="alertdialog" aria-modal="true" aria-label="Acao bloqueada">
-          <div className="modal">
-            <h2>Acao nao concluida</h2>
+        <div className="modal-overlay">
+          <div className="modal" role="alertdialog" aria-modal="true" aria-labelledby="bloqueio-titulo">
+            <h2 id="bloqueio-titulo">Ação não concluída</h2>
             <p>{bloqueio}</p>
-            <div>
-              <button className="primario" onClick={() => setBloqueio(null)}>
+            <div className="modal-actions">
+              <Botao variante="primary" onClick={() => setBloqueio(null)}>
                 Entendi
-              </button>
+              </Botao>
             </div>
           </div>
         </div>

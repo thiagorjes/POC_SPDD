@@ -18,7 +18,7 @@ export default function ProjetosLayout({ children }: { children: ReactNode }) {
 
   if (!pronto) {
     return (
-      <main className="conteudo">
+      <main className="main">
         <Skeleton linhas={4} />
       </main>
     );

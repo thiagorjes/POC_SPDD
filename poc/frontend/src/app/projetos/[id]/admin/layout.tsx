@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { use, type ReactNode } from 'react';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 const ABAS = [
   { href: '', rotulo: 'Workflow' },
-  { href: '/papeis', rotulo: 'Papeis e toggles' },
-  { href: '/usuarios', rotulo: 'Usuarios' },
+  { href: '/papeis', rotulo: 'Papéis e toggles' },
+  { href: '/usuarios', rotulo: 'Usuários' },
 ];
 
 export default function AdminLayout({
@@ -23,8 +24,8 @@ export default function AdminLayout({
 
   return (
     <>
-      <h1>Administracao do projeto</h1>
-      <nav className="abas" aria-label="Secoes da administracao">
+      <PageHeader titulo="Admin de Projeto" />
+      <nav className="tabs" aria-label="Seções da administração">
         {ABAS.map((aba) => {
           const href = `${base}${aba.href}`;
           return (

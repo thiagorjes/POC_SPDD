@@ -1,8 +1,12 @@
 'use client';
 
 import { use, useCallback, useEffect, useState } from 'react';
-import { AvisoSomenteLeitura, Erro, SemPermissao, Skeleton, Vazio } from '@/components/Estados';
+import { AvisoSomenteLeitura, Erro, SemPermissao, Skeleton } from '@/components/Estados';
 import { useFeedback } from '@/components/Feedback';
+import { Avatar } from '@/components/ui/Avatar';
+import { Badge } from '@/components/ui/Badge';
+import { Botao } from '@/components/ui/Botao';
+import { EstadoVazio } from '@/components/ui/EstadoVazio';
 import { usePermissoes } from '@/hooks/usePermissoes';
 import { api } from '@/lib/api';
 import type { MembroProjeto, Papel, UsuarioAtual } from '@/lib/types';
@@ -85,41 +89,49 @@ export default function UsuariosPage({ params }: { params: Promise<{ id: string 
     <>
       {!projetoAtivo && <AvisoSomenteLeitura />}
 
-      <section className="cartao">
-        <h2>Membros do projeto</h2>
+      <section className="secao">
+        <h2>Usuários do projeto</h2>
         {membros.length === 0 ? (
-          <Vazio titulo="Nenhum usuario associado a este projeto." />
+          <EstadoVazio mensagem="Nenhum usuário associado a este projeto ainda." />
         ) : (
-          <table className="tabela">
+          <table>
             <thead>
               <tr>
-                <th>Nome</th>
+                <th>Usuário</th>
                 <th>E-mail</th>
-                <th>Papeis</th>
+                <th>Papéis</th>
               </tr>
             </thead>
             <tbody>
               {membros.map((membro) => (
                 <tr key={membro.usuarioId}>
-                  <td>{membro.nome}</td>
+                  <td>
+                    <span className="linha">
+                      <Avatar nome={membro.nome} tamanho={22} />
+                      {membro.nome}
+                    </span>
+                  </td>
                   <td>{membro.email}</td>
-                  <td style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {membro.papeis.map((papel) => {
-                      const protegido = papeis.find((p) => p.codigo === papel)?.protegido ?? false;
-                      return (
-                        <span key={papel} className="badge">
-                          {papel}
-                          {!protegido && projetoAtivo && (
-                            <button
-                              aria-label={`Remover papel ${papel} de ${membro.nome}`}
-                              onClick={() => desassociar(membro.usuarioId, papel)}
-                            >
-                              ×
-                            </button>
-                          )}
-                        </span>
-                      );
-                    })}
+                  <td>
+                    <span className="linha">
+                      {membro.papeis.map((papel) => {
+                        const protegido = papeis.find((p) => p.codigo === papel)?.protegido ?? false;
+                        return (
+                          <span className="linha" key={papel} style={{ gap: 'var(--espaco-scale-xs)' }}>
+                            <Badge variante="neutro">{papel}</Badge>
+                            {!protegido && projetoAtivo && (
+                              <Botao
+                                variante="text"
+                                aria-label={`Remover papel ${papel} de ${membro.nome}`}
+                                onClick={() => desassociar(membro.usuarioId, papel)}
+                              >
+                                Remover
+                              </Botao>
+                            )}
+                          </span>
+                        );
+                      })}
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -128,40 +140,46 @@ export default function UsuariosPage({ params }: { params: Promise<{ id: string 
         )}
       </section>
 
-      <section className="cartao">
-        <h2>Associar papel</h2>
-        <form style={{ display: 'flex', gap: 8 }} onSubmit={associar}>
-          <select
-            value={usuarioId}
-            onChange={(e) => setUsuarioId(e.target.value)}
-            required
-            disabled={!projetoAtivo}
-            aria-label="Usuario"
-          >
-            <option value="">Usuario…</option>
-            {usuarios.map((usuario) => (
-              <option key={usuario.id} value={usuario.id}>
-                {usuario.nome}
-              </option>
-            ))}
-          </select>
-          <select
-            value={codigoPapel}
-            onChange={(e) => setCodigoPapel(e.target.value)}
-            required
-            disabled={!projetoAtivo}
-            aria-label="Papel"
-          >
-            <option value="">Papel…</option>
-            {delegaveis.map((papel) => (
-              <option key={papel.codigo} value={papel.codigo}>
-                {papel.nome}
-              </option>
-            ))}
-          </select>
-          <button className="primario" type="submit" disabled={!projetoAtivo}>
-            Associar
-          </button>
+      <section className="secao">
+        <h2>Associar usuário</h2>
+        <form className="form-row" onSubmit={associar}>
+          <div className="form-field">
+            <label htmlFor="assoc-usuario">Usuário</label>
+            <select
+              id="assoc-usuario"
+              value={usuarioId}
+              onChange={(e) => setUsuarioId(e.target.value)}
+              required
+              disabled={!projetoAtivo}
+            >
+              <option value="">Selecione…</option>
+              {usuarios.map((usuario) => (
+                <option key={usuario.id} value={usuario.id}>
+                  {usuario.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-field">
+            <label htmlFor="assoc-papel">Papel</label>
+            <select
+              id="assoc-papel"
+              value={codigoPapel}
+              onChange={(e) => setCodigoPapel(e.target.value)}
+              required
+              disabled={!projetoAtivo}
+            >
+              <option value="">Selecione…</option>
+              {delegaveis.map((papel) => (
+                <option key={papel.codigo} value={papel.codigo}>
+                  {papel.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Botao variante="primary" type="submit" disabled={!projetoAtivo}>
+            + Associar usuário
+          </Botao>
         </form>
       </section>
     </>

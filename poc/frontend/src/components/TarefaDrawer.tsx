@@ -3,11 +3,28 @@
 import { useEffect, useState } from 'react';
 import { Skeleton } from './Estados';
 import { useFeedback } from './Feedback';
+import { Badge } from './ui/Badge';
+import { Botao } from './ui/Botao';
 import { api } from '@/lib/api';
 import type { TarefaDetalhe } from '@/lib/types';
 
-const TIPOS = ['FEATURE', 'BUG', 'TAREFA', 'MELHORIA'];
-const PRIORIDADES = ['BAIXA', 'MEDIA', 'ALTA', 'CRITICA'];
+const TIPOS: { valor: string; rotulo: string }[] = [
+  { valor: 'FEATURE', rotulo: 'Feature' },
+  { valor: 'BUG', rotulo: 'Bug' },
+  { valor: 'TAREFA', rotulo: 'Tarefa' },
+  { valor: 'MELHORIA', rotulo: 'Melhoria' },
+];
+
+const PRIORIDADES: { valor: string; rotulo: string }[] = [
+  { valor: 'BAIXA', rotulo: 'Baixa' },
+  { valor: 'MEDIA', rotulo: 'Média' },
+  { valor: 'ALTA', rotulo: 'Alta' },
+  { valor: 'CRITICA', rotulo: 'Crítica' },
+];
+
+function rotuloDe(lista: { valor: string; rotulo: string }[], valor: string): string {
+  return lista.find((i) => i.valor === valor)?.rotulo ?? valor;
+}
 
 function duracao(segundos: number): string {
   const h = Math.floor(segundos / 3600);
@@ -16,7 +33,7 @@ function duracao(segundos: number): string {
 }
 
 /**
- * TL-04. Descricao e tipo ficam desabilitados quando a tarefa ja foi iniciada (RF-003); o titulo
+ * TL-04. Descricao e tipo ficam travados quando a tarefa ja foi iniciada (RF-003); o titulo
  * permanece editavel. A trava aqui e espelho da regra do backend, que continua validando.
  */
 export function TarefaDrawer({
@@ -35,6 +52,7 @@ export function TarefaDrawer({
   const { informar, reportar } = useFeedback();
   const [tarefa, setTarefa] = useState<TarefaDetalhe | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [salvo, setSalvo] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [pagina, setPagina] = useState(0);
 
@@ -53,9 +71,11 @@ export function TarefaDrawer({
 
   if (!tarefa) {
     return (
-      <aside className="drawer" aria-label="Detalhe da tarefa">
-        <Skeleton linhas={5} />
-      </aside>
+      <div className="drawer-backdrop">
+        <aside className="drawer" role="dialog" aria-modal="true" aria-label="Detalhe da tarefa">
+          <Skeleton linhas={5} />
+        </aside>
+      </div>
     );
   }
 
@@ -64,6 +84,7 @@ export function TarefaDrawer({
 
   const salvar = async () => {
     setSalvando(true);
+    setSalvo(false);
     try {
       await api.atualizarTarefa(tarefa.id, {
         titulo: tarefa.titulo,
@@ -74,6 +95,7 @@ export function TarefaDrawer({
         versaoEsperada: tarefa.versao,
       });
       informar('Tarefa atualizada.');
+      setSalvo(true);
       await carregar();
       aoAlterar();
     } catch (e) {
@@ -98,164 +120,223 @@ export function TarefaDrawer({
   };
 
   return (
-    <aside className="drawer" aria-label={`Tarefa ${tarefa.titulo}`}>
-      <header style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <h2>Detalhe da tarefa</h2>
-        <button onClick={aoFechar} aria-label="Fechar detalhe">
-          Fechar
-        </button>
-      </header>
+    <div className="drawer-backdrop">
+      <aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-titulo">
+        <div className="page-header">
+          <h1 id="drawer-titulo" style={{ fontSize: 'var(--fonte-scale-lg)' }}>
+            {tarefa.titulo}
+          </h1>
+          <div>
+            <Botao variante="text" onClick={aoFechar} aria-label="Fechar detalhe">
+              ✕ Fechar
+            </Botao>
+          </div>
+        </div>
 
-      <label>
-        Titulo
-        <input
-          value={tarefa.titulo}
-          disabled={travado}
-          onChange={(e) => setTarefa({ ...tarefa, titulo: e.target.value })}
-        />
-      </label>
+        <div className="linha" style={{ marginBottom: 'var(--espaco-scale-md)' }}>
+          <Badge variante="tipo">{rotuloDe(TIPOS, tarefa.tipo)}</Badge>
+          {tarefa.impedida && <Badge variante="warning">Impedido</Badge>}
+        </div>
 
-      <label>
-        Descricao
-        <textarea
-          rows={4}
-          value={tarefa.descricao ?? ''}
-          disabled={camposEstruturaisTravados}
-          onChange={(e) => setTarefa({ ...tarefa, descricao: e.target.value })}
-        />
-      </label>
-
-      <label>
-        Tipo
-        <select
-          value={tarefa.tipo}
-          disabled={camposEstruturaisTravados}
-          onChange={(e) => setTarefa({ ...tarefa, tipo: e.target.value as TarefaDetalhe['tipo'] })}
-        >
-          {TIPOS.map((t) => (
-            <option key={t}>{t}</option>
-          ))}
-        </select>
-      </label>
-
-      <label>
-        Prioridade
-        <select
-          value={tarefa.prioridade}
-          disabled={travado}
-          onChange={(e) =>
-            setTarefa({ ...tarefa, prioridade: e.target.value as TarefaDetalhe['prioridade'] })
-          }
-        >
-          {PRIORIDADES.map((p) => (
-            <option key={p}>{p}</option>
-          ))}
-        </select>
-      </label>
-
-      {tarefa.iniciada && (
-        <p className="badge">
-          Tarefa iniciada: descricao e tipo so podem ser alterados por papel administrativo ou com o
-          toggle do projeto habilitado.
-        </p>
-      )}
-
-      <section>
-        <h3>Impedimento</h3>
-        {!tarefa.impedida && (
-          <label>
-            Motivo
-            <input
-              value={motivo}
-              maxLength={500}
-              disabled={travado}
-              onChange={(e) => setMotivo(e.target.value)}
-            />
-          </label>
+        {salvo && (
+          <div
+            className="toast toast-success"
+            role="status"
+            aria-live="polite"
+            style={{ marginBottom: 'var(--espaco-scale-md)' }}
+          >
+            Alterações salvas com sucesso.
+          </div>
         )}
-        {tarefa.impedida && <p>Motivo atual: {tarefa.motivoImpedimento ?? '—'}</p>}
-        <button disabled={travado} onClick={alternarImpedimento}>
-          {tarefa.impedida ? 'Remover impedimento' : 'Marcar impedimento'}
-        </button>
-      </section>
 
-      <section>
-        <h3>Lead-time por etapa</h3>
-        <table className="tabela">
-          <thead>
-            <tr>
-              <th>Etapa</th>
-              <th>Permanencia</th>
-              <th>Impedida</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tarefa.leadTimePorEtapa.map((linha) => (
-              <tr key={linha.etapaId}>
-                <td>{linha.etapaNome}</td>
-                <td>{duracao(linha.permanenciaSegundos)}</td>
-                <td>{duracao(linha.impedimentoSegundos)}</td>
-              </tr>
+        <div className="form-field">
+          <label htmlFor="td-titulo">Título</label>
+          <input
+            id="td-titulo"
+            value={tarefa.titulo}
+            disabled={travado}
+            onChange={(e) => setTarefa({ ...tarefa, titulo: e.target.value })}
+          />
+        </div>
+
+        {/*
+          Apos o inicio a descricao e o tipo viram leitura (RF-003). O prototipo representa isso
+          com um campo travado, nao com um input desabilitado.
+        */}
+        {camposEstruturaisTravados && tarefa.iniciada ? (
+          <>
+            <div className="form-field">
+              <span>Descrição</span>
+              <div className="field-locked" aria-readonly="true">
+                {tarefa.descricao || '—'}
+              </div>
+            </div>
+            <div className="form-field">
+              <span>Tipo</span>
+              <div className="field-locked" aria-readonly="true">
+                {rotuloDe(TIPOS, tarefa.tipo)}
+              </div>
+            </div>
+            <p className="text-secondary">
+              Tarefa iniciada: descrição e tipo só podem ser alterados por papel administrativo ou com
+              o toggle do projeto habilitado.
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="form-field">
+              <label htmlFor="td-descricao">Descrição</label>
+              <textarea
+                id="td-descricao"
+                rows={4}
+                value={tarefa.descricao ?? ''}
+                disabled={camposEstruturaisTravados}
+                onChange={(e) => setTarefa({ ...tarefa, descricao: e.target.value })}
+              />
+            </div>
+            <div className="form-field">
+              <label htmlFor="td-tipo">Tipo</label>
+              <select
+                id="td-tipo"
+                value={tarefa.tipo}
+                disabled={camposEstruturaisTravados}
+                onChange={(e) => setTarefa({ ...tarefa, tipo: e.target.value as TarefaDetalhe['tipo'] })}
+              >
+                {TIPOS.map((t) => (
+                  <option key={t.valor} value={t.valor}>
+                    {t.rotulo}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
+
+        <div className="form-field">
+          <label htmlFor="td-prioridade">Prioridade</label>
+          <select
+            id="td-prioridade"
+            value={tarefa.prioridade}
+            disabled={travado}
+            onChange={(e) =>
+              setTarefa({ ...tarefa, prioridade: e.target.value as TarefaDetalhe['prioridade'] })
+            }
+          >
+            {PRIORIDADES.map((p) => (
+              <option key={p.valor} value={p.valor}>
+                {p.rotulo}
+              </option>
             ))}
-          </tbody>
-        </table>
-        <p>Total impedida: {duracao(tarefa.impedimentoTotalSegundos)}</p>
-      </section>
+          </select>
+        </div>
 
-      <section>
-        <h3>Historico</h3>
-        <ul>
+        <section className="secao">
+          <h2>Impedimento</h2>
+          {tarefa.impedida ? (
+            <p className="text-secondary">Motivo atual: {tarefa.motivoImpedimento ?? '—'}</p>
+          ) : (
+            <div className="form-field">
+              <label htmlFor="td-motivo">Motivo</label>
+              <input
+                id="td-motivo"
+                value={motivo}
+                maxLength={500}
+                disabled={travado}
+                aria-describedby="td-motivo-desc"
+                onChange={(e) => setMotivo(e.target.value)}
+              />
+              <span className="text-secondary" id="td-motivo-desc">
+                O motivo fica registrado no histórico e alimenta o tempo de impedimento do dashboard.
+              </span>
+            </div>
+          )}
+          <Botao variante="outline" disabled={travado} onClick={alternarImpedimento}>
+            {tarefa.impedida ? 'Remover impedimento' : 'Marcar impedimento'}
+          </Botao>
+        </section>
+
+        <section className="secao">
+          <h2>Lead-time por etapa</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Etapa</th>
+                <th>Permanência</th>
+                <th>Impedida</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tarefa.leadTimePorEtapa.map((linha) => (
+                <tr key={linha.etapaId}>
+                  <td>{linha.etapaNome}</td>
+                  <td>{duracao(linha.permanenciaSegundos)}</td>
+                  <td>{duracao(linha.impedimentoSegundos)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-secondary">
+            Total impedida: {duracao(tarefa.impedimentoTotalSegundos)}
+          </p>
+        </section>
+
+        <section className="secao">
+          <h2>Histórico</h2>
           {tarefa.historico.map((registro) => (
-            <li key={registro.id}>
-              <time dateTime={registro.ocorridoEm}>
-                {new Date(registro.ocorridoEm).toLocaleString('pt-BR')}
-              </time>{' '}
-              — {registro.campo}: {registro.valorAnterior ?? '—'} → {registro.valorNovo ?? '—'} (
-              {registro.autorNome ?? 'sistema'})
-            </li>
+            <div className="history-item" key={registro.id}>
+              <strong>{registro.autorNome ?? 'sistema'}</strong> alterou {registro.campo}:{' '}
+              {registro.valorAnterior ?? '—'} → {registro.valorNovo ?? '—'}
+              <div className="text-secondary">
+                <time dateTime={registro.ocorridoEm}>
+                  {new Date(registro.ocorridoEm).toLocaleString('pt-BR')}
+                </time>
+              </div>
+            </div>
           ))}
-        </ul>
-        <button
-          onClick={async () => {
-            const proxima = pagina + 1;
-            const mais = await api.historico(tarefa.id, proxima);
-            if (mais.length === 0) {
-              informar('Nao ha mais registros no historico.');
-              return;
-            }
-            setPagina(proxima);
-            setTarefa({ ...tarefa, historico: [...tarefa.historico, ...mais] });
-          }}
-        >
-          Carregar mais
-        </button>
-      </section>
-
-      <footer style={{ display: 'flex', gap: 8 }}>
-        <button className="primario" disabled={travado} onClick={salvar}>
-          Salvar
-        </button>
-        <button
-          disabled={travado}
-          onClick={async () => {
-            try {
-              if (tarefa.observando) {
-                await api.desobservar(tarefa.id);
-              } else {
-                await api.observar(tarefa.id);
+          <Botao
+            variante="text"
+            onClick={async () => {
+              const proxima = pagina + 1;
+              const mais = await api.historico(tarefa.id, proxima);
+              if (mais.length === 0) {
+                informar('Não há mais registros no histórico.');
+                return;
               }
-              await carregar();
-            } catch (e) {
-              reportar(e);
-            }
-          }}
-        >
-          {tarefa.observando ? 'Deixar de observar' : 'Observar'}
-        </button>
-        <button className="perigo" disabled={travado} onClick={() => aoExcluir(tarefa)}>
-          Excluir
-        </button>
-      </footer>
-    </aside>
+              setPagina(proxima);
+              setTarefa({ ...tarefa, historico: [...tarefa.historico, ...mais] });
+            }}
+          >
+            Carregar mais
+          </Botao>
+        </section>
+
+        <footer className="linha">
+          <Botao variante="primary" disabled={travado} onClick={salvar}>
+            Salvar
+          </Botao>
+          <Botao
+            variante="outline"
+            disabled={travado}
+            onClick={async () => {
+              try {
+                if (tarefa.observando) {
+                  await api.desobservar(tarefa.id);
+                } else {
+                  await api.observar(tarefa.id);
+                }
+                await carregar();
+              } catch (e) {
+                reportar(e);
+              }
+            }}
+          >
+            {tarefa.observando ? 'Deixar de observar' : 'Observar'}
+          </Botao>
+          <Botao variante="danger" disabled={travado} onClick={() => aoExcluir(tarefa)}>
+            Excluir
+          </Botao>
+        </footer>
+      </aside>
+    </div>
   );
 }

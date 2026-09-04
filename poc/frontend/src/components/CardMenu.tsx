@@ -22,8 +22,7 @@ export function CardMenu({
     return null;
   }
   return (
-    <label style={{ display: 'block', marginTop: 4 }}>
-      <span className="badge">Mover para</span>
+    <div className="form-field" style={{ marginBottom: 0 }}>
       <select
         aria-label={`Mover a tarefa ${tarefa.titulo}`}
         disabled={desabilitado}
@@ -34,7 +33,7 @@ export function CardMenu({
           }
         }}
       >
-        <option value="">Selecione…</option>
+        <option value="">Mover para…</option>
         {destinos.map((etapa) => (
           <option key={etapa.id} value={etapa.id}>
             {etapa.nome}
@@ -42,6 +41,6 @@ export function CardMenu({
           </option>
         ))}
       </select>
-    </label>
+    </div>
   );
 }

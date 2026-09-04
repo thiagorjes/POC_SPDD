@@ -2,8 +2,11 @@
 
 import { use, useCallback, useEffect, useState } from 'react';
 import { ConfirmarExclusaoModal } from '@/components/ConfirmarExclusaoModal';
-import { AvisoSomenteLeitura, Erro, SemPermissao, Skeleton, Vazio } from '@/components/Estados';
+import { AvisoSomenteLeitura, Erro, SemPermissao, Skeleton } from '@/components/Estados';
 import { useFeedback } from '@/components/Feedback';
+import { Badge } from '@/components/ui/Badge';
+import { Botao } from '@/components/ui/Botao';
+import { EstadoVazio } from '@/components/ui/EstadoVazio';
 import { usePermissoes } from '@/hooks/usePermissoes';
 import { ApiError, api } from '@/lib/api';
 import type { Etapa, Raia, Transicao, Workflow } from '@/lib/types';
@@ -47,7 +50,7 @@ export default function AdminWorkflowPage({ params }: { params: Promise<{ id: st
       const ativo = lista.find((w) => w.ativo) ?? lista[0];
       setSelecionado(ativo?.id ?? null);
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao carregar a configuracao.');
+      setErro(e instanceof Error ? e.message : 'Falha ao carregar a configuração.');
     } finally {
       setCarregando(false);
     }
@@ -113,56 +116,72 @@ export default function AdminWorkflowPage({ params }: { params: Promise<{ id: st
     <>
       {somenteLeitura && <AvisoSomenteLeitura />}
       {avisoInline && (
-        <p className="erro-inline" role="alert">
+        <div
+          className="toast toast-error"
+          role="alert"
+          style={{ marginBottom: 'var(--espaco-scale-md)' }}
+        >
           {avisoInline}
-        </p>
+        </div>
       )}
       {semSaida.length > 0 && (
-        <p className="erro-inline" role="status">
-          Etapas nao finais sem transicao de saida: {semSaida.map((e) => e.nome).join(', ')}. O
-          workflow so pode ser ativado quando toda etapa nao final tiver ao menos uma saida (RN-003).
-        </p>
+        <div
+          className="toast toast-error"
+          role="status"
+          style={{ marginBottom: 'var(--espaco-scale-md)' }}
+        >
+          Etapas não finais sem transição de saída: {semSaida.map((e) => e.nome).join(', ')}. O
+          workflow só pode ser ativado quando toda etapa não final tiver ao menos uma saída (RN-003).
+        </div>
       )}
 
-      <section className="cartao">
+      <section className="secao">
         <h2>Workflows</h2>
         {workflows.length === 0 ? (
-          <Vazio titulo="Nenhum workflow configurado." />
+          <EstadoVazio mensagem="Este projeto ainda não possui workflow configurado." />
         ) : (
-          <table className="tabela">
+          <table>
             <thead>
               <tr>
                 <th>Nome</th>
-                <th>Situacao</th>
-                <th>Acoes</th>
+                <th>Situação</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
               {workflows.map((workflow) => (
                 <tr key={workflow.id} aria-selected={workflow.id === selecionado}>
                   <td>
-                    <button onClick={() => setSelecionado(workflow.id)}>{workflow.nome}</button>
+                    <Botao variante="text" onClick={() => setSelecionado(workflow.id)}>
+                      {workflow.nome}
+                    </Botao>
                   </td>
-                  <td>{workflow.ativo ? <span className="badge">Ativo</span> : 'Inativo'}</td>
-                  <td style={{ display: 'flex', gap: 8 }}>
-                    {!workflow.ativo && (
-                      <button
+                  <td>
+                    {workflow.ativo ? <Badge variante="success">Ativo</Badge> : 'Inativo'}
+                  </td>
+                  <td>
+                    <span className="linha">
+                      {!workflow.ativo && (
+                        <Botao
+                          variante="text"
+                          disabled={somenteLeitura}
+                          onClick={() =>
+                            executar(() => api.ativarWorkflow(id, workflow.id), 'Workflow ativado.')
+                          }
+                        >
+                          Ativar
+                        </Botao>
+                      )}
+                      <Botao
+                        variante="text"
                         disabled={somenteLeitura}
                         onClick={() =>
-                          executar(() => api.ativarWorkflow(id, workflow.id), 'Workflow ativado.')
+                          setAlvo({ tipo: 'workflow', id: workflow.id, titulo: workflow.nome })
                         }
                       >
-                        Ativar
-                      </button>
-                    )}
-                    <button
-                      disabled={somenteLeitura}
-                      onClick={() =>
-                        setAlvo({ tipo: 'workflow', id: workflow.id, titulo: workflow.nome })
-                      }
-                    >
-                      Excluir
-                    </button>
+                        Excluir
+                      </Botao>
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -170,7 +189,8 @@ export default function AdminWorkflowPage({ params }: { params: Promise<{ id: st
           </table>
         )}
         <form
-          style={{ display: 'flex', gap: 8, marginTop: 12 }}
+          className="form-row"
+          style={{ marginTop: 'var(--espaco-scale-md)' }}
           onSubmit={(evento) => {
             evento.preventDefault();
             void executar(() => api.criarWorkflow(id, nomeWorkflow), 'Workflow criado.').then(() =>
@@ -178,30 +198,33 @@ export default function AdminWorkflowPage({ params }: { params: Promise<{ id: st
             );
           }}
         >
-          <input
-            value={nomeWorkflow}
-            onChange={(e) => setNomeWorkflow(e.target.value)}
-            placeholder="Nome do workflow"
-            required
-            disabled={somenteLeitura}
-          />
-          <button className="primario" type="submit" disabled={somenteLeitura}>
+          <div className="form-field">
+            <label htmlFor="wf-nome">Nome do workflow</label>
+            <input
+              id="wf-nome"
+              value={nomeWorkflow}
+              onChange={(e) => setNomeWorkflow(e.target.value)}
+              required
+              disabled={somenteLeitura}
+            />
+          </div>
+          <Botao variante="primary" type="submit" disabled={somenteLeitura}>
             Adicionar
-          </button>
+          </Botao>
         </form>
       </section>
 
       {selecionado && (
         <>
-          <section className="cartao">
+          <section className="secao">
             <h2>Colunas</h2>
-            <table className="tabela">
+            <table>
               <thead>
                 <tr>
                   <th>Ordem</th>
                   <th>Nome</th>
                   <th>Final</th>
-                  <th>Acoes</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -209,49 +232,55 @@ export default function AdminWorkflowPage({ params }: { params: Promise<{ id: st
                   <tr key={etapa.id}>
                     <td>{etapa.ordem}</td>
                     <td>{etapa.nome}</td>
-                    <td>{etapa.etapaFinal ? 'Sim' : 'Nao'}</td>
-                    <td style={{ display: 'flex', gap: 8 }}>
-                      <button
-                        disabled={somenteLeitura || indice === 0}
-                        aria-label={`Subir ${etapa.nome}`}
-                        onClick={() => {
-                          const ordem = etapas.map((e) => e.id);
-                          [ordem[indice - 1], ordem[indice]] = [ordem[indice], ordem[indice - 1]];
-                          void executar(
-                            () => api.reordenarEtapas(selecionado, ordem),
-                            'Ordem atualizada.',
-                          );
-                        }}
-                      >
-                        ↑
-                      </button>
-                      <button
-                        disabled={somenteLeitura || indice === etapas.length - 1}
-                        aria-label={`Descer ${etapa.nome}`}
-                        onClick={() => {
-                          const ordem = etapas.map((e) => e.id);
-                          [ordem[indice], ordem[indice + 1]] = [ordem[indice + 1], ordem[indice]];
-                          void executar(
-                            () => api.reordenarEtapas(selecionado, ordem),
-                            'Ordem atualizada.',
-                          );
-                        }}
-                      >
-                        ↓
-                      </button>
-                      <button
-                        disabled={somenteLeitura}
-                        onClick={() => setAlvo({ tipo: 'etapa', id: etapa.id, titulo: etapa.nome })}
-                      >
-                        Excluir
-                      </button>
+                    <td>{etapa.etapaFinal ? 'Sim' : 'Não'}</td>
+                    <td>
+                      <span className="linha">
+                        <Botao
+                          variante="text"
+                          disabled={somenteLeitura || indice === 0}
+                          aria-label={`Subir ${etapa.nome}`}
+                          onClick={() => {
+                            const ordem = etapas.map((e) => e.id);
+                            [ordem[indice - 1], ordem[indice]] = [ordem[indice], ordem[indice - 1]];
+                            void executar(
+                              () => api.reordenarEtapas(selecionado, ordem),
+                              'Ordem atualizada.',
+                            );
+                          }}
+                        >
+                          ↑
+                        </Botao>
+                        <Botao
+                          variante="text"
+                          disabled={somenteLeitura || indice === etapas.length - 1}
+                          aria-label={`Descer ${etapa.nome}`}
+                          onClick={() => {
+                            const ordem = etapas.map((e) => e.id);
+                            [ordem[indice], ordem[indice + 1]] = [ordem[indice + 1], ordem[indice]];
+                            void executar(
+                              () => api.reordenarEtapas(selecionado, ordem),
+                              'Ordem atualizada.',
+                            );
+                          }}
+                        >
+                          ↓
+                        </Botao>
+                        <Botao
+                          variante="text"
+                          disabled={somenteLeitura}
+                          onClick={() => setAlvo({ tipo: 'etapa', id: etapa.id, titulo: etapa.nome })}
+                        >
+                          Excluir
+                        </Botao>
+                      </span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <form
-              style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center' }}
+              className="form-row"
+              style={{ marginTop: 'var(--espaco-scale-md)' }}
               onSubmit={(evento) => {
                 evento.preventDefault();
                 void executar(
@@ -263,114 +292,139 @@ export default function AdminWorkflowPage({ params }: { params: Promise<{ id: st
                 });
               }}
             >
-              <input
-                value={nomeEtapa}
-                onChange={(e) => setNomeEtapa(e.target.value)}
-                placeholder="Nome da coluna"
-                required
-                disabled={somenteLeitura}
-              />
-              <label>
+              <div className="form-field">
+                <label htmlFor="etapa-nome">Nome da coluna</label>
                 <input
-                  type="checkbox"
-                  checked={etapaFinal}
-                  onChange={(e) => setEtapaFinal(e.target.checked)}
+                  id="etapa-nome"
+                  value={nomeEtapa}
+                  onChange={(e) => setNomeEtapa(e.target.value)}
+                  required
                   disabled={somenteLeitura}
                 />
-                Etapa final
-              </label>
-              <button className="primario" type="submit" disabled={somenteLeitura}>
+              </div>
+              <div className="form-field toggle">
+                <label htmlFor="etapa-final">
+                  <input
+                    id="etapa-final"
+                    type="checkbox"
+                    checked={etapaFinal}
+                    onChange={(e) => setEtapaFinal(e.target.checked)}
+                    disabled={somenteLeitura}
+                  />
+                  Etapa final
+                </label>
+              </div>
+              <Botao variante="primary" type="submit" disabled={somenteLeitura}>
                 Adicionar
-              </button>
+              </Botao>
             </form>
           </section>
 
-          <section className="cartao">
-            <h2>Transicoes</h2>
+          <section className="secao">
+            <h2>Transições</h2>
             {transicoes.length === 0 ? (
-              <Vazio titulo="Nenhuma transicao configurada." />
+              <EstadoVazio mensagem="Nenhuma transição configurada." />
             ) : (
-              <ul>
-                {transicoes.map((transicao) => (
-                  <li key={transicao.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span>
-                      {nomeEtapaDe(transicao.etapaOrigemId)} → {nomeEtapaDe(transicao.etapaDestinoId)}
-                    </span>
-                    <button
-                      disabled={somenteLeitura}
-                      onClick={() =>
-                        setAlvo({
-                          tipo: 'transicao',
-                          id: transicao.id,
-                          titulo: `${nomeEtapaDe(transicao.etapaOrigemId)} → ${nomeEtapaDe(transicao.etapaDestinoId)}`,
-                        })
-                      }
-                    >
-                      Excluir
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Origem → Destino</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transicoes.map((transicao) => (
+                    <tr key={transicao.id}>
+                      <td>
+                        {nomeEtapaDe(transicao.etapaOrigemId)} →{' '}
+                        {nomeEtapaDe(transicao.etapaDestinoId)}
+                      </td>
+                      <td>
+                        <Botao
+                          variante="text"
+                          disabled={somenteLeitura}
+                          onClick={() =>
+                            setAlvo({
+                              tipo: 'transicao',
+                              id: transicao.id,
+                              titulo: `${nomeEtapaDe(transicao.etapaOrigemId)} → ${nomeEtapaDe(transicao.etapaDestinoId)}`,
+                            })
+                          }
+                        >
+                          Excluir
+                        </Botao>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
             <form
-              style={{ display: 'flex', gap: 8, marginTop: 12 }}
+              className="form-row"
+              style={{ marginTop: 'var(--espaco-scale-md)' }}
               onSubmit={(evento) => {
                 evento.preventDefault();
                 void executar(
                   () => api.criarTransicao(selecionado, origem, destino),
-                  'Transicao criada.',
+                  'Transição criada.',
                 );
               }}
             >
-              <select
-                value={origem}
-                onChange={(e) => setOrigem(e.target.value)}
-                required
-                disabled={somenteLeitura}
-                aria-label="Etapa de origem"
-              >
-                <option value="">Origem…</option>
-                {etapas
-                  .filter((e) => !e.etapaFinal)
-                  .map((etapa) => (
-                    <option key={etapa.id} value={etapa.id}>
-                      {etapa.nome}
-                    </option>
-                  ))}
-              </select>
-              <select
-                value={destino}
-                onChange={(e) => setDestino(e.target.value)}
-                required
-                disabled={somenteLeitura}
-                aria-label="Etapa de destino"
-              >
-                <option value="">Destino…</option>
-                {etapas
-                  .filter((e) => e.id !== origem)
-                  .map((etapa) => (
-                    <option key={etapa.id} value={etapa.id}>
-                      {etapa.nome}
-                    </option>
-                  ))}
-              </select>
-              <button className="primario" type="submit" disabled={somenteLeitura}>
+              <div className="form-field">
+                <label htmlFor="tr-origem">Etapa de origem</label>
+                <select
+                  id="tr-origem"
+                  value={origem}
+                  onChange={(e) => setOrigem(e.target.value)}
+                  required
+                  disabled={somenteLeitura}
+                >
+                  <option value="">Selecione…</option>
+                  {etapas
+                    .filter((e) => !e.etapaFinal)
+                    .map((etapa) => (
+                      <option key={etapa.id} value={etapa.id}>
+                        {etapa.nome}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div className="form-field">
+                <label htmlFor="tr-destino">Etapa de destino</label>
+                <select
+                  id="tr-destino"
+                  value={destino}
+                  onChange={(e) => setDestino(e.target.value)}
+                  required
+                  disabled={somenteLeitura}
+                >
+                  <option value="">Selecione…</option>
+                  {etapas
+                    .filter((e) => e.id !== origem)
+                    .map((etapa) => (
+                      <option key={etapa.id} value={etapa.id}>
+                        {etapa.nome}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <Botao variante="primary" type="submit" disabled={somenteLeitura}>
                 Adicionar
-              </button>
+              </Botao>
             </form>
           </section>
         </>
       )}
 
-      <section className="cartao">
+      <section className="secao">
         <h2>Raias</h2>
-        <table className="tabela">
+        <table>
           <thead>
             <tr>
               <th>Ordem</th>
               <th>Nome</th>
-              <th>Padrao</th>
-              <th>Acoes</th>
+              <th>Padrão</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -378,31 +432,36 @@ export default function AdminWorkflowPage({ params }: { params: Promise<{ id: st
               <tr key={raia.id}>
                 <td>{raia.ordem}</td>
                 <td>{raia.nome}</td>
-                <td>{raia.padrao ? 'Sim' : 'Nao'}</td>
-                <td style={{ display: 'flex', gap: 8 }}>
-                  {!raia.padrao && (
-                    <button
+                <td>{raia.padrao ? 'Sim' : 'Não'}</td>
+                <td>
+                  <span className="linha">
+                    {!raia.padrao && (
+                      <Botao
+                        variante="text"
+                        disabled={somenteLeitura}
+                        onClick={() =>
+                          executar(() => api.definirRaiaPadrao(id, raia.id), 'Raia padrão definida.')
+                        }
+                      >
+                        Tornar padrão
+                      </Botao>
+                    )}
+                    <Botao
+                      variante="text"
                       disabled={somenteLeitura}
-                      onClick={() =>
-                        executar(() => api.definirRaiaPadrao(id, raia.id), 'Raia padrao definida.')
-                      }
+                      onClick={() => setAlvo({ tipo: 'raia', id: raia.id, titulo: raia.nome })}
                     >
-                      Tornar padrao
-                    </button>
-                  )}
-                  <button
-                    disabled={somenteLeitura}
-                    onClick={() => setAlvo({ tipo: 'raia', id: raia.id, titulo: raia.nome })}
-                  >
-                    Excluir
-                  </button>
+                      Excluir
+                    </Botao>
+                  </span>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
         <form
-          style={{ display: 'flex', gap: 8, marginTop: 12 }}
+          className="form-row"
+          style={{ marginTop: 'var(--espaco-scale-md)' }}
           onSubmit={(evento) => {
             evento.preventDefault();
             void executar(() => api.criarRaia(id, nomeRaia), 'Raia criada.').then(() =>
@@ -410,23 +469,26 @@ export default function AdminWorkflowPage({ params }: { params: Promise<{ id: st
             );
           }}
         >
-          <input
-            value={nomeRaia}
-            onChange={(e) => setNomeRaia(e.target.value)}
-            placeholder="Nome da raia"
-            required
-            disabled={somenteLeitura}
-          />
-          <button className="primario" type="submit" disabled={somenteLeitura}>
+          <div className="form-field">
+            <label htmlFor="raia-nome">Nome da raia</label>
+            <input
+              id="raia-nome"
+              value={nomeRaia}
+              onChange={(e) => setNomeRaia(e.target.value)}
+              required
+              disabled={somenteLeitura}
+            />
+          </div>
+          <Botao variante="primary" type="submit" disabled={somenteLeitura}>
             Adicionar
-          </button>
+          </Botao>
         </form>
       </section>
 
       {alvo && (
         <ConfirmarExclusaoModal
           titulo={alvo.titulo}
-          impacto="A exclusao e recusada pelo servidor se houver tarefa ativa vinculada ou se o grafo do workflow ficar invalido."
+          impacto="A exclusão é recusada pelo servidor se houver tarefa ativa vinculada ou se o grafo do workflow ficar inválido."
           aoConfirmar={async () => {
             const acoes: Record<Alvo['tipo'], () => Promise<void>> = {
               workflow: () => api.excluirWorkflow(id, alvo.id),
@@ -436,7 +498,7 @@ export default function AdminWorkflowPage({ params }: { params: Promise<{ id: st
             };
             await acoes[alvo.tipo]();
             setAlvo(null);
-            informar('Exclusao concluida.');
+            informar('Exclusão concluída.');
             if (selecionado) {
               await carregarGrafo(selecionado);
             }

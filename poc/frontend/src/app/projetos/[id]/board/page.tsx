@@ -7,6 +7,9 @@ import { AvisoSomenteLeitura, Erro, SemPermissao, Skeleton } from '@/components/
 import { useFeedback } from '@/components/Feedback';
 import { NovaTarefaModal } from '@/components/NovaTarefaModal';
 import { TarefaDrawer } from '@/components/TarefaDrawer';
+import { Badge } from '@/components/ui/Badge';
+import { Botao } from '@/components/ui/Botao';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useBoardStream } from '@/hooks/useBoardStream';
 import { usePermissoes } from '@/hooks/usePermissoes';
 import { api } from '@/lib/api';
@@ -27,6 +30,15 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
   const [paraExcluir, setParaExcluir] = useState<TarefaDetalhe | null>(null);
   const [raias, setRaias] = useState<Raia[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioAtual[]>([]);
+  const [erroTransicao, setErroTransicao] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!erroTransicao) {
+      return;
+    }
+    const timer = setTimeout(() => setErroTransicao(null), 7000);
+    return () => clearTimeout(timer);
+  }, [erroTransicao]);
 
   useEffect(() => {
     if (!criando) {
@@ -66,21 +78,38 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
 
   return (
     <>
-      <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h1>Board</h1>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span className="badge" aria-live="polite">
-            {conectado ? 'Tempo real ativo' : 'Reconectando…'}
-          </span>
-          {pode('tarefa:gerenciar') && !snapshot.somenteLeitura && (
-            <button className="primario" onClick={() => setCriando(true)}>
-              Nova tarefa
-            </button>
-          )}
-        </div>
-      </header>
+      <PageHeader
+        titulo="Board"
+        acoes={
+          <>
+            <Badge variante={conectado ? 'success' : 'warning'}>
+              <span aria-live="polite">{conectado ? 'Tempo real ativo' : 'Reconectando…'}</span>
+            </Badge>
+            {pode('tarefa:gerenciar') && !snapshot.somenteLeitura && (
+              <Botao variante="primary" onClick={() => setCriando(true)}>
+                + Novo card
+              </Botao>
+            )}
+          </>
+        }
+      />
 
       {(snapshot.somenteLeitura || !projetoAtivo) && <AvisoSomenteLeitura />}
+
+      {/*
+        Recusa de transicao fica inline acima do board, com aria-live assertivo: um toast no canto
+        fixo passa despercebido enquanto o usuario esta com o foco no scroll horizontal das colunas.
+      */}
+      {erroTransicao && (
+        <div
+          className="toast toast-error"
+          role="alert"
+          aria-live="assertive"
+          style={{ marginBottom: 'var(--espaco-scale-md)' }}
+        >
+          {erroTransicao}
+        </div>
+      )}
 
       <Board
         snapshot={snapshot}
@@ -89,7 +118,9 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
         aoAbrir={setTarefaAberta}
         aoNovaTarefa={() => setCriando(true)}
         aoDropInvalido={() =>
-          informar('Esta transicao nao esta configurada no workflow ou voce nao tem permissao.')
+          setErroTransicao(
+            'Transição não permitida a partir desta etapa. O card retornou à posição original.',
+          )
         }
       />
 
@@ -119,12 +150,12 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
       {paraExcluir && (
         <ConfirmarExclusaoModal
           titulo={paraExcluir.titulo}
-          impacto="A tarefa, seus periodos de etapa e suas notificacoes serao removidos. O historico de auditoria e preservado."
+          impacto="A tarefa, seus períodos de etapa e suas notificações serão removidos. O histórico de auditoria é preservado."
           aoConfirmar={async () => {
             await api.excluirTarefa(paraExcluir.id);
             setParaExcluir(null);
             setTarefaAberta(null);
-            informar('Tarefa excluida.');
+            informar('Tarefa excluída.');
             await resync();
           }}
           aoFechar={() => setParaExcluir(null)}

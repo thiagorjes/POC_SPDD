@@ -2,16 +2,35 @@
 
 import { useState } from 'react';
 import { CardMenu } from './CardMenu';
-import { Vazio } from './Estados';
-import type { BoardSnapshot, TarefaResumo } from '@/lib/types';
+import { Avatar } from './ui/Avatar';
+import { Badge } from './ui/Badge';
+import { Botao } from './ui/Botao';
+import { EstadoVazio } from './ui/EstadoVazio';
+import type { BoardSnapshot, Etapa, Raia, TarefaResumo } from '@/lib/types';
 
 type Densidade = 'compacto' | 'expandido';
 
+const ROTULO_TIPO: Record<string, string> = {
+  FEATURE: 'Feature',
+  BUG: 'Bug',
+  TAREFA: 'Tarefa',
+  MELHORIA: 'Melhoria',
+};
+
+const ROTULO_PRIORIDADE: Record<string, string> = {
+  BAIXA: 'Baixa',
+  MEDIA: 'Média',
+  ALTA: 'Alta',
+  CRITICA: 'Crítica',
+};
+
 /**
- * Colunas por etapa, agrupadas por raia. Densidade compacta e o default (A-14 / TL-03).
+ * Raia e o container externo e cada uma contem o conjunto completo de colunas (TL-03). A hierarquia
+ * inversa que existia antes deixava o card sempre na mesma raia visual, sem diferenciacao.
  *
  * <p>Durante o arraste apenas as colunas em {@code destinosPermitidos} do card ficam realcadas; as
- * demais sao esmaecidas e recusam o drop, devolvendo o card com um toast (DDR-002).
+ * demais sao esmaecidas e recusam o drop (DDR-002). A raia e agrupamento visual e nunca restringe
+ * o destino.
  */
 export function Board({
   snapshot,
@@ -32,121 +51,225 @@ export function Board({
   const [arrastando, setArrastando] = useState<TarefaResumo | null>(null);
   const somenteLeitura = snapshot.somenteLeitura || !podeMover;
 
+  const raias = [...snapshot.raias].sort((a, b) => a.ordem - b.ordem);
+
   return (
     <>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <button
+      <div className="linha" style={{ marginBottom: 'var(--espaco-scale-md)' }}>
+        <Botao
+          variante="outline"
           aria-pressed={densidade === 'compacto'}
           onClick={() => setDensidade('compacto')}
         >
           Compacto
-        </button>
-        <button
+        </Botao>
+        <Botao
+          variante="outline"
           aria-pressed={densidade === 'expandido'}
           onClick={() => setDensidade('expandido')}
         >
           Expandido
-        </button>
+        </Botao>
       </div>
 
-      <div className="board">
-        {snapshot.etapas.map((etapa) => {
-          const alvoValido = arrastando?.destinosPermitidos.includes(etapa.id) ?? false;
-          const classe = arrastando
-            ? `coluna ${alvoValido ? 'alvo-valido' : 'alvo-invalido'}`
-            : 'coluna';
-          return (
-            <section
-              key={etapa.id}
-              className={classe}
-              aria-label={`Etapa ${etapa.nome}`}
-              onDragOver={(evento) => {
-                if (alvoValido) {
-                  evento.preventDefault();
-                }
-              }}
-              onDrop={(evento) => {
-                evento.preventDefault();
-                const tarefa = arrastando;
-                setArrastando(null);
-                if (!tarefa) {
-                  return;
-                }
-                if (!tarefa.destinosPermitidos.includes(etapa.id)) {
-                  aoDropInvalido();
-                  return;
-                }
-                aoMover(tarefa, etapa.id);
-              }}
-            >
-              <header style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <strong>{etapa.nome}</strong>
-                <button
-                  disabled={snapshot.somenteLeitura}
-                  aria-label={`Nova tarefa em ${etapa.nome}`}
-                  onClick={() => aoNovaTarefa(etapa.id)}
-                >
-                  +
-                </button>
-              </header>
+      {raias.map((raia) => (
+        <section className="swimlane" key={raia.id} aria-label={`Raia ${raia.nome}`}>
+          <div className="swimlane__title">Raia: {raia.nome}</div>
+          <div className="board">
+            {snapshot.etapas.map((etapa) => (
+              <Coluna
+                key={etapa.id}
+                etapa={etapa}
+                raia={raia}
+                snapshot={snapshot}
+                densidade={densidade}
+                arrastando={arrastando}
+                somenteLeitura={somenteLeitura}
+                aoArrastarInicio={setArrastando}
+                aoArrastarFim={() => setArrastando(null)}
+                aoMover={aoMover}
+                aoAbrir={aoAbrir}
+                aoNovaTarefa={aoNovaTarefa}
+                aoDropInvalido={aoDropInvalido}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
 
-              {snapshot.raias.map((raia) => {
-                const cards = snapshot.tarefas.filter(
-                  (t) => t.etapaId === etapa.id && t.raiaId === raia.id,
-                );
-                if (cards.length === 0) {
-                  return null;
-                }
-                return (
-                  <div key={raia.id}>
-                    <p className="raia-titulo">{raia.nome}</p>
-                    {cards.map((tarefa) => (
-                      <article
-                        key={tarefa.id}
-                        className={`card ${densidade} ${tarefa.impedida ? 'impedida' : ''}`}
-                        draggable={!somenteLeitura}
-                        onDragStart={() => setArrastando(tarefa)}
-                        onDragEnd={() => setArrastando(null)}
-                      >
-                        <button
-                          onClick={() => aoAbrir(tarefa.id)}
-                          style={{ border: 0, background: 'none', padding: 0, textAlign: 'left' }}
-                        >
-                          <strong>{tarefa.titulo}</strong>
-                        </button>
-                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
-                          <span className="badge">{tarefa.tipo}</span>
-                          {densidade === 'expandido' && (
-                            <span className="badge">{tarefa.prioridade}</span>
-                          )}
-                          {tarefa.impedida && (
-                            <span className="badge impedida" title="Tarefa impedida">
-                              Impedida
-                            </span>
-                          )}
-                          {tarefa.responsavelNome && (
-                            <span className="badge">{tarefa.responsavelNome}</span>
-                          )}
-                        </div>
-                        {!somenteLeitura && (
-                          <CardMenu
-                            tarefa={tarefa}
-                            etapas={snapshot.etapas}
-                            desabilitado={somenteLeitura}
-                            aoMover={(destino) => aoMover(tarefa, destino)}
-                          />
-                        )}
-                      </article>
-                    ))}
-                  </div>
-                );
-              })}
-            </section>
-          );
-        })}
-      </div>
-
-      {snapshot.tarefas.length === 0 && <Vazio titulo="Nenhuma tarefa neste board ainda." />}
+      {snapshot.tarefas.length === 0 && <EstadoVazio mensagem="Nenhuma tarefa neste board ainda." />}
     </>
+  );
+}
+
+function Coluna({
+  etapa,
+  raia,
+  snapshot,
+  densidade,
+  arrastando,
+  somenteLeitura,
+  aoArrastarInicio,
+  aoArrastarFim,
+  aoMover,
+  aoAbrir,
+  aoNovaTarefa,
+  aoDropInvalido,
+}: {
+  etapa: Etapa;
+  raia: Raia;
+  snapshot: BoardSnapshot;
+  densidade: Densidade;
+  arrastando: TarefaResumo | null;
+  somenteLeitura: boolean;
+  aoArrastarInicio: (tarefa: TarefaResumo) => void;
+  aoArrastarFim: () => void;
+  aoMover: (tarefa: TarefaResumo, etapaDestinoId: string, raiaDestinoId?: string) => void;
+  aoAbrir: (tarefaId: string) => void;
+  aoNovaTarefa: (etapaId: string) => void;
+  aoDropInvalido: () => void;
+}) {
+  const cards = snapshot.tarefas.filter((t) => t.etapaId === etapa.id && t.raiaId === raia.id);
+  const alvoValido = arrastando?.destinosPermitidos.includes(etapa.id) ?? false;
+  const classe = arrastando
+    ? `column ${alvoValido ? 'column--drop-valid' : 'column--drop-invalid'}`
+    : 'column';
+
+  return (
+    <div
+      className={classe}
+      aria-label={`Coluna ${etapa.nome} da raia ${raia.nome}`}
+      onDragOver={(evento) => {
+        if (alvoValido) {
+          evento.preventDefault();
+        }
+      }}
+      onDrop={(evento) => {
+        evento.preventDefault();
+        const tarefa = arrastando;
+        aoArrastarFim();
+        if (!tarefa) {
+          return;
+        }
+        if (!tarefa.destinosPermitidos.includes(etapa.id)) {
+          aoDropInvalido();
+          return;
+        }
+        // A raia de destino vem da swimlane que recebeu o drop; o contrato ja aceita o campo.
+        aoMover(tarefa, etapa.id, raia.id);
+      }}
+    >
+      <div className="column__header">
+        <span>{etapa.nome}</span>
+        {arrastando ? (
+          <span className={`badge-transicao badge-transicao--${alvoValido ? 'ok' : 'bloqueada'}`}>
+            {alvoValido ? 'Permitido' : 'Sem transição'}
+          </span>
+        ) : (
+          <Badge variante="neutro">{cards.length}</Badge>
+        )}
+      </div>
+
+      {cards.length === 0 ? (
+        <EstadoVazio compacto mensagem="Sem tarefas nesta etapa" />
+      ) : (
+        cards.map((tarefa) => (
+          <TaskCard
+            key={tarefa.id}
+            tarefa={tarefa}
+            etapas={snapshot.etapas}
+            densidade={densidade}
+            somenteLeitura={somenteLeitura}
+            aoArrastarInicio={aoArrastarInicio}
+            aoArrastarFim={aoArrastarFim}
+            aoMover={(destino) => aoMover(tarefa, destino, raia.id)}
+            aoAbrir={aoAbrir}
+          />
+        ))
+      )}
+
+      {!snapshot.somenteLeitura && (
+        <Botao
+          variante="text"
+          aria-label={`Nova tarefa em ${etapa.nome}`}
+          onClick={() => aoNovaTarefa(etapa.id)}
+        >
+          + Novo card
+        </Botao>
+      )}
+    </div>
+  );
+}
+
+function TaskCard({
+  tarefa,
+  etapas,
+  densidade,
+  somenteLeitura,
+  aoArrastarInicio,
+  aoArrastarFim,
+  aoMover,
+  aoAbrir,
+}: {
+  tarefa: TarefaResumo;
+  etapas: Etapa[];
+  densidade: Densidade;
+  somenteLeitura: boolean;
+  aoArrastarInicio: (tarefa: TarefaResumo) => void;
+  aoArrastarFim: () => void;
+  aoMover: (etapaDestinoId: string) => void;
+  aoAbrir: (tarefaId: string) => void;
+}) {
+  const expandido = densidade === 'expandido';
+  const classe = [
+    'task-card',
+    expandido ? 'task-card--expanded' : '',
+    tarefa.impedida ? 'task-card__impedido' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <article
+      className={classe}
+      draggable={!somenteLeitura}
+      onDragStart={() => aoArrastarInicio(tarefa)}
+      onDragEnd={aoArrastarFim}
+    >
+      <Badge variante="tipo">{ROTULO_TIPO[tarefa.tipo] ?? tarefa.tipo}</Badge>
+      <button
+        onClick={() => aoAbrir(tarefa.id)}
+        style={{ border: 0, background: 'none', padding: 0, textAlign: 'left', width: '100%' }}
+      >
+        <p>{tarefa.titulo}</p>
+      </button>
+
+      {expandido ? (
+        <div className="meta-row">
+          <span className="linha">
+            {tarefa.responsavelNome && <Avatar nome={tarefa.responsavelNome} tamanho={20} />}
+            {tarefa.impedida && (
+              <Badge variante="warning" title="Tarefa impedida">
+                Impedido
+              </Badge>
+            )}
+          </span>
+          <Badge variante="neutro">{ROTULO_PRIORIDADE[tarefa.prioridade] ?? tarefa.prioridade}</Badge>
+        </div>
+      ) : (
+        <span className="linha">
+          {tarefa.responsavelNome && <Avatar nome={tarefa.responsavelNome} tamanho={20} />}
+          {tarefa.impedida && (
+            <Badge variante="warning" title="Tarefa impedida">
+              Impedido
+            </Badge>
+          )}
+        </span>
+      )}
+
+      {!somenteLeitura && (
+        <CardMenu tarefa={tarefa} etapas={etapas} desabilitado={somenteLeitura} aoMover={aoMover} />
+      )}
+    </article>
   );
 }

@@ -1,12 +1,14 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { Botao } from './ui/Botao';
+import { EstadoVazio } from './ui/EstadoVazio';
 
 /** Os seis estados obrigatorios de tela: loading, vazio, erro, sem permissao, somente leitura, ok. */
 
 export function Skeleton({ linhas = 3 }: { linhas?: number }) {
   return (
-    <div aria-busy="true" aria-label="Carregando" style={{ display: 'grid', gap: 8 }}>
+    <div aria-busy="true" aria-label="Carregando" className="pilha">
       {Array.from({ length: linhas }).map((_, i) => (
         <div className="skeleton" key={i} />
       ))}
@@ -15,35 +17,34 @@ export function Skeleton({ linhas = 3 }: { linhas?: number }) {
 }
 
 export function Vazio({ titulo, acao }: { titulo: string; acao?: ReactNode }) {
-  return (
-    <div className="vazio">
-      <p>{titulo}</p>
-      {acao}
-    </div>
-  );
+  return <EstadoVazio mensagem={titulo} acao={acao} />;
 }
 
 export function Erro({ mensagem, aoTentarNovamente }: { mensagem: string; aoTentarNovamente?: () => void }) {
   return (
-    <div className="vazio" role="alert">
-      <p className="erro-inline">{mensagem}</p>
-      {aoTentarNovamente && <button onClick={aoTentarNovamente}>Tentar novamente</button>}
+    <div className="toast toast-error linha" role="alert">
+      <span>{mensagem}</span>
+      {aoTentarNovamente && (
+        <Botao variante="outline" onClick={aoTentarNovamente}>
+          Tentar novamente
+        </Botao>
+      )}
     </div>
   );
 }
 
 export function SemPermissao() {
   return (
-    <div className="vazio" role="alert">
-      <p>Voce nao tem permissao para visualizar este conteudo.</p>
+    <div className="empty-state" role="alert">
+      <p>Você não tem permissão para visualizar este conteúdo.</p>
     </div>
   );
 }
 
 export function AvisoSomenteLeitura() {
   return (
-    <div className="cartao" role="status" style={{ marginBottom: 16 }}>
-      Projeto finalizado: o conteudo esta em modo somente leitura para todos os papeis.
+    <div className="toast" role="status" style={{ marginBottom: 'var(--espaco-scale-md)' }}>
+      Projeto finalizado: o conteúdo está em modo somente leitura para todos os papéis.
     </div>
   );
 }

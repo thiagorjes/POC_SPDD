@@ -2,8 +2,12 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Erro, Skeleton, Vazio } from '@/components/Estados';
+import { Erro, Skeleton } from '@/components/Estados';
 import { useFeedback } from '@/components/Feedback';
+import { Badge } from '@/components/ui/Badge';
+import { Botao } from '@/components/ui/Botao';
+import { EstadoVazio } from '@/components/ui/EstadoVazio';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { api } from '@/lib/api';
 import type { Projeto, UsuarioAtual } from '@/lib/types';
 
@@ -55,57 +59,80 @@ export default function ProjetosPage() {
 
   return (
     <>
-      <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-        <h1>Projetos</h1>
-        {eu?.adminGlobal && (
-          <button className="primario" onClick={() => setCriando((v) => !v)}>
-            Novo projeto
-          </button>
-        )}
-      </header>
+      <PageHeader
+        titulo="Projetos"
+        acoes={
+          eu?.adminGlobal && (
+            <Botao variante="primary" onClick={() => setCriando((v) => !v)}>
+              + Novo projeto
+            </Botao>
+          )
+        }
+      />
 
       {criando && (
-        <form className="cartao" style={{ display: 'grid', gap: 8, marginBottom: 24 }} onSubmit={criar}>
-          <label>
-            Nome
-            <input value={nome} onChange={(e) => setNome(e.target.value)} required maxLength={120} />
-          </label>
-          <label>
-            Descricao
-            <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={3} />
-          </label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="primario" type="submit">
-              Criar
-            </button>
-            <button type="button" onClick={() => setCriando(false)}>
+        <form className="card" style={{ marginBottom: 'var(--espaco-scale-lg)' }} onSubmit={criar}>
+          <div className="form-field">
+            <label htmlFor="projeto-nome">Nome</label>
+            <input
+              id="projeto-nome"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              required
+              maxLength={120}
+            />
+          </div>
+          <div className="form-field">
+            <label htmlFor="projeto-descricao">Descrição</label>
+            <textarea
+              id="projeto-descricao"
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <div className="modal-actions">
+            <Botao variante="outline" type="button" onClick={() => setCriando(false)}>
               Cancelar
-            </button>
+            </Botao>
+            <Botao variante="primary" type="submit">
+              Criar
+            </Botao>
           </div>
         </form>
       )}
 
       {projetos.length === 0 ? (
-        <Vazio titulo="Voce ainda nao participa de nenhum projeto." />
+        <EstadoVazio
+          mensagem="Você ainda não participa de nenhum projeto."
+          acao={
+            eu?.adminGlobal && (
+              <Botao variante="primary" onClick={() => setCriando(true)}>
+                Criar primeiro projeto
+              </Botao>
+            )
+          }
+        />
       ) : (
-        <ul className="lista-cartoes">
+        <div className="project-grid">
+          {/*
+            O card inteiro e o link (TL-02). Contadores de tarefas do prototipo nao sao exibidos:
+            a resposta de /api/projetos nao os fornece.
+          */}
           {projetos.map((projeto) => (
-            <li key={projeto.id} className="cartao">
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                <Link href={`/projetos/${projeto.id}/board`}>
-                  <strong>{projeto.nome}</strong>
-                </Link>
-                <span className="badge">{projeto.status === 'ATIVO' ? 'Ativo' : 'Finalizado'}</span>
-              </div>
-              {projeto.descricao && <p>{projeto.descricao}</p>}
-              <nav style={{ display: 'flex', gap: 12 }}>
-                <Link href={`/projetos/${projeto.id}/board`}>Board</Link>
-                <Link href={`/projetos/${projeto.id}/dashboard`}>Dashboard</Link>
-                <Link href={`/projetos/${projeto.id}/admin`}>Administracao</Link>
-              </nav>
-            </li>
+            <Link
+              key={projeto.id}
+              className="card project-card"
+              href={`/projetos/${projeto.id}/board`}
+            >
+              <h3>{projeto.nome}</h3>
+              {projeto.descricao && <p className="text-secondary">{projeto.descricao}</p>}
+              <Badge variante={projeto.status === 'ATIVO' ? 'success' : 'neutro'}>
+                {projeto.status === 'ATIVO' ? 'Ativo' : 'Finalizado'}
+              </Badge>
+            </Link>
           ))}
-        </ul>
+        </div>
       )}
     </>
   );
