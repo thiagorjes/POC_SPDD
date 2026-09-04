@@ -1,0 +1,65 @@
+{
+  "skill": "solution",
+  "artifact_pattern": "docs/solution/*-solution.md",
+  "modes": {
+    "input": {
+      "stale_check": "mtime",
+      "required_artifacts": [
+        "docs/shape/{{FEATURE}}-brief.md",
+        "docs/context/{{FEATURE}}-context.md"
+      ]
+    },
+    "output": {
+      "required_sections": [
+        "## Fluxos de operação",
+        "## Estados e transições",
+        "## Semântica de contrato",
+        "## Regras de borda",
+        "## Opções de comportamento consideradas",
+        "## Entidades e vocabulário",
+        "## Fora deste artefato — regras negativas"
+      ],
+      "no_empty_placeholders": true,
+      "gherkin_required_for_ids": [],
+      "forbidden_patterns": [
+        {
+          "pattern": "\\b(PostgreSQL|MySQL|MongoDB|SQLite|Redis|Kafka|RabbitMQ|SQS|React|Angular|Vue|Svelte|Django|Spring|Express|Docker|Kubernetes|Terraform|GraphQL|gRPC|REST|JSON|XML|Protobuf|Lambda|S3)\\b",
+          "motivo": "tecnologia, protocolo ou formato",
+          "pertence_a": "/techspec"
+        },
+        {
+          "pattern": "\\b(CREATE TABLE|FOREIGN KEY|VARCHAR|índice|indice) \\b|\\b(GET|POST|PUT|PATCH|DELETE)\\s+/",
+          "motivo": "esquema de dados ou endpoint",
+          "pertence_a": "/techspec"
+        },
+        {
+          "pattern": "\\b(RF|RNF|RN)-\\d+|\\bSCN-\\d+",
+          "motivo": "requisito ou cenário numerado",
+          "pertence_a": "/prd"
+        },
+        {
+          "pattern": "^\\s*(Dado|Given)\\s+que\\b|^\\s*(Cenário|Scenario):",
+          "motivo": "cenário Gherkin",
+          "pertence_a": "/prd"
+        },
+        {
+          "pattern": "\\bTASK-\\d+|\\bEPIC-\\d+",
+          "motivo": "task ou épico",
+          "pertence_a": "/tasks"
+        },
+        {
+          "pattern": "\\b(wireframe|mockup|bot[ãa]o|dropdown|modal|breadcrumb)\\b",
+          "motivo": "elemento de interface",
+          "pertence_a": "/design"
+        }
+      ],
+      "custom_steps": [
+        {
+          "name": "check_bordas",
+          "script": ".agents/skills/solution/scripts/check_bordas.py",
+          "args": ["--artifact", "{{INPUT_ARTIFACT}}"]
+        }
+      ]
+    }
+  }
+}

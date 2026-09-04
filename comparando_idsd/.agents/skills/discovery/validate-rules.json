@@ -1,0 +1,66 @@
+{
+  "skill": "discovery",
+  "artifact_pattern": "docs/discovery/*-discovery.md",
+  "modes": {
+    "input": {
+      "stale_check": "mtime",
+      "required_artifacts": [
+        "docs/intent/{{FEATURE}}-intent.md",
+        "docs/context/{{FEATURE}}-context.md"
+      ]
+    },
+    "output": {
+      "required_sections": [
+        "## Situação atual",
+        "## Dores observadas",
+        "## Personas",
+        "## Enquadramentos alternativos do problema",
+        "## Restrições de contexto",
+        "## Sinais contraditórios",
+        "## Perguntas em aberto",
+        "## Fora deste artefato — regras negativas"
+      ],
+      "no_empty_placeholders": true,
+      "gherkin_required_for_ids": [],
+      "forbidden_patterns": [
+        {
+          "pattern": "\\b(RF|RNF|RN)-\\d+|\\bSCN-\\d+",
+          "motivo": "requisito ou cenário numerado",
+          "pertence_a": "/prd"
+        },
+        {
+          "pattern": "^\\s*(Dado|Given)\\s+que\\b|^\\s*(Cenário|Scenario):",
+          "motivo": "cenário Gherkin",
+          "pertence_a": "/prd"
+        },
+        {
+          "pattern": "\\b(PostgreSQL|MySQL|MongoDB|Redis|Kafka|React|Angular|Vue|Docker|Kubernetes|GraphQL|gRPC)\\b",
+          "motivo": "tecnologia",
+          "pertence_a": "/techspec"
+        },
+        {
+          "pattern": "\\b(wireframe|mockup|dropdown|modal|breadcrumb)\\b",
+          "motivo": "elemento de interface",
+          "pertence_a": "/design"
+        },
+        {
+          "pattern": "\\bTASK-\\d+|\\bEPIC-\\d+",
+          "motivo": "task ou épico",
+          "pertence_a": "/tasks"
+        },
+        {
+          "pattern": "\\b(dire[çc][ãa]o escolhida|decidimos (que|por)|op[çc][ãa]o escolhida)\\b",
+          "motivo": "escolha de direção — discovery diverge, não converge",
+          "pertence_a": "/shape"
+        }
+      ],
+      "custom_steps": [
+        {
+          "name": "check_divergencia",
+          "script": ".agents/skills/discovery/scripts/check_divergencia.py",
+          "args": ["--artifact", "{{INPUT_ARTIFACT}}"]
+        }
+      ]
+    }
+  }
+}

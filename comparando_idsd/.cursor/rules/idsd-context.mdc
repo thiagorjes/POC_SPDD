@@ -1,0 +1,8 @@
+---
+description: "Monta o contexto mínimo necessário para a etapa seguinte e registra toda lacuna como evidência em vez de inferir. Terceira etapa da camada de Controle, reexecutada antes de cada etapa de Execução. Use após /classify e sempre que uma etapa precisar de insumo que ainda não está em disco."
+alwaysApply: false
+---
+
+<!-- GERADO por .agents/scripts/generate_platform.py — nao editar. -->
+
+@.agents/skills/context/SKILL.md

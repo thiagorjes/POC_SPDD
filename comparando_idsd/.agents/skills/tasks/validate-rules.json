@@ -1,0 +1,74 @@
+{
+  "skill": "tasks",
+  "artifact_pattern": "docs/tasks/*-tasks.md",
+  "modes": {
+    "input": {
+      "stale_check": "mtime",
+      "required_artifacts": [
+        "docs/prd/{{FEATURE}}-prd.md",
+        "docs/techspec/{{FEATURE}}-techspec.md"
+      ]
+    },
+    "output": {
+      "required_sections": [
+        "## Princípios para tasks prontas para IA",
+        "## Sumário de épicos",
+        "### Cobertura de cenários",
+        "### Dimensionamento",
+        "## Grafo de dependências",
+        "## Fora do escopo desta entrega",
+        "## Fora deste artefato — regras negativas"
+      ],
+      "id_patterns": {
+        "EPIC": "EPIC-\\d{2}",
+        "TASK": "TASK-\\d{2}\\.\\d{1,2}",
+        "SCN": "SCN-\\d{3}\\.\\d{1,2}"
+      },
+      "no_empty_placeholders": true,
+      "forbidden_patterns": [
+        {
+          "pattern": "^\\s*(US|HU)-\\d+",
+          "motivo": "camada de User Story eliminada — o cenário é a narrativa",
+          "pertence_a": "/prd"
+        },
+        {
+          "pattern": "^\\s*(RF|RNF|RN)-\\d{3}\\s*[—:-]\\s*\\w",
+          "motivo": "definição de requisito",
+          "pertence_a": "/prd"
+        },
+        {
+          "pattern": "```gherkin",
+          "motivo": "cenário Gherkin — congelado no gate de spec",
+          "pertence_a": "/prd"
+        },
+        {
+          "pattern": "\\b(def test_|@Test\\b|it\\(|describe\\(|step definition)",
+          "motivo": "código de teste ou step definition",
+          "pertence_a": "/tests"
+        },
+        {
+          "pattern": "\\b(decidimos usar|optamos por|escolhemos)\\b",
+          "motivo": "decisão arquitetural",
+          "pertence_a": "/techspec"
+        }
+      ],
+      "custom_steps": [
+        {
+          "name": "check_cobertura",
+          "script": ".agents/skills/tasks/scripts/check_cobertura.py",
+          "args": [
+            "--tasks",
+            "{{INPUT_ARTIFACT}}",
+            "--prd",
+            "docs/prd/{{FEATURE}}-prd.md"
+          ]
+        },
+        {
+          "name": "check_task_files",
+          "script": ".agents/skills/tasks/scripts/check_task_files.py",
+          "args": ["--tasks", "{{INPUT_ARTIFACT}}"]
+        }
+      ]
+    }
+  }
+}

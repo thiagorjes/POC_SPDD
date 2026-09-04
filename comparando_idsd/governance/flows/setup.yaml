@@ -1,0 +1,19 @@
+# Flow — setup (preparação de sistema)
+#
+# Flow de setup não nasce de um intent classificado: ele prepara o sistema para
+# que os flows de execução possam rodar. Por isso não declara `atende` e não
+# cobre gate de classe — `validate_flow.py` trata `tipo: setup` como exceção
+# explícita, não como manifesto incompleto.
+#
+# Roda uma vez por sistema, e novamente sempre que a stack mudar.
+
+version: 1
+id: setup
+nome: Preparação de sistema
+tipo: setup
+
+etapas:
+
+  - skill: /guidelines
+    camada: governance
+    satisfaz: []

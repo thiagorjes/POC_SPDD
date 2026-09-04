@@ -1,0 +1,90 @@
+# Policy — gates obrigatórios por classe de intent
+#
+# Esta é a resposta à pergunta "como garanto que qualquer flow entregue o SPDD?".
+# Não se garante que todo flow rode o SSPDD. Garante-se que todo flow satisfaça
+# os gates que esta policy exige para a classe do intent que o originou.
+#
+# Um flow é registrado apenas se seu manifesto cobre todos os gates obrigatórios
+# da(s) classe(s) que declara atender. A verificação é de registro, não de runtime
+# (ver validate_flow.py).
+#
+# REGRA: agentes não têm permissão de escrita neste arquivo (IDSD 4.1.1).
+
+version: 1
+
+nucleo_inegociavel:
+  # Nenhum flow, em nenhuma classe, pode dispensar estes.
+  - GATE-CLASSIFY
+  - GATE-CONTEXT
+  - GATE-EVIDENCIA
+  - GATE-DADOS
+
+classes:
+
+  feature:
+    descricao: Comportamento novo ou alteração de comportamento existente.
+    gates:
+      - GATE-INTENT
+      - GATE-DIRECAO
+      - GATE-SPEC
+      - GATE-PROVENIENCIA
+      - GATE-CONSISTENCIA
+      - GATE-RASTREABILIDADE
+      - GATE-VERIFICACAO-INDEPENDENTE
+      - GATE-GHERKIN-CONGELADO
+      - GATE-NFR
+      - GATE-REVISAO-TECNICA
+
+  bug:
+    descricao: Comportamento existente diverge do especificado.
+    gates:
+      - GATE-INTENT
+      - GATE-SPEC              # satisfeito por emenda de cenário, não por PRD novo
+      - GATE-VERIFICACAO-INDEPENDENTE
+      - GATE-GHERKIN-CONGELADO
+      - GATE-REVISAO-TECNICA
+
+  dependencia:
+    descricao: Atualização de dependência sem comportamento novo.
+    gates:
+      - GATE-VERIFICACAO-INDEPENDENTE   # suíte existente, inalterada
+      - GATE-REVISAO-TECNICA
+
+  migracao:
+    descricao: Movimentação de sistema ou dados com paridade de comportamento.
+    gates:
+      - GATE-INTENT
+      - GATE-DIRECAO
+      - GATE-SPEC
+      - GATE-PROVENIENCIA
+      - GATE-CONSISTENCIA
+      - GATE-RASTREABILIDADE
+      - GATE-VERIFICACAO-INDEPENDENTE
+      - GATE-NFR
+      - GATE-REVISAO-TECNICA
+
+  emergencia:
+    descricao: >
+      Contenção imediata de incidente. Inverte a ordem, não pula etapas.
+      Gates marcados como posteriores viram dívida de reconciliação.
+    gates: []
+    posteriores:
+      prazo_dias_uteis: 5
+      gates:
+        - GATE-RECONCILIACAO
+        - GATE-INTENT
+        - GATE-SPEC
+        - GATE-VERIFICACAO-INDEPENDENTE
+        - GATE-REVISAO-TECNICA
+
+# Um gate obrigatório pode ser dispensado para uma execução específica apenas
+# por waiver explícito: autor humano, motivo, validade. Waiver sem validade é
+# inválido. Waivers vivem em governance/waivers/ e entram na evidência.
+waiver:
+  permitido_para:
+    - GATE-NFR
+    - GATE-CONSISTENCIA
+  proibido_para:
+    - GATE-EVIDENCIA
+    - GATE-DADOS
+    - GATE-VERIFICACAO-INDEPENDENTE

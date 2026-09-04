@@ -1,0 +1,185 @@
+# Catálogo de Gates — IDSD
+#
+# Um gate é uma condição verificável que uma execução precisa satisfazer.
+# Gates são declarados aqui (Governança) e referenciados pelos flows (Execução).
+# Nenhum flow define gate próprio; nenhuma skill decide se um gate se aplica.
+#
+# Campos:
+#   id          identificador estável, nunca reutilizado
+#   clausula    cláusula do IDSD que origina o gate
+#   verifica    o que precisa ser verdade
+#   evidencia   artefato(s) que satisfazem o gate (glob relativo à raiz do sistema)
+#   verificador script que decide automaticamente, ou 'humano'
+#   bloqueia    true = falha impede a transição de estado
+#
+# REGRA: agentes não têm permissão de escrita neste arquivo (IDSD 4.1.1).
+
+version: 1
+
+gates:
+
+  # ---------- Controle: entrada ----------
+
+  - id: GATE-INTENT
+    clausula: "4.2"
+    verifica: >
+      A intenção foi registrada nas palavras do demandante e validada por ele
+      antes de qualquer trabalho de descoberta.
+    evidencia:
+      - docs/intent/{{FEATURE}}-intent.md
+    verificador: validate_gate_intent.py
+    bloqueia: true
+
+  - id: GATE-CLASSIFY
+    clausula: "4.3"
+    verifica: >
+      Tipo, domínio, risco e impacto foram atribuídos e o flow aplicável foi
+      resolvido. Override de classificação, se houver, tem justificativa e autor.
+    evidencia:
+      - docs/intent/{{FEATURE}}-classification.md
+    verificador: validate_gate_classify.py
+    bloqueia: true
+
+  - id: GATE-CONTEXT
+    clausula: "4.6"
+    verifica: >
+      O contexto mínimo da etapa foi montado e toda lacuna foi registrada como
+      evidência. Nenhuma lacuna foi preenchida por inferência do agente.
+    evidencia:
+      - docs/context/{{FEATURE}}-context.md
+    verificador: validate_gate_context.py
+    bloqueia: true
+
+  # ---------- Execução: ideação ----------
+
+  - id: GATE-DIRECAO
+    clausula: "4.7.3"
+    verifica: >
+      Existe uma direção escolhida, com alternativas descartadas e motivo,
+      fronteira de escopo e métrica de sucesso. Aprovada por humano.
+      Nenhum requisito numerado neste ponto.
+    evidencia:
+      - docs/shape/{{FEATURE}}-brief.md
+    verificador: humano
+    bloqueia: true
+
+  - id: GATE-SPEC
+    clausula: "4.7.3"
+    verifica: >
+      Requisitos, regras e critérios de aceite estão registrados com procedência
+      por regra. Cenários Gherkin têm ID estável. Nenhuma dúvida material aberta.
+      Aprovada por humano.
+    evidencia:
+      - docs/prd/{{FEATURE}}-prd.md
+      - docs/prd/{{FEATURE}}/*.feature
+    verificador: humano
+    bloqueia: true
+
+  - id: GATE-PROVENIENCIA
+    clausula: "4.7.3"
+    verifica: >
+      Toda regra e requisito tem procedência declarada entre: informada,
+      derivada, extraída de legado, hipótese a validar, inferida pelo agente.
+      Hipótese a validar exige experimento e critério de descarte.
+    evidencia:
+      - docs/prd/{{FEATURE}}-prd.md
+    verificador: validate_gate_proveniencia.py
+    bloqueia: true
+
+  # ---------- Execução: plano ----------
+
+  - id: GATE-CONSISTENCIA
+    clausula: "4.8"
+    verifica: >
+      Não há contradição, lacuna de cobertura ou ambiguidade entre os artefatos
+      de spec, design e plano. Nenhum achado de severidade alta em aberto.
+    evidencia:
+      - docs/analyze/{{FEATURE}}-analysis.md
+    verificador: validate_gate_consistencia.py
+    bloqueia: true
+
+  - id: GATE-RASTREABILIDADE
+    clausula: "4.8"
+    verifica: >
+      Cada cenário é entregue por exatamente um épico e cada épico entrega ao
+      menos um cenário. A cadeia RF → SCN → EPIC → TASK está fechada.
+    evidencia:
+      - docs/tasks/{{FEATURE}}-tasks.md
+    verificador: validate_gate_rastreabilidade.py
+    bloqueia: true
+
+  # ---------- Execução: verificação ----------
+
+  - id: GATE-VERIFICACAO-INDEPENDENTE
+    clausula: "4.9.1"
+    verifica: >
+      Os testes que verificam um cenário foram escritos sem acesso à
+      implementação que os satisfaz. Comprovado pela ordem no histórico do
+      repositório: o commit dos testes precede o commit da implementação.
+    evidencia:
+      - docs/evidence/{{FEATURE}}/verification-order.md
+    verificador: validate_gate_verificacao.py
+    bloqueia: true
+
+  - id: GATE-GHERKIN-CONGELADO
+    clausula: "4.9.1"
+    verifica: >
+      Nenhum cenário aprovado foi alterado depois do gate de spec sem emenda
+      registrada. Alteração de .feature fora de emenda é violação.
+    evidencia:
+      - docs/prd/{{FEATURE}}/*.feature
+    verificador: validate_gate_gherkin.py
+    bloqueia: true
+
+  - id: GATE-NFR
+    clausula: "4.9.2"
+    verifica: >
+      Cada requisito não-funcional tem envelope declarado (limite, condição de
+      medição) e resultado medido dentro do envelope.
+    evidencia:
+      - docs/evidence/{{FEATURE}}/nfr-envelopes.md
+    verificador: validate_gate_nfr.py
+    bloqueia: true
+
+  - id: GATE-REVISAO-TECNICA
+    clausula: "4.9.3"
+    verifica: >
+      Houve revisão técnica por revisor sem permissão de escrita no código
+      revisado. Achados classificados por severidade; nenhum bloqueante aberto.
+    evidencia:
+      - docs/review/{{FEATURE}}/*.md
+    verificador: validate_gate_revisao.py
+    bloqueia: true
+
+  # ---------- Execução: encerramento ----------
+
+  - id: GATE-EVIDENCIA
+    clausula: "4.10"
+    verifica: >
+      O pacote de evidências está completo e selado com hash no release.
+      Registro ausente é falha — nunca reconstrução.
+    evidencia:
+      - docs/evidence/{{FEATURE}}/manifest.json
+    verificador: validate_gate_evidencia.py
+    bloqueia: true
+
+  - id: GATE-DADOS
+    clausula: "4.10.1"
+    verifica: >
+      Nenhum dado real de cliente aparece em prompt, artefato ou evidência.
+    evidencia:
+      - docs/evidence/{{FEATURE}}/manifest.json
+    verificador: validate_gate_dados.py
+    bloqueia: true
+
+  # ---------- Reconciliação ----------
+
+  - id: GATE-RECONCILIACAO
+    clausula: "4.4.1"
+    verifica: >
+      Execução em flow de emergência teve Intent, Spec e Evidence reconciliadas
+      dentro do prazo da policy. Dívida em aberto é visível e bloqueante.
+    evidencia:
+      - docs/evidence/{{FEATURE}}/reconciliation.md
+    verificador: validate_gate_reconciliacao.py
+    bloqueia: true

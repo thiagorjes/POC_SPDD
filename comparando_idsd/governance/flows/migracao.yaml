@@ -1,0 +1,56 @@
+version: 1
+id: migracao
+nome: Migração com paridade de comportamento
+framework: SSPDD
+atende: [migracao]
+
+etapas:
+  - skill: /intent
+    camada: control
+    satisfaz: [GATE-INTENT]
+  - skill: /classify
+    camada: control
+    satisfaz: [GATE-CLASSIFY]
+  - skill: /context
+    camada: control
+    satisfaz: [GATE-CONTEXT]
+  - skill: /discovery
+    camada: execution
+    modo: engenharia-reversa
+    satisfaz: []
+  - skill: /shape
+    camada: execution
+    modo: recorte-de-onda
+    satisfaz: [GATE-DIRECAO]
+  - skill: /solution
+    camada: execution
+    modo: paridade-de-comportamento
+    satisfaz: []
+  - skill: /prd
+    camada: execution
+    modo: spec-de-paridade
+    satisfaz: [GATE-SPEC, GATE-PROVENIENCIA]
+  - skill: /techspec
+    camada: execution
+    satisfaz: []
+  - skill: /analyze
+    camada: execution
+    satisfaz: [GATE-CONSISTENCIA]
+  - skill: /tasks
+    camada: execution
+    satisfaz: [GATE-RASTREABILIDADE]
+  - skill: /tests
+    camada: execution
+    modo: paridade
+    satisfaz: [GATE-VERIFICACAO-INDEPENDENTE]
+    restricao: sem_acesso_a_implementacao
+  - skill: /implement
+    camada: execution
+    satisfaz: []
+  - skill: /code-review
+    camada: execution
+    satisfaz: [GATE-REVISAO-TECNICA, GATE-NFR]
+    restricao: revisor_sem_escrita
+  - skill: /evidence
+    camada: execution
+    satisfaz: [GATE-EVIDENCIA, GATE-DADOS]

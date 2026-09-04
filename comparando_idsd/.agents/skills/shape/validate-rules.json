@@ -1,0 +1,62 @@
+{
+  "skill": "shape",
+  "artifact_pattern": "docs/shape/*-brief.md",
+  "modes": {
+    "input": {
+      "stale_check": "mtime",
+      "required_artifacts": [
+        "docs/intent/{{FEATURE}}-intent.md",
+        "docs/context/{{FEATURE}}-context.md"
+      ]
+    },
+    "output": {
+      "required_sections": [
+        "## Problema escolhido",
+        "## Direção escolhida",
+        "## Alternativas descartadas",
+        "## Fronteira de escopo",
+        "## Personas e jornadas priorizadas",
+        "## Restrições de negócio",
+        "## Métrica de sucesso",
+        "## Aprovação — gate de direção",
+        "## Fora deste artefato — regras negativas"
+      ],
+      "no_empty_placeholders": true,
+      "gherkin_required_for_ids": [],
+      "forbidden_patterns": [
+        {
+          "pattern": "\\b(RF|RNF|RN)-\\d+",
+          "motivo": "requisito numerado — o brief é decisão, não especificação",
+          "pertence_a": "/prd"
+        },
+        {
+          "pattern": "^\\s*(Dado|Given)\\s+que\\b|^\\s*(Cenário|Scenario):",
+          "motivo": "cenário Gherkin",
+          "pertence_a": "/prd"
+        },
+        {
+          "pattern": "\\bSCN-\\d+|\\bTASK-\\d+|\\bEPIC-\\d+",
+          "motivo": "identificador de cenário, task ou épico",
+          "pertence_a": "/prd e /tasks"
+        },
+        {
+          "pattern": "\\b(PostgreSQL|MySQL|MongoDB|Redis|Kafka|RabbitMQ|React|Angular|Vue|Docker|Kubernetes|GraphQL|gRPC|Lambda)\\b",
+          "motivo": "escolha de tecnologia",
+          "pertence_a": "/techspec"
+        },
+        {
+          "pattern": "\\bcrit[ée]rios? de aceite\\b",
+          "motivo": "critério de aceite",
+          "pertence_a": "/prd"
+        }
+      ],
+      "custom_steps": [
+        {
+          "name": "check_convergencia",
+          "script": ".agents/skills/shape/scripts/check_convergencia.py",
+          "args": ["--artifact", "{{INPUT_ARTIFACT}}"]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,8 @@
+---
+name: solution
+description: "Explora o comportamento da solução sem nenhuma tecnologia — fluxos de operação, estados e transições, semântica de contrato e regras de borda. É a divergência do segundo diamante e funciona para fluxos com e sem tela. Use após /shape, antes de /design e /prd."
+---
+
+<!-- GERADO por .agents/scripts/generate_platform.py — nao editar. -->
+
+@.agents/skills/solution/SKILL.md

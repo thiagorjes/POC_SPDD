@@ -1,0 +1,55 @@
+{
+  "skill": "techspec",
+  "artifact_pattern": "docs/techspec/*-techspec.md",
+  "modes": {
+    "input": {
+      "stale_check": "mtime",
+      "required_artifacts": [
+        "memory/state.md",
+        "docs/prd/{{FEATURE}}-prd.md",
+        "guidelines.yaml"
+      ]
+    },
+    "output": {
+      "required_sections": [
+        "## 1. Visão Geral Técnica",
+        "## 2. Decisões Arquiteturais",
+        "## 3. Modelo de Dados",
+        "## 5. Arquitetura e Fluxo",
+        "## 6. Dependências Inter-Sistemas",
+        "## 7. Estratégia de Testes",
+        "## 9. Matriz de Rastreabilidade"
+      ],
+      "id_patterns": {},
+      "gherkin_required_for_ids": [],
+      "no_empty_placeholders": true,
+      "forbidden_patterns": [
+        {
+          "pattern": "```gherkin",
+          "motivo": "cenário Gherkin — congelado no gate de spec",
+          "pertence_a": "/prd"
+        },
+        {
+          "pattern": "\\bTASK-\\d{2}\\.\\d{1,2}\\b",
+          "motivo": "planejamento de task",
+          "pertence_a": "/tasks"
+        },
+        {
+          "pattern": "^\\s*\\|?\\s*EPIC-\\d{2}\\b",
+          "motivo": "épico",
+          "pertence_a": "/tasks"
+        }
+      ],
+      "custom_steps": [
+        {
+          "name": "check_rf_coverage",
+          "script": ".agents/skills/techspec/scripts/check_rf_coverage.py",
+          "args": [
+            "--prd", "docs/prd/{{FEATURE}}-prd.md",
+            "--techspec", "{{INPUT_ARTIFACT}}"
+          ]
+        }
+      ]
+    }
+  }
+}

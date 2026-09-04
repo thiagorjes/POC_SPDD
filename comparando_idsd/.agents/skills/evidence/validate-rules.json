@@ -1,0 +1,50 @@
+{
+  "skill": "evidence",
+  "artifact_pattern": "docs/evidence/*/evidence.md",
+  "modes": {
+    "input": {
+      "stale_check": "mtime",
+      "required_artifacts": [
+        "docs/intent/{{FEATURE}}-classification.md"
+      ]
+    },
+    "output": {
+      "required_sections": [
+        "## Conformidade de gates",
+        "## Versões",
+        "## Classificação e overrides",
+        "## Rastreabilidade",
+        "## Ordem de verificação",
+        "## Resultados de cenário",
+        "## Envelopes de NFR",
+        "## Achados de revisão",
+        "## Tentativas e custo",
+        "## Intervenções humanas",
+        "## Verificação de dados sensíveis",
+        "## Registros ausentes",
+        "## Fora deste artefato — regras negativas"
+      ],
+      "no_empty_placeholders": true,
+      "gherkin_required_for_ids": [],
+      "forbidden_patterns": [
+        {
+          "pattern": "reconstitu[íi]d[oa]|reconstru[íi]d[oa] a partir|inferid[oa] do c[óo]digo|presumid[oa]",
+          "motivo": "registro reconstruído — ausência de registro é falha, não lacuna a preencher (IDSD 4.10)",
+          "pertence_a": "a seção Registros ausentes"
+        },
+        {
+          "pattern": "\\b(em resumo|conclui-se que|na minha avalia[çc][ãa]o)\\b",
+          "motivo": "interpretação — evidência transcreve, não analisa",
+          "pertence_a": "/analyze ou /code-review"
+        }
+      ],
+      "custom_steps": [
+        {
+          "name": "check_selo",
+          "script": ".agents/skills/evidence/scripts/check_selo.py",
+          "args": ["--artifact", "{{INPUT_ARTIFACT}}"]
+        }
+      ]
+    }
+  }
+}

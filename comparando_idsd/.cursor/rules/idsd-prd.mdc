@@ -1,0 +1,8 @@
+---
+description: "Converge a exploração de solução e o protótipo em escopo de entrega — regras de negócio, requisitos funcionais e não-funcionais, critérios de aceite em Gherkin com ID estável e procedência declarada por regra. Sai no gate de spec, a partir do qual os cenários viram contrato congelado. Use após /solution e /design."
+alwaysApply: false
+---
+
+<!-- GERADO por .agents/scripts/generate_platform.py — nao editar. -->
+
+@.agents/skills/prd/SKILL.md

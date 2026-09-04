@@ -1,0 +1,47 @@
+{
+  "skill": "spdd-sync",
+  "artifact_pattern": "docs/spdd/*-deviations.md",
+  "modes": {
+    "input": {
+      "stale_check": "mtime",
+      "required_artifacts": [
+        "docs/prd/{{FEATURE}}-prd.md",
+        "docs/tasks/{{FEATURE}}-tasks.md"
+      ]
+    },
+    "output": {
+      "required_sections": [
+        "## Sumário",
+        "## Fora deste artefato — regras negativas"
+      ],
+      "id_patterns": {
+        "DEV": "DEV-\\d{2}"
+      },
+      "no_empty_placeholders": true,
+      "forbidden_patterns": [
+        {
+          "pattern": "```gherkin",
+          "motivo": "cenário Gherkin",
+          "pertence_a": "/prd e o plano de verificação"
+        },
+        {
+          "pattern": "\\b(corrigi o c[óo]digo|apliquei a corre[çc][ãa]o|refatorei)\\b",
+          "motivo": "correção feita pela própria skill",
+          "pertence_a": "/implement"
+        },
+        {
+          "pattern": "\\b(DRAFT|READY)\\b",
+          "motivo": "estado manual de canvas, que não existe mais",
+          "pertence_a": "o check canvas-drift"
+        }
+      ],
+      "custom_steps": [
+        {
+          "name": "check_desvios",
+          "script": ".agents/skills/spdd-sync/scripts/check_desvios.py",
+          "args": ["--artifact", "{{INPUT_ARTIFACT}}"]
+        }
+      ]
+    }
+  }
+}

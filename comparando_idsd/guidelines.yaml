@@ -1,0 +1,18 @@
+# Vínculo do sistema IDSD com a biblioteca compartilhada de guidelines.
+#
+# A biblioteca não pertence a este sistema: `backend/java` vale para todo
+# sistema Java. Aqui se declara apenas quais coleções o governam.
+# Escrito por /guidelines; consumido por /techspec, /tests, /design,
+# /code-review e por derive_canvas.py (dimensão N).
+
+raiz: requirements/guidelines
+
+colecoes:
+  - _shared
+  - backend/java
+  - frontend/nextjs
+  - infra/docker
+
+# infra/docker está declarada como stub (Status: não elaborada). Enquanto isso,
+# a norma de containerização vigente é a do definition-of-done.md de cada stack.
+# frontend/react existe na biblioteca mas não governa este sistema.

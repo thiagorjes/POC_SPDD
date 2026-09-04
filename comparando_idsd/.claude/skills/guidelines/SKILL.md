@@ -1,0 +1,8 @@
+---
+name: guidelines
+description: "Mantém a biblioteca compartilhada de guidelines — transversais em `_shared/` e coleções por stack em `<camada>/<stack>/` — e declara quais coleções governam cada sistema. Conduz a entrevista, materializa o transversal na stack concreta e nunca duplica o que já foi decidido. É setup, não etapa de feature."
+---
+
+<!-- GERADO por .agents/scripts/generate_platform.py — nao editar. -->
+
+@.agents/skills/guidelines/SKILL.md

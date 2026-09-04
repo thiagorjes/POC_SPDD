@@ -1,0 +1,47 @@
+version: 1
+id: bug
+nome: Correção de defeito
+framework: SSPDD
+atende: [bug]
+
+etapas:
+  - skill: /intent
+    camada: control
+    satisfaz: [GATE-INTENT]
+  - skill: /classify
+    camada: control
+    satisfaz: [GATE-CLASSIFY]
+  - skill: /context
+    camada: control
+    satisfaz: [GATE-CONTEXT]
+  - skill: /discovery
+    camada: execution
+    modo: reproducao
+    satisfaz: []
+  - skill: /prd
+    camada: execution
+    modo: emenda-de-cenario
+    satisfaz: [GATE-SPEC]
+  - skill: /techspec
+    camada: execution
+    opcional: true
+    aciona_se: correcao.estrutural
+  - skill: /tasks
+    camada: execution
+    modo: task-unica
+    satisfaz: []
+  - skill: /tests
+    camada: execution
+    modo: regressao
+    satisfaz: [GATE-VERIFICACAO-INDEPENDENTE, GATE-GHERKIN-CONGELADO]
+    restricao: sem_acesso_a_implementacao
+  - skill: /implement
+    camada: execution
+    satisfaz: []
+  - skill: /code-review
+    camada: execution
+    satisfaz: [GATE-REVISAO-TECNICA]
+    restricao: revisor_sem_escrita
+  - skill: /evidence
+    camada: execution
+    satisfaz: [GATE-EVIDENCIA, GATE-DADOS]

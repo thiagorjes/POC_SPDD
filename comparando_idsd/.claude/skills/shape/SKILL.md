@@ -1,0 +1,8 @@
+---
+name: shape
+description: "Converge o discovery em uma direção decidida — problema escolhido, alternativas descartadas com motivo, fronteira de escopo, personas priorizadas e métrica de sucesso. Produz decisão, não especificação. Suporta modo ingestão para Lean Inception, RFP e specs herdadas. Use após /discovery, antes de /solution."
+---
+
+<!-- GERADO por .agents/scripts/generate_platform.py — nao editar. -->
+
+@.agents/skills/shape/SKILL.md

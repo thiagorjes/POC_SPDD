@@ -1,0 +1,148 @@
+{
+  "$comment": "Tokens extraídos de tailwind.config.ts + src/app/globals.css (transacional-ibanking-web). Fonte de verdade: o código. Regenerar após mudanças no theme do Tailwind ou nas CSS custom properties.",
+  "meta": {
+    "system": "transacional-ibanking-web",
+    "extractedAt": "2026-09-01",
+    "sources": ["tailwind.config.ts", "src/app/globals.css", "src/assets/fonts/index.ts"],
+    "tailwindVersion": "3.4.17",
+    "themeStrategy": "CSS custom properties + Tailwind theme; darkMode: ['selector'] (classe .dark)"
+  },
+  "color": {
+    "semantic": {
+      "light": {
+        "background": "#ffffff",
+        "foreground": "#374151",
+        "primary": "#004b8d",
+        "primary-hover": "#003564",
+        "primary-active": "#00294e",
+        "primary-foreground": "#ffffff",
+        "secondary": "#ffffff",
+        "secondary-hover": "#f9fafb",
+        "secondary-active": "#f3f4f6",
+        "secondary-foreground": "#374151",
+        "secondary-border": "#e5e7eb",
+        "ghost-foreground": "#004b8d",
+        "ghost-hover": "#e6edf4",
+        "ghost-active": "#b0c7dc",
+        "destructive": "#fef2f2",
+        "destructive-hover": "#fee2e2",
+        "destructive-active": "#fecaca",
+        "destructive-foreground": "#991b1b",
+        "destructive-border": "#fca5a5",
+        "ring": "#004b8d",
+        "ring-destructive": "#991b1b"
+      },
+      "dark": {
+        "background": "#0c111d",
+        "foreground": "#f5f5f6",
+        "primary": "#004b8d",
+        "primary-hover": "#336fa4",
+        "primary-active": "#004480",
+        "primary-foreground": "#ffffff",
+        "secondary": "#161b26",
+        "secondary-hover": "#1f242f",
+        "secondary-active": "#333741",
+        "secondary-foreground": "#cecfd2",
+        "secondary-border": "#333741",
+        "ghost-foreground": "#b0c7dc",
+        "ghost-hover": "#1f242f",
+        "ghost-active": "#333741",
+        "destructive": "#450a0a",
+        "destructive-hover": "#7f1d1d",
+        "destructive-active": "#991b1b",
+        "destructive-foreground": "#fecaca",
+        "destructive-border": "#7f1d1d",
+        "ring": "#5486b3",
+        "ring-destructive": "#f87171"
+      }
+    },
+    "brand": {
+      "blueDark": {
+        "50": "#E6EDF4", "100": "#B0C7DC", "200": "#8AACCB", "300": "#5486B3",
+        "400": "#336FA4", "500": "#004B8D", "600": "#004480", "700": "#003564",
+        "800": "#00294E", "900": "#00203B", "950": "#041B2F"
+      },
+      "ocean": {
+        "50": "#E6F2F9", "100": "#B0D6EC", "200": "#8AC3E3", "300": "#55A7D7",
+        "400": "#3496CF", "500": "#007CC3", "600": "#017CC3", "700": "#0171B1",
+        "800": "#01588A", "900": "#01446B", "950": "#003452"
+      }
+    },
+    "grayDark": {
+      "50": "#F5F5F6", "100": "#F0F1F1", "200": "#ECECED", "300": "#CECFD2",
+      "400": "#94969C", "500": "#85888E", "600": "#61646C", "700": "#333741",
+      "800": "#1F242F", "900": "#161B26", "950": "#0C111D"
+    },
+    "$note": "Cores utilitárias do Tailwind (gray-*, blue-*, red-*, emerald-* etc.) permanecem disponíveis via paleta default e são usadas em pontos localizados (ex.: border-gray-300 em inputs, bg-emerald-50 em badges de status)."
+  },
+  "typography": {
+    "fontFamily": {
+      "sans": ["Inter", "var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"]
+    },
+    "fontSource": "next/font/local — Inter Variable (opsz,wght), normal + italic, display swap; exposto como CSS var --font-inter",
+    "fontWeight": { "regular": 400, "medium": 500, "semibold": 600 },
+    "fontSize": {
+      "xs":   { "size": "0.75rem",  "px": 12, "lineHeight": "1.125rem", "lineHeightPx": 18 },
+      "sm":   { "size": "0.875rem", "px": 14, "lineHeight": "1.25rem",  "lineHeightPx": 20 },
+      "base": { "size": "1rem",     "px": 16, "lineHeight": "1.5rem",   "lineHeightPx": 24 },
+      "lg":   { "size": "1.125rem", "px": 18, "lineHeight": "1.75rem",  "lineHeightPx": 28 },
+      "xl":   { "size": "1.25rem",  "px": 20, "lineHeight": "1.875rem", "lineHeightPx": 30 },
+      "2xl":  { "size": "1.5rem",   "px": 24, "lineHeight": "2rem",     "lineHeightPx": 32 },
+      "3xl":  { "size": "1.875rem", "px": 30, "lineHeight": "2.375rem", "lineHeightPx": 38 },
+      "4xl":  { "size": "2.25rem",  "px": 36, "lineHeight": "2.75rem",  "lineHeightPx": 44 }
+    },
+    "rootFontSize": "16px (html { font-size: var(--fontSize) }, --fontSize: 16px)"
+  },
+  "spacing": {
+    "$base": "--spacing: 1rem (16px)",
+    "scale": {
+      "sm":  { "expr": "calc(var(--spacing) - 10px)", "px": 6 },
+      "md":  { "expr": "calc(var(--spacing) - 8px)",  "px": 8 },
+      "lg":  { "expr": "calc(var(--spacing) - 4px)",  "px": 12 },
+      "2xl": { "expr": "calc(var(--spacing) + 4px)",  "px": 20 },
+      "3xl": { "expr": "calc(var(--spacing) + 8px)",  "px": 24 },
+      "4xl": { "expr": "calc(var(--spacing) + 16px)", "px": 32 },
+      "5xl": { "expr": "calc(var(--spacing) + 24px)", "px": 40 },
+      "6xl": { "expr": "calc(var(--spacing) + 28px)", "px": 44 },
+      "7xl": { "expr": "calc(var(--spacing) + 48px)", "px": 64 },
+      "8xl": { "expr": "calc(var(--spacing) + 64px)", "px": 80 }
+    },
+    "$note": "Escala default do Tailwind (p-4, gap-5, space-y-2 ...) continua ativa e é a mais usada nos componentes; a escala custom acima cobre tokens nomeados (ex.: p-4xl no container de página)."
+  },
+  "borderRadius": {
+    "$base": "--radius: 1rem (16px)",
+    "scale": {
+      "sm": { "expr": "calc(var(--radius) - 14px)", "px": 2 },
+      "md": { "expr": "calc(var(--radius) - 10px)", "px": 6 },
+      "lg": { "expr": "calc(var(--radius) - 8px)",  "px": 8 },
+      "xl": { "expr": "calc(var(--radius) - 4px)",  "px": 12 }
+    },
+    "$note": "rounded-full e rounded-2xl (16px, default Tailwind) usados em avatares, pills e popovers/calendário."
+  },
+  "elevation": {
+    "$note": "Sem tokens de shadow custom. Uso pontual das sombras default do Tailwind: shadow-sm (inputs/alerts), shadow-none (Card por padrão), shadow-xl (popover do DatePicker)."
+  },
+  "controlSizes": {
+    "button": { "md": { "height": 44, "paddingX": 16, "text": "base", "iconOnlyWidth": 48 }, "sm": { "height": 36, "paddingX": 12, "text": "sm", "iconOnlyWidth": 36 } },
+    "input": { "height": 44, "paddingX": 12, "text": "sm", "border": "1px solid gray-300", "radius": "md (6px)" },
+    "select": { "triggerHeight": 44 },
+    "navbar": { "height": 80 },
+    "iconSizes": [16, 18, 20, 24]
+  },
+  "breakpoints": {
+    "$note": "Não há override — breakpoints default do Tailwind. App é desktop-first: 'xl' (1280px) é o breakpoint dominante e 'max-xl' o fallback para telas menores.",
+    "sm": "640px", "md": "768px", "lg": "1024px", "xl": "1280px", "2xl": "1536px",
+    "usageRank": ["xl (~187)", "max-xl (~112)", "lg (~57)", "max-lg (~43)", "sm (~12)", "md (~6)", "2xl (~1)"]
+  },
+  "motion": {
+    "keyframes": ["accordion-down", "accordion-up", "collapsible-down", "collapsible-up"],
+    "animation": {
+      "accordion-down": "accordion-down 0.2s ease-out",
+      "accordion-up": "accordion-up 0.2s ease-out",
+      "collapsible-down": "collapsible-down 0.2s ease-out",
+      "collapsible-up": "collapsible-up 0.2s ease-out"
+    },
+    "plugin": "tailwindcss-animate",
+    "transitions": "transition-colors em Button/Input; duration-200 em ícones de accordion"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "skill": "code-review",
+  "artifact_pattern": "docs/review/*/*-review.md",
+  "modes": {
+    "input": {
+      "stale_check": "mtime",
+      "required_artifacts": [
+        "docs/tasks/{{FEATURE}}-tasks.md",
+        "docs/tests/{{FEATURE}}-verificacao.md"
+      ]
+    },
+    "output": {
+      "required_sections": [
+        "## Escopo revisado",
+        "## Conformidade com a especificação",
+        "## Envelopes de RNF",
+        "## Achados",
+        "## Análise de segurança",
+        "## Guardrails extraídos",
+        "## Veredicto",
+        "## Fora deste artefato — regras negativas"
+      ],
+      "id_patterns": {
+        "ACH": "ACH-\\d{2}",
+        "SCN": "SCN-\\d{3}\\.\\d{1,2}",
+        "RNF": "RNF-\\d{3}"
+      },
+      "no_empty_placeholders": true,
+      "forbidden_patterns": [
+        {
+          "pattern": "^\\s*(RF|RNF|RN)-\\d{3}\\s*[—:-]\\s*\\w",
+          "motivo": "definição de requisito",
+          "pertence_a": "/prd"
+        },
+        {
+          "pattern": "```gherkin",
+          "motivo": "cenário Gherkin — congelado no gate de spec",
+          "pertence_a": "/prd"
+        },
+        {
+          "pattern": "^\\s*[-+]{3}\\s|^\\s*@@ ",
+          "motivo": "patch de correção — o revisor não escreve código",
+          "pertence_a": "/implement"
+        },
+        {
+          "pattern": "\\b(corrigi|apliquei a correção|ajustei o código)\\b",
+          "motivo": "correção feita pelo revisor",
+          "pertence_a": "/implement"
+        }
+      ],
+      "custom_steps": [
+        {
+          "name": "check_veredicto",
+          "script": ".agents/skills/code-review/scripts/check_veredicto.py",
+          "args": ["--artifact", "{{INPUT_ARTIFACT}}"]
+        }
+      ]
+    }
+  }
+}

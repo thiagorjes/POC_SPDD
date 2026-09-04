@@ -1,0 +1,8 @@
+---
+description: "Confronta o código entregue com a especificação que o originou e decide, com o humano, qual dos dois lados está errado — corrigir a spec ou corrigir o código. Registra cada desvio e nunca resolve sozinha. Use após /code-review, quando o comportamento implementado divergiu do que estava especificado."
+alwaysApply: false
+---
+
+<!-- GERADO por .agents/scripts/generate_platform.py — nao editar. -->
+
+@.agents/skills/spdd-sync/SKILL.md

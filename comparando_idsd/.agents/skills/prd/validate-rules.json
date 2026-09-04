@@ -1,0 +1,68 @@
+{
+  "skill": "prd",
+  "artifact_pattern": "docs/prd/*-prd.md",
+  "modes": {
+    "input": {
+      "stale_check": "mtime",
+      "required_artifacts": [
+        "docs/shape/{{FEATURE}}-brief.md",
+        "docs/solution/{{FEATURE}}-solution.md"
+      ]
+    },
+    "output": {
+      "required_sections": [
+        "## Escopo da entrega",
+        "## Regras de negócio",
+        "## Requisitos funcionais",
+        "## Requisitos não-funcionais",
+        "## Procedência — resumo",
+        "## Dúvidas materiais em aberto",
+        "## Aprovação — gate de spec",
+        "## Emendas de cenário",
+        "## Fora deste artefato — regras negativas"
+      ],
+      "id_patterns": {
+        "RF": "RF-\\d{3}",
+        "RNF": "RNF-\\d{3}",
+        "RN": "RN-\\d{3}",
+        "SCN": "SCN-\\d{3}\\.\\d{1,2}"
+      },
+      "gherkin_required_for_ids": ["RF"],
+      "no_empty_placeholders": true,
+      "forbidden_patterns": [
+        {
+          "pattern": "\\b(PostgreSQL|MySQL|MongoDB|SQLite|Redis|Kafka|RabbitMQ|React|Angular|Vue|Django|Spring|Docker|Kubernetes|Terraform|gRPC|Protobuf)\\b",
+          "motivo": "tecnologia ou infraestrutura",
+          "pertence_a": "/techspec"
+        },
+        {
+          "pattern": "\\b(CREATE TABLE|FOREIGN KEY|VARCHAR)\\b",
+          "motivo": "esquema de dados",
+          "pertence_a": "/techspec"
+        },
+        {
+          "pattern": "\\bTASK-\\d+|\\bEPIC-\\d+|\\bstory points?\\b",
+          "motivo": "task, épico ou estimativa",
+          "pertence_a": "/tasks"
+        },
+        {
+          "pattern": "\\b(def test_|@Test\\b|it\\(|describe\\(|step definition)",
+          "motivo": "código de teste",
+          "pertence_a": "/tests"
+        }
+      ],
+      "custom_steps": [
+        {
+          "name": "check_proveniencia",
+          "script": ".agents/skills/prd/scripts/check_proveniencia.py",
+          "args": ["--artifact", "{{INPUT_ARTIFACT}}"]
+        },
+        {
+          "name": "check_cenarios",
+          "script": ".agents/skills/prd/scripts/check_cenarios.py",
+          "args": ["--artifact", "{{INPUT_ARTIFACT}}"]
+        }
+      ]
+    }
+  }
+}

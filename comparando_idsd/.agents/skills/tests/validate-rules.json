@@ -1,0 +1,68 @@
+{
+  "skill": "tests",
+  "artifact_pattern": "docs/tests/*-verificacao.md",
+  "modes": {
+    "input": {
+      "stale_check": "mtime",
+      "required_artifacts": [
+        "docs/prd/{{FEATURE}}-prd.md",
+        "docs/tasks/{{FEATURE}}-tasks.md"
+      ]
+    },
+    "output": {
+      "required_sections": [
+        "## Declaração de independência",
+        "## Cenários congelados",
+        "## Estratégia",
+        "## Testes além dos cenários",
+        "## Execução inicial (Red)",
+        "## Congelamento da suíte",
+        "## Fora deste artefato — regras negativas"
+      ],
+      "id_patterns": {
+        "SCN": "SCN-\\d{3}\\.\\d{1,2}",
+        "RF": "RF-\\d{3}"
+      },
+      "no_empty_placeholders": true,
+      "forbidden_patterns": [
+        {
+          "pattern": "^\\s*(RF|RNF|RN)-\\d{3}\\s*[—:-]\\s*\\w",
+          "motivo": "definição de requisito ou regra",
+          "pertence_a": "/prd"
+        },
+        {
+          "pattern": "```gherkin",
+          "motivo": "cenário Gherkin — congelado no gate de spec",
+          "pertence_a": "/prd"
+        },
+        {
+          "pattern": "\\b(TASK-\\d{2}\\.\\d{1,2}\\s+(criada|dividida|nova))\\b",
+          "motivo": "planejamento de task",
+          "pertence_a": "/tasks"
+        },
+        {
+          "pattern": "\\b(decidimos usar|optamos por|escolhemos)\\b",
+          "motivo": "decisão arquitetural",
+          "pertence_a": "/techspec"
+        }
+      ],
+      "custom_steps": [
+        {
+          "name": "check_independencia",
+          "script": ".agents/skills/tests/scripts/check_independencia.py",
+          "args": ["--artifact", "{{INPUT_ARTIFACT}}"]
+        },
+        {
+          "name": "check_congelamento",
+          "script": ".agents/skills/tests/scripts/check_congelamento.py",
+          "args": [
+            "--prd",
+            "docs/prd/{{FEATURE}}-prd.md",
+            "--features",
+            "docs/prd/{{FEATURE}}"
+          ]
+        }
+      ]
+    }
+  }
+}
