@@ -1,6 +1,7 @@
 'use client';
 
 import Keycloak from 'keycloak-js';
+import { obterConfig } from '@/lib/config';
 
 /**
  * Autenticacao exclusivamente via Keycloak. Nao existe fallback local: se o IdP estiver
@@ -11,10 +12,11 @@ let inicializando: Promise<boolean> | null = null;
 
 export function obterKeycloak(): Keycloak {
   if (!keycloak) {
+    const config = obterConfig();
     keycloak = new Keycloak({
-      url: process.env.NEXT_PUBLIC_KEYCLOAK_URL ?? '',
-      realm: process.env.NEXT_PUBLIC_KEYCLOAK_REALM ?? '',
-      clientId: process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID ?? '',
+      url: config.keycloakUrl,
+      realm: config.keycloakRealm,
+      clientId: config.keycloakClientId,
     });
   }
   return keycloak;

@@ -2,6 +2,7 @@
 
 import { Client, type IMessage } from '@stomp/stompjs';
 import { obterToken } from './auth';
+import { obterConfig } from './config';
 
 /** Fabrica do cliente STOMP. O broker e simples e por pod: nao ha relay (ADR-002/R-4). */
 export function criarCliente(
@@ -9,7 +10,7 @@ export function criarCliente(
   aoDesconectar: () => void,
 ): Client {
   const cliente = new Client({
-    brokerURL: (process.env.NEXT_PUBLIC_WS_URL ?? '').replace(/^http/, 'ws'),
+    brokerURL: obterConfig().wsUrl.replace(/^http/, 'ws'),
     reconnectDelay: 2000,
     heartbeatIncoming: 10000,
     heartbeatOutgoing: 10000,

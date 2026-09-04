@@ -24,13 +24,13 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
-      "rootUrl": "http://localhost:3000",
+      "rootUrl": "${FRONTEND_PUBLIC_URL}",
       "baseUrl": "/",
-      "redirectUris": ["http://localhost:3000/*"],
-      "webOrigins": ["http://localhost:3000"],
+      "redirectUris": ["${FRONTEND_PUBLIC_URL}/*"],
+      "webOrigins": ["${FRONTEND_PUBLIC_URL}"],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:3000/*"
+        "post.logout.redirect.uris": "${FRONTEND_PUBLIC_URL}/*"
       },
       "defaultClientScopes": ["basic", "acr", "profile", "email", "roles", "web-origins"]
     }

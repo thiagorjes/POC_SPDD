@@ -1,6 +1,7 @@
 'use client';
 
 import { obterToken } from './auth';
+import { obterConfig } from './config';
 import type {
   BoardSnapshot,
   Dashboard,
@@ -19,7 +20,8 @@ import type {
   ErrorResponse,
 } from './types';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
+/** Funcao, nao constante de modulo: a configuracao so existe apos o script injetado pelo layout. */
+const base = () => obterConfig().apiUrl;
 
 /**
  * Erro de API preservando o {@link ErrorResponse.errorCode} — o codigo e contrato estavel e e o
@@ -54,7 +56,7 @@ export function exigeModal(erro: unknown): boolean {
 
 async function requisitar<T>(rota: string, init: RequestInit = {}): Promise<T> {
   const token = await obterToken();
-  const resposta = await fetch(`${BASE}${rota}`, {
+  const resposta = await fetch(`${base()}${rota}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',

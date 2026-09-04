@@ -26,8 +26,9 @@ services:
       # `iss` emitido e sempre o endereco publico, senao o backend rejeita todo token do navegador.
       KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL}
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: 'true'
-      # Substituido no realm importado: a senha dos usuarios de dev nao fica no JSON versionado.
+      # Substituidos no realm importado: nem a senha de dev nem a porta do front ficam no JSON.
       KEYCLOAK_SEED_PASSWORD: ${KEYCLOAK_SEED_PASSWORD}
+      FRONTEND_PUBLIC_URL: ${FRONTEND_PUBLIC_URL}
     volumes:
       - ./infra/keycloak:/opt/keycloak/data/import:ro
     ports:
