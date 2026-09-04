@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: kanban
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/kanban}
+    username: ${DB_USERNAME:kanban}
+    password: ${DB_PASSWORD:kanban}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Flyway e a unica autoridade sobre o schema; o Hibernate apenas valida (ADR-002).
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # iss e validado contra o endereco publico; as chaves vem pelo endereco interno.
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/kanban}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8080/realms/kanban/protocol/openid-connect/certs}
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: ${SERVER_PORT:8081}
+  error:
+    include-stacktrace: never
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+kanban:
+  bootstrap:
+    # Primeiro login com este e-mail promove o usuario a adminGlobal (ADR-007).
+    admin-email: ${KANBAN_ADMIN_EMAIL:}
+  cors:
+    origens-permitidas: ${KANBAN_CORS_ORIGENS:http://localhost:3000}
+
+logging:
+  level:
+    br.com.crudao.kanban: ${KANBAN_LOG_LEVEL:INFO}

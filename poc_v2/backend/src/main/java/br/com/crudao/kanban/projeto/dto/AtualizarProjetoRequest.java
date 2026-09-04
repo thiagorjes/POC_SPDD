@@ -1,0 +1,12 @@
+package br.com.crudao.kanban.projeto.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+/** Payload de atualizacao de projeto (RF-008). */
+public record AtualizarProjetoRequest(
+    @NotBlank(message = "O nome do projeto e obrigatorio.")
+        @Size(max = 200, message = "O nome deve ter no maximo 200 caracteres.")
+        String nome,
+    @Size(max = 4000, message = "A descricao deve ter no maximo 4000 caracteres.")
+        String descricao) {}
