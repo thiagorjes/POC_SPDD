@@ -1,0 +1,20 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Endereco inexistente e proposital: o token de teste e injetado direto no SecurityContext,
+          # nenhuma chamada ao provedor de identidade acontece durante a suite (ADR-006).
+          issuer-uri: http://localhost:0/realms/kanban
+          jwk-set-uri: http://localhost:0/realms/kanban/protocol/openid-connect/certs
+
+kanban:
+  bootstrap:
+    admin-email: admin@kanban.test
+
+logging:
+  level:
+    br.com.crudao.kanban: WARN
