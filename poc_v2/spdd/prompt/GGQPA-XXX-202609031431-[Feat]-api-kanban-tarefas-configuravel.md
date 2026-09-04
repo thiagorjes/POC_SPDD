@@ -699,11 +699,18 @@ br.com.crudao.kanban
 2. **`hooks/useBoardStream(projetoId)`**: conecta STOMP, mantém `seq`, dispara resync via `GET /api/projetos/{id}/board` em gap, reconexão ou retorno de foco da aba.
 3. **`hooks/usePermissoes(projetoId)`**: consome `/api/projetos/{id}/permissoes`; renderiza UI condicional (esconder/desabilitar) — nunca é a autoridade.
 4. **`components/Board`**: colunas por etapa, agrupamento por raia, densidade **compacta (TL-03)** como default; durante o drag destaca apenas colunas em `destinosPermitidos` do card e esmaece as demais; drop inválido devolve o card e emite toast.
+   - O card **expandido (TL-03b)** exibe **prioridade e estado `iniciada`**, não trecho de descrição nem lead-time da etapa: `TarefaResumoResponse` não carrega esses campos. Ampliar o DTO do board para atender o protótipo custaria payload em toda tarefa de todo snapshot — o detalhe fica no drawer (TL-04), que já busca a tarefa completa.
+   - O título do card é um `<button>` (abre o drawer). Não pode conter `<p>`: o modelo de conteúdo de `button` é *phrasing content*.
 5. **`components/CardMenu`**: avançar/retroceder/desfinalizar chamando **o mesmo** `PATCH /mover` (DDR-002).
 6. **`components/TarefaDrawer` (TL-04)**: campos estruturais desabilitados quando `iniciada`; toggle de impedimento; lead-time por etapa; histórico de auditoria paginado.
 7. **`components/Dashboard` (TL-07)**: KPIs + barras por etapa + filtro de período; skeleton no loading; estado vazio quando `amostras=0`.
 8. **Telas administrativas TL-08/09/10**: abas de workflow/colunas/transições com validação RN-003/RN-005 exibida inline; tabela papéis × permissões (leitura) + toggles (escrita); associação usuário↔papel.
-9. **`styles/tokens.css`**: gerado a partir de `design-tokens.json` (Inter, base 8px, radius 8/4, breakpoints 1280/1024, foco visível 2px).
+   - **TL-09**: não existe endpoint que exponha a matriz papel × permissão — o catálogo é fechado (BDR-001, RN-014) e nunca muda em runtime. A tabela é espelhada no cliente a partir do seed `V1__usuario_papel_permissao.sql` e é puramente apresentacional; a autoridade continua sendo `/api/projetos/{id}/permissoes`. Alterar o seed exige alterar essa tela junto.
+   - **TL-10**: não há endpoint de busca de usuários (provisionamento é JIT — o usuário só existe após o primeiro login). A associação recebe o identificador do usuário digitado, e o backend rejeita o que não existir. A troca de papel é **desassociar o papel atual + associar o novo**, pois `POST /usuarios` só adiciona.
+   - Papéis oferecidos na UI: o catálogo fechado menos os globais/protegidos (`admin`), que RN-006 impede de associar a projeto.
+9. **`styles/tokens.css`**: gerado a partir de `design-tokens.json` (Inter, base 8px, radius 8/4, breakpoints 1280/1024, foco visível 2px). `styles/app.css` porta `prototypes/_shared.css` mantendo **os mesmos nomes de classe** dos protótipos (`.app-shell`, `.task-card`, `.modal-overlay`, `.modal-actions`, `.drawer`, `.kpi-grid`, …) — os componentes React consomem essas classes, e é isso que garante paridade visual com o protótipo.
+10. **Páginas dinâmicas são Client Components** usando `useParams()`: no Next 15 `params` de Server Component é assíncrono, e o board/drawer/admin precisam de estado e STOMP no cliente de qualquer forma.
+11. A fonte Inter entra por `<link>` no layout raiz; a regra `@next/next/no-page-custom-font` mira o Pages Router e é desativada pontualmente com comentário justificando.
 
 ### 18. Create Infrastructure - Docker (ADR-008)
 

@@ -1,0 +1,97 @@
+/*
+ * Tokens de design — gerado a partir de requirements/design/kanban-tarefas/design-tokens.json.
+ * Norma 11: nenhum valor de cor ou espacamento pode ser escrito fora deste arquivo.
+ */
+:root {
+  /* colors */
+  --color-primary: #0d6efd;
+  --color-primary-hover: #0b5ed7;
+  --color-secondary: #198754;
+  --color-background: #f8f9fa;
+  --color-surface: #ffffff;
+  --color-error: #dc3545;
+  --color-success: #198754;
+  --color-warning: #ffc107;
+  --color-text-primary: #212529;
+  --color-text-secondary: #6c757d;
+  --color-border: #dee2e6;
+  --color-tipo-badge-bg: #e7f1ff;
+  --color-focus-ring: #0d6efd;
+
+  /* derivados usados pelos estados do prototipo */
+  --color-neutral-bg: #e9ecef;
+  --color-locked-bg: #f1f3f5;
+  --color-warning-bg: #fff3cd;
+  --color-warning-fg: #997404;
+  --color-error-bg: #f8d7da;
+  --color-error-border: #f1aeb5;
+  --color-error-fg: #58151c;
+  --color-success-bg: #d1e7dd;
+  --color-success-border: #a3cfbb;
+  --color-success-fg: #0a3622;
+  --color-drop-valid-bg: #eafaf1;
+  --color-overlay: rgba(33, 37, 41, 0.5);
+  --color-skeleton-from: #eceef0;
+  --color-skeleton-to: #f5f6f7;
+  --color-on-primary: #ffffff;
+
+  /* typography */
+  --font-family-base: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-size-base: 16px;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --font-size-xxl: 32px;
+  --font-size-micro: 10px;
+  --font-size-label: 11px;
+  --font-size-body-sm: 13px;
+  --font-size-title-sm: 18px;
+  --font-size-kpi: 28px;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+
+  /* spacing (base 8px) */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
+  --space-input-y: 8px;
+  --space-input-x: 12px;
+
+  /* radius */
+  --radius-card: 8px;
+  --radius-button: 8px;
+  --radius-badge: 4px;
+  --radius-modal: 8px;
+  --radius-pill: 999px;
+  --radius-circle: 50%;
+
+  /* elevation */
+  --elevation-card: 0 1px 2px rgba(33, 37, 41, 0.08);
+  --elevation-modal: 0 8px 24px rgba(33, 37, 41, 0.16);
+  --elevation-dropdown: 0 4px 12px rgba(33, 37, 41, 0.12);
+
+  /* layout */
+  --layout-sidebar-width: 240px;
+  --layout-topbar-height: 56px;
+  --layout-column-width: 280px;
+  --layout-drawer-width: 480px;
+  --layout-modal-width: 480px;
+  --layout-login-width: 380px;
+  --layout-chart-height: 160px;
+  --layout-avatar-size: 28px;
+  --layout-avatar-size-sm: 20px;
+  --layout-avatar-size-md: 22px;
+
+  /* accessibility (WCAG AA) */
+  --focus-outline: 2px solid var(--color-focus-ring);
+  --focus-outline-offset: 2px;
+}
