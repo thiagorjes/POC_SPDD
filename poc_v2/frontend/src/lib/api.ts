@@ -104,10 +104,10 @@ async function requisitar<T>(metodo: string, caminho: string, corpo?: unknown): 
     throw new ApiError(resposta.status, payload);
   }
 
-  if (resposta.status === 204) {
-    return undefined as T;
-  }
-  return (await resposta.json()) as T;
+  // `201 + Location` e `204` vem sem corpo: desserializar pela ausencia de corpo, nunca so pelo
+  // status, senao uma escrita bem-sucedida vira `SyntaxError` na tela.
+  const texto = await resposta.text();
+  return (texto === '' ? undefined : JSON.parse(texto)) as T;
 }
 
 /** Cliente REST tipado. Nenhuma tela monta URL de API fora daqui. */

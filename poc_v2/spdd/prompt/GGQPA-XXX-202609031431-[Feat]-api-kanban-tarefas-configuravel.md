@@ -697,6 +697,7 @@ br.com.crudao.kanban
 ### 17. Create Frontend - Next.js (telas TL-01..TL-10)
 
 1. **`lib/api`**: cliente REST tipado com interceptor que traduz `ErrorResponse.errorCode` em toast (informativo) ou modal (erro que exige atenção), conforme DDR-003.
+   - **Resposta sem corpo**: o contrato usa `201 + Location` na criação e `204` em exclusão/ação sem corpo — e **`201` também vem sem corpo**. O cliente decide desserializar pela **ausência de corpo**, nunca só pelo status `204`: chamar `response.json()` em corpo vazio lança `SyntaxError`, o que faz uma operação bem-sucedida no servidor aparecer como falha na tela e aborta o recarregamento seguinte (achado ao testar RF-015 em Docker).
 2. **`hooks/useBoardStream(projetoId)`**: conecta STOMP, mantém `seq`, dispara resync via `GET /api/projetos/{id}/board` em gap, reconexão ou retorno de foco da aba.
 3. **`hooks/usePermissoes(projetoId)`**: consome `/api/projetos/{id}/permissoes`; renderiza UI condicional (esconder/desabilitar) — nunca é a autoridade.
 4. **`components/Board`**: colunas por etapa, agrupamento por raia, densidade **compacta (TL-03)** como default; durante o drag destaca apenas colunas em `destinosPermitidos` do card e esmaece as demais; drop inválido devolve o card e emite toast.
