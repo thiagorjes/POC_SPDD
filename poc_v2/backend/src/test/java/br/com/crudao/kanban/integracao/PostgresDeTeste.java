@@ -5,8 +5,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Container PostgreSQL unico para toda a suite (bloco 19.2). Um container por JVM evita repetir
- * as nove migrations Flyway a cada classe e permite compartilhar a instancia entre os testes de
+ * Container PostgreSQL unico para toda a suite (bloco 19.2). Um container por JVM evita repetir as
+ * nove migrations Flyway a cada classe e permite compartilhar a instancia entre os testes de
  * integracao e os cenarios BDD.
  */
 public final class PostgresDeTeste {

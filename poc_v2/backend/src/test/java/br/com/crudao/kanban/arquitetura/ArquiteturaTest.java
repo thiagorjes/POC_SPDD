@@ -68,17 +68,17 @@ class ArquiteturaTest {
   @DisplayName("metodo de escrita de service de fronteira exige permissao (A-15/A-16)")
   void escritaDeServicoDeFronteiraEAutorizada() {
     methods()
-        .that(new DescribedPredicate<JavaMethod>("sao escrita em service de fronteira") {
-          @Override
-          public boolean test(JavaMethod metodo) {
-            String assinatura =
-                metodo.getOwner().getSimpleName() + "." + metodo.getName();
-            return SERVICOS_DE_FRONTEIRA.contains(metodo.getOwner().getSimpleName())
-                && !ESCRITAS_SEM_ESCOPO_DE_PROJETO.contains(assinatura)
-                && metodo.getModifiers().contains(JavaModifier.PUBLIC)
-                && escrita(metodo);
-          }
-        })
+        .that(
+            new DescribedPredicate<JavaMethod>("sao escrita em service de fronteira") {
+              @Override
+              public boolean test(JavaMethod metodo) {
+                String assinatura = metodo.getOwner().getSimpleName() + "." + metodo.getName();
+                return SERVICOS_DE_FRONTEIRA.contains(metodo.getOwner().getSimpleName())
+                    && !ESCRITAS_SEM_ESCOPO_DE_PROJETO.contains(assinatura)
+                    && metodo.getModifiers().contains(JavaModifier.PUBLIC)
+                    && escrita(metodo);
+              }
+            })
         .should(exigirAutorizacao())
         .check(classes);
   }

@@ -150,9 +150,11 @@ class TarefaServiceTest {
     void criaComDefaults() {
       Workflow workflow = new Workflow(PROJETO, "Principal", true);
       workflow.setId(WORKFLOW);
-      when(workflowRepository.findByProjetoIdAndAtivoTrue(PROJETO)).thenReturn(Optional.of(workflow));
+      when(workflowRepository.findByProjetoIdAndAtivoTrue(PROJETO))
+          .thenReturn(Optional.of(workflow));
       primeiraEtapaEh(aFazer);
-      when(raiaRepository.findByProjetoIdAndPadraoTrue(PROJETO)).thenReturn(Optional.of(raiaPadrao));
+      when(raiaRepository.findByProjetoIdAndPadraoTrue(PROJETO))
+          .thenReturn(Optional.of(raiaPadrao));
       when(tarefaRepository.save(any(Tarefa.class))).thenAnswer(chamada -> chamada.getArgument(0));
 
       Tarefa criada =
@@ -174,9 +176,11 @@ class TarefaServiceTest {
     void exigeAtribuirParaTerceiro() {
       Workflow workflow = new Workflow(PROJETO, "Principal", true);
       workflow.setId(WORKFLOW);
-      when(workflowRepository.findByProjetoIdAndAtivoTrue(PROJETO)).thenReturn(Optional.of(workflow));
+      when(workflowRepository.findByProjetoIdAndAtivoTrue(PROJETO))
+          .thenReturn(Optional.of(workflow));
       primeiraEtapaEh(aFazer);
-      when(raiaRepository.findByProjetoIdAndPadraoTrue(PROJETO)).thenReturn(Optional.of(raiaPadrao));
+      when(raiaRepository.findByProjetoIdAndPadraoTrue(PROJETO))
+          .thenReturn(Optional.of(raiaPadrao));
 
       UUID terceiro = UUID.randomUUID();
       permissaoNegada(CodigoPermissao.TAREFA_ATRIBUIR);
@@ -214,8 +218,7 @@ class TarefaServiceTest {
       assertThat(tarefa.isIniciada()).isTrue();
       verify(leadTimeService).encerrarPeriodoEtapa(tarefa);
       verify(leadTimeService).abrirPeriodoEtapa(tarefa, fazendo.getId());
-      verify(auditoriaService)
-          .registrar(tarefa, CampoAuditado.ETAPA, "A Fazer", "Fazendo", autor);
+      verify(auditoriaService).registrar(tarefa, CampoAuditado.ETAPA, "A Fazer", "Fazendo", autor);
       verificarEventoPublicado(TipoEventoBoard.TAREFA_MOVIDA);
     }
 
@@ -248,8 +251,7 @@ class TarefaServiceTest {
               () -> tarefaService.mover(tarefa.getId(), paraEtapa(estrangeira, 0L), autor))
           .isInstanceOf(TransicaoNaoPermitidaException.class)
           .hasMessageContaining("nao pertence ao workflow");
-      verify(transicaoRepository, never())
-          .existsByEtapaOrigemIdAndEtapaDestinoId(any(), any());
+      verify(transicaoRepository, never()).existsByEtapaOrigemIdAndEtapaDestinoId(any(), any());
     }
 
     @Test
@@ -261,7 +263,8 @@ class TarefaServiceTest {
       etapasExistem(concluido, fazendo);
       primeiraEtapaEh(aFazer);
       Transicao entrada = new Transicao(WORKFLOW, fazendo.getId(), concluido.getId());
-      when(transicaoRepository.findByEtapaDestinoId(concluido.getId())).thenReturn(List.of(entrada));
+      when(transicaoRepository.findByEtapaDestinoId(concluido.getId()))
+          .thenReturn(List.of(entrada));
       when(notificacaoService.notificarObservadores(any(), any(), anyString(), any()))
           .thenReturn(Set.of());
 
@@ -281,7 +284,8 @@ class TarefaServiceTest {
       etapasExistem(concluido, aFazer);
       primeiraEtapaEh(aFazer);
       Transicao entrada = new Transicao(WORKFLOW, fazendo.getId(), concluido.getId());
-      when(transicaoRepository.findByEtapaDestinoId(concluido.getId())).thenReturn(List.of(entrada));
+      when(transicaoRepository.findByEtapaDestinoId(concluido.getId()))
+          .thenReturn(List.of(entrada));
 
       assertThatThrownBy(() -> tarefaService.mover(tarefa.getId(), paraEtapa(aFazer, 0L), autor))
           .isInstanceOf(TransicaoNaoPermitidaException.class)
@@ -298,8 +302,7 @@ class TarefaServiceTest {
 
       assertThatThrownBy(() -> tarefaService.mover(tarefa.getId(), paraEtapa(concluido, 0L), autor))
           .isInstanceOf(PermissaoNegadaException.class);
-      verify(transicaoRepository, never())
-          .existsByEtapaOrigemIdAndEtapaDestinoId(any(), any());
+      verify(transicaoRepository, never()).existsByEtapaOrigemIdAndEtapaDestinoId(any(), any());
     }
 
     @Test
@@ -317,8 +320,7 @@ class TarefaServiceTest {
 
       assertThat(tarefa.getRaiaId()).isEqualTo(outra.getId());
       verify(leadTimeService, never()).abrirPeriodoEtapa(any(), any());
-      verify(transicaoRepository, never())
-          .existsByEtapaOrigemIdAndEtapaDestinoId(any(), any());
+      verify(transicaoRepository, never()).existsByEtapaOrigemIdAndEtapaDestinoId(any(), any());
       verificarEventoPublicado(TipoEventoBoard.TAREFA_ATUALIZADA);
     }
 
@@ -514,8 +516,7 @@ class TarefaServiceTest {
       tarefaService.marcarImpedimento(tarefa.getId(), "aguardando cliente", autor);
 
       assertThat(tarefa.isImpedida()).isTrue();
-      verify(auditoriaService)
-          .registrar(tarefa, CampoAuditado.IMPEDIMENTO, "false", "true", autor);
+      verify(auditoriaService).registrar(tarefa, CampoAuditado.IMPEDIMENTO, "false", "true", autor);
       verificarEventoPublicado(TipoEventoBoard.TAREFA_IMPEDIDA);
     }
 
@@ -561,8 +562,7 @@ class TarefaServiceTest {
       tarefaService.desmarcarImpedimento(tarefa.getId(), autor);
 
       assertThat(tarefa.isImpedida()).isFalse();
-      verify(auditoriaService)
-          .registrar(tarefa, CampoAuditado.IMPEDIMENTO, "true", "false", autor);
+      verify(auditoriaService).registrar(tarefa, CampoAuditado.IMPEDIMENTO, "true", "false", autor);
       verificarEventoPublicado(TipoEventoBoard.TAREFA_DESIMPEDIDA);
     }
   }

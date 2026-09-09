@@ -407,8 +407,9 @@ public class PassosKanban {
     verify(eventoBoardPublisher)
         .publicar(
             argThat(
-                (EventoBoard evento) -> evento.tipo() == TipoEventoBoard.valueOf(tipo)
-                    && tarefaId.equals(evento.tarefaId())),
+                (EventoBoard evento) ->
+                    evento.tipo() == TipoEventoBoard.valueOf(tipo)
+                        && tarefaId.equals(evento.tarefaId())),
             any());
   }
 

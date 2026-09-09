@@ -152,7 +152,8 @@ class ConfiguracaoWorkflowTest extends IntegracaoBase {
     void reordenar() {
       etapaService.reordenar(
           cenario.workflow().getId(),
-          List.of(cenario.fazendo().getId(), cenario.aFazer().getId(), cenario.concluido().getId()));
+          List.of(
+              cenario.fazendo().getId(), cenario.aFazer().getId(), cenario.concluido().getId()));
 
       assertThat(etapaService.listar(cenario.workflow().getId()))
           .extracting(Etapa::getNome)
@@ -312,23 +313,19 @@ class ConfiguracaoWorkflowTest extends IntegracaoBase {
     @Test
     @DisplayName("excluir aresta redundante mantem o grafo valido")
     void excluirRedundante() {
-      Etapa atalho = etapaService.criar(cenario.workflow().getId(), "Atalho", false);
-      transicaoService.criar(cenario.workflow().getId(), cenario.aFazer().getId(), atalho.getId());
-      Transicao saidaDoAtalho =
+      // Atalho "A Fazer" -> "Concluido": redundante, ja existe o caminho pela etapa "Fazendo".
+      Transicao atalho =
           transicaoService.criar(
-              cenario.workflow().getId(), atalho.getId(), cenario.concluido().getId());
-      Transicao paraOAtalho =
-          transicaoService.listar(cenario.workflow().getId()).stream()
-              .filter(t -> t.getEtapaDestinoId().equals(atalho.getId()))
-              .findFirst()
-              .orElseThrow();
+              cenario.workflow().getId(), cenario.aFazer().getId(), cenario.concluido().getId());
 
-      transicaoService.excluir(saidaDoAtalho.getId());
-      etapaService.excluir(atalho.getId());
+      transicaoService.excluir(atalho.getId());
 
       assertThat(transicaoService.listar(cenario.workflow().getId()))
           .extracting(Transicao::getId)
-          .doesNotContain(paraOAtalho.getId());
+          .doesNotContain(atalho.getId());
+      assertThat(transicaoService.destinosPermitidos(cenario.aFazer().getId()))
+          .extracting(Etapa::getId)
+          .containsExactly(cenario.fazendo().getId());
     }
 
     @Test

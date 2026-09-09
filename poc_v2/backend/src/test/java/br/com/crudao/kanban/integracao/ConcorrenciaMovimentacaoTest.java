@@ -53,11 +53,11 @@ class ConcorrenciaMovimentacaoTest extends IntegracaoBase {
             () ->
                 tarefaService.mover(
                     tarefa.getId(),
-                    new MoverTarefaRequest(
-                        cenario.concluido().getId(), null, versaoLidaPelosDois),
+                    new MoverTarefaRequest(cenario.concluido().getId(), null, versaoLidaPelosDois),
                     admin))
         .isInstanceOf(ConflitoConcorrenciaException.class)
-        .hasMessage("A tarefa foi alterada por outro usuario. Recarregue o board e tente novamente.");
+        .hasMessage(
+            "A tarefa foi alterada por outro usuario. Recarregue o board e tente novamente.");
 
     assertThat(tarefaService.buscar(tarefa.getId()).getEtapaId())
         .isEqualTo(cenario.fazendo().getId());

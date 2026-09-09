@@ -58,9 +58,7 @@ class EventoListenNotifyTest extends IntegracaoBase {
               new CriarTarefaRequest("Card observado", null, TipoTarefa.TAREFA, null, null, null),
               admin);
       tarefaService.mover(
-          tarefa.getId(),
-          new MoverTarefaRequest(cenario.fazendo().getId(), null, 0L),
-          admin);
+          tarefa.getId(), new MoverTarefaRequest(cenario.fazendo().getId(), null, 0L), admin);
 
       List<EnvelopeEvento> recebidos = aguardar(pgConnection, 2);
 

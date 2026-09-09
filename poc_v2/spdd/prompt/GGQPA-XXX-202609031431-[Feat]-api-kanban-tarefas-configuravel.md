@@ -739,8 +739,16 @@ br.com.crudao.kanban
 1. **Unitários (Mockito, sem contexto Spring)**: `TarefaService` (matriz completa de transições válidas/inválidas, desfinalizar, trava pós-início, autoatribuição, idempotência de impedimento), `PermissaoGuard` (papéis acumulados, bypass admin global, ausência de bypass em projeto finalizado), `LeadTimeService` (reancoragem de impedimento na troca de etapa, intervalo aberto).
 2. **Integração (JUnit 5 + Testcontainers PostgreSQL)**: migrations Flyway aplicam limpo; invariantes de índice único parcial rejeitam segundo período aberto; `LISTEN/NOTIFY` entrega evento com `seq` correto; concorrência otimista em movimentação simultânea.
 3. **BDD (100% dos cenários Gherkin do PRD)**: um cenário executável por critério de aceite de RF-001 a RF-019, nomeado com o ID do RF.
-4. **Teste de arquitetura (ArchUnit)**: nenhum handler de escrita sem `@ExigePermissao`; nenhuma Service referencia classe de `evento.adapter`; nenhum campo boolean nomeado com duas maiúsculas após o prefixo.
-5. **Cobertura**: ≥ 80% de linhas na camada de Service (`testing.md`).
+4. **Teste de arquitetura (ArchUnit)**: nenhum método público de escrita de **Service de fronteira** sem `@ExigePermissao` (a autorização vive na Service Layer por A-15, não no Controller); nenhuma Service referencia os adaptadores de transporte de evento (`ListenNotifyEventoBoardPublisher`, `BoardEventLoop`, `StompBoardEventListener`) — a Service depende apenas da porta `EventoBoardPublisher`; nenhum campo boolean nomeado com duas maiúsculas após o prefixo.
+   - Exceções declaradas na regra de autorização, com justificativa:
+     - `ProjetoService.criar` — não existe escopo de projeto antes da criação; autoriza inline por `autor.isAdminGlobal()` conforme ADR-007.
+     - `NotificacaoService` — autorizada por **titularidade** (a notificação pertence ao usuário autenticado), não por papel de projeto; fica fora do conjunto de Services de fronteira.
+5. **Cobertura**: ≥ 80% de linhas na camada de Service (`testing.md`), verificada por regra JaCoCo `CLASS` sobre `br.com.crudao.kanban.*.*Service` em `mvn verify`.
+6. **Infra de teste**: um único container `postgres:16-alpine` por JVM (`PostgresDeTeste`), compartilhado por testes de integração e pela suíte Cucumber, para não reexecutar as migrations por classe. O decoder OIDC é construído sob demanda a partir de `jwk-set-uri`, então nenhum teste faz chamada de rede: o JWT é injetado direto no `SecurityContext`.
+7. **Comportamentos confirmados pelos testes** (não eram explícitos nas seções anteriores):
+   - `finalizar` de projeto é uma **escrita**: refinalizar um projeto já finalizado é barrado pelo guard de projeto ativo (RN-015) com `"O projeto esta finalizado e nao aceita alteracoes."`. Já `reabrir` é idempotente (`escrita = false`).
+   - Sair da etapa final **não** é uma aresta do grafo: `Concluido → Fazendo` não pode ser cadastrada como `Transicao` (RN-004); desfinalizar é governado por RN-004/RN-011.
+   - `EscopoProjetoResolver` roda antes da busca do próprio Service, então recurso inexistente responde com a mensagem genérica do resolver (`"Workflow nao encontrado(a)."`, `"Etapa nao encontrado(a)."`).
 
 ---
 

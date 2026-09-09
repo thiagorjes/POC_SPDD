@@ -89,9 +89,7 @@ class MembrosENotificacoesTest extends IntegracaoBase {
       UUID devId = dev.getId();
 
       assertThatThrownBy(
-              () ->
-                  usuarioProjetoPapelService.associar(
-                      projetoId, devId, CodigoPapel.ADMIN, admin))
+              () -> usuarioProjetoPapelService.associar(projetoId, devId, CodigoPapel.ADMIN, admin))
           .isInstanceOf(BusinessException.class)
           .hasMessage("O papel informado nao pode ser atribuido no escopo de um projeto.");
     }

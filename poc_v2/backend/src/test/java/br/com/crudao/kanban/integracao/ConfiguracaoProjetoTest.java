@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import br.com.crudao.kanban.common.BusinessException;
 import br.com.crudao.kanban.common.PermissaoNegadaException;
+import br.com.crudao.kanban.common.ProjetoFinalizadoException;
 import br.com.crudao.kanban.common.RecursoEmUsoException;
 import br.com.crudao.kanban.common.RecursoNaoEncontradoException;
 import br.com.crudao.kanban.projeto.ChaveToggle;
@@ -115,12 +116,15 @@ class ConfiguracaoProjetoTest extends IntegracaoBase {
     }
 
     @Test
-    @DisplayName("finalizar e reabrir sao idempotentes e restauram a escrita")
-    void finalizarEReabrirSaoIdempotentes() {
+    @DisplayName("finalizar congela a escrita; reabrir e idempotente e a restaura")
+    void finalizarEReabrirRestauramAEscrita() {
       UUID id = cenario.projeto().getId();
 
       assertThat(projetoService.finalizar(id).getStatus()).isEqualTo(StatusProjeto.FINALIZADO);
-      assertThat(projetoService.finalizar(id).getFinalizadoEm()).isNotNull();
+      // Finalizar de novo e uma escrita: o guard de projeto ativo (RN-015) barra antes do servico.
+      assertThatThrownBy(() -> projetoService.finalizar(id))
+          .isInstanceOf(ProjetoFinalizadoException.class)
+          .hasMessage("O projeto esta finalizado e nao aceita alteracoes.");
       assertThat(projetoService.reabrir(id).getStatus()).isEqualTo(StatusProjeto.ATIVO);
       assertThat(projetoService.reabrir(id).getFinalizadoEm()).isNull();
       assertThatCode(() -> raiaService.criar(id, "Nova")).doesNotThrowAnyException();

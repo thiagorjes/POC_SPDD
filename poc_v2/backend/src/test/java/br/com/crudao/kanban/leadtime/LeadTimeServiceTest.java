@@ -112,8 +112,7 @@ class LeadTimeServiceTest {
     leadTimeService.reancorarImpedimento(tarefa, fazendo.getId());
 
     assertThat(aberto.getEncerradoEm()).isEqualTo(AGORA);
-    ArgumentCaptor<PeriodoImpedimento> captor =
-        ArgumentCaptor.forClass(PeriodoImpedimento.class);
+    ArgumentCaptor<PeriodoImpedimento> captor = ArgumentCaptor.forClass(PeriodoImpedimento.class);
     verify(periodoImpedimentoRepository).save(captor.capture());
     PeriodoImpedimento novo = captor.getValue();
     assertThat(novo.getEtapaId()).isEqualTo(fazendo.getId());
@@ -157,8 +156,10 @@ class LeadTimeServiceTest {
     DetalheLeadTime detalhe = leadTimeService.calcularDetalhe(tarefa.getId(), WORKFLOW);
 
     assertThat(detalhe.etapas()).hasSize(2);
-    assertThat(detalhe.etapas().get(0).duracaoSegundos()).isEqualTo(Duration.ofHours(1).toSeconds());
-    assertThat(detalhe.etapas().get(1).duracaoSegundos()).isEqualTo(Duration.ofHours(3).toSeconds());
+    assertThat(detalhe.etapas().get(0).duracaoSegundos())
+        .isEqualTo(Duration.ofHours(1).toSeconds());
+    assertThat(detalhe.etapas().get(1).duracaoSegundos())
+        .isEqualTo(Duration.ofHours(3).toSeconds());
     assertThat(detalhe.etapas().get(1).impedimentoSegundos())
         .isEqualTo(Duration.ofHours(1).toSeconds());
     assertThat(detalhe.impedimentoTotalSegundos()).isEqualTo(Duration.ofHours(1).toSeconds());
