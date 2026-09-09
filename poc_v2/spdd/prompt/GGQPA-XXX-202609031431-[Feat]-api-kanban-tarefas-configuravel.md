@@ -687,6 +687,7 @@ br.com.crudao.kanban
 | `POST/DELETE` | `/api/tarefas/{id}/observadores/me` | `projeto:visualizar` | RF-005 |
 | `GET` | `/api/tarefas/{id}/historico` | `projeto:visualizar` | RF-017 |
 | `GET/POST/PUT/DELETE` | `/api/projetos/{id}/usuarios[/{uid}]` | `usuario:associar` | RF-015 |
+| `GET` | `/api/projetos/{id}/usuarios/disponiveis` | `usuario:associar` | RF-015 |
 | `GET/PUT` | `/api/projetos/{id}/toggles` | `projeto:administrar` | RF-016 |
 | `GET` | `/api/notificacoes` | autenticado | RF-005 |
 | `PATCH` | `/api/notificacoes/{id}/lida` | destinatário | RF-005 |
@@ -706,7 +707,8 @@ br.com.crudao.kanban
 7. **`components/Dashboard` (TL-07)**: KPIs + barras por etapa + filtro de período; skeleton no loading; estado vazio quando `amostras=0`.
 8. **Telas administrativas TL-08/09/10**: abas de workflow/colunas/transições com validação RN-003/RN-005 exibida inline; tabela papéis × permissões (leitura) + toggles (escrita); associação usuário↔papel.
    - **TL-09**: não existe endpoint que exponha a matriz papel × permissão — o catálogo é fechado (BDR-001, RN-014) e nunca muda em runtime. A tabela é espelhada no cliente a partir do seed `V1__usuario_papel_permissao.sql` e é puramente apresentacional; a autoridade continua sendo `/api/projetos/{id}/permissoes`. Alterar o seed exige alterar essa tela junto.
-   - **TL-10**: não há endpoint de busca de usuários (provisionamento é JIT — o usuário só existe após o primeiro login). A associação recebe o identificador do usuário digitado, e o backend rejeita o que não existir. A troca de papel é **desassociar o papel atual + associar o novo**, pois `POST /usuarios` só adiciona.
+   - **TL-10**: o provisionamento é JIT — o usuário só existe na base após o primeiro login. Como o `usuarioId` é um UUID e não há dado que o administrador conheça de cor, a tela **não** pede identificador digitado: ela consome `GET /api/projetos/{id}/usuarios/disponiveis` e apresenta um seletor com nome e e-mail dos usuários já provisionados que ainda não são membros. A troca de papel é **desassociar o papel atual + associar o novo**, pois `POST /usuarios` só adiciona.
+     - Correção de rumo (achado ao testar o stack em Docker): a versão anterior desta premissa dizia "a associação recebe o identificador do usuário digitado". Na prática isso torna RF-015 inexecutável — o administrador não tem de onde tirar o UUID, e texto livre no campo produzia `400`/`500` na desserialização. O endpoint de listagem é o mínimo necessário para o critério de aceite de RF-015 ser satisfeito pela UI.
    - Papéis oferecidos na UI: o catálogo fechado menos os globais/protegidos (`admin`), que RN-006 impede de associar a projeto.
 9. **`styles/tokens.css`**: gerado a partir de `design-tokens.json` (Inter, base 8px, radius 8/4, breakpoints 1280/1024, foco visível 2px). `styles/app.css` porta `prototypes/_shared.css` mantendo **os mesmos nomes de classe** dos protótipos (`.app-shell`, `.task-card`, `.modal-overlay`, `.modal-actions`, `.drawer`, `.kpi-grid`, …) — os componentes React consomem essas classes, e é isso que garante paridade visual com o protótipo.
 10. **Páginas dinâmicas são Client Components** usando `useParams()`: no Next 15 `params` de Server Component é assíncrono, e o board/drawer/admin precisam de estado e STOMP no cliente de qualquer forma.
@@ -843,6 +845,7 @@ br.com.crudao.kanban
 - Exceções classificadas por domínio de negócio.
 - Nenhuma exceção expõe informação interna sensível.
 - **Todas** as exceções de negócio passam pelo `GlobalExceptionHandler`.
+- Corpo de requisição malformado (`HttpMessageNotReadableException` — JSON inválido ou valor que não converte para o tipo do campo, ex.: texto livre onde se espera UUID) responde `400` com `errorCode = REQUISICAO_INVALIDA` e a mensagem fixa `"A requisicao esta malformada e nao pode ser processada."`. **Nunca** `500`, e **nunca** ecoando o valor recebido ou o tipo interno esperado na resposta.
 - Códigos de erro são parte do contrato de API: renomear um código é breaking change.
 
 ### 7. Restrições técnicas

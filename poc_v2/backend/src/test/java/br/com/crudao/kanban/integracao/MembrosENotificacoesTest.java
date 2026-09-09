@@ -15,6 +15,7 @@ import br.com.crudao.kanban.rbac.PermissaoService;
 import br.com.crudao.kanban.rbac.Usuario;
 import br.com.crudao.kanban.rbac.UsuarioProjetoPapelService;
 import br.com.crudao.kanban.rbac.dto.MembroProjetoResponse;
+import br.com.crudao.kanban.rbac.dto.UsuarioResumoResponse;
 import br.com.crudao.kanban.tarefa.Tarefa;
 import br.com.crudao.kanban.tarefa.TarefaService;
 import br.com.crudao.kanban.tarefa.TipoTarefa;
@@ -150,6 +151,20 @@ class MembrosENotificacoesTest extends IntegracaoBase {
                 assertThat(membro.papeis())
                     .containsExactlyInAnyOrder(CodigoPapel.DEV, CodigoPapel.GESTOR);
               });
+    }
+
+    @Test
+    @DisplayName("disponiveis lista os provisionados que ainda nao sao membros (RF-015)")
+    void listarDisponiveis() {
+      assertThat(usuarioProjetoPapelService.listarDisponiveis(projetoId()))
+          .extracting(UsuarioResumoResponse::id)
+          .contains(dev.getId());
+
+      usuarioProjetoPapelService.associar(projetoId(), dev.getId(), CodigoPapel.DEV, admin);
+
+      assertThat(usuarioProjetoPapelService.listarDisponiveis(projetoId()))
+          .extracting(UsuarioResumoResponse::id)
+          .doesNotContain(dev.getId());
     }
 
     @Test

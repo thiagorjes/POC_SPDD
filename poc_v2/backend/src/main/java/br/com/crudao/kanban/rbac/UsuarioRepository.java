@@ -1,10 +1,13 @@
 package br.com.crudao.kanban.rbac;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
+
+  List<Usuario> findAllByOrderByNomeAsc();
 
   Optional<Usuario> findByKeycloakSub(String keycloakSub);
 

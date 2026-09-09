@@ -3,12 +3,15 @@ package br.com.crudao.kanban.rbac;
 import br.com.crudao.kanban.common.BusinessException;
 import br.com.crudao.kanban.common.RecursoNaoEncontradoException;
 import br.com.crudao.kanban.rbac.dto.MembroProjetoResponse;
+import br.com.crudao.kanban.rbac.dto.UsuarioResumoResponse;
 import br.com.crudao.kanban.security.PermissaoGuard;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +59,28 @@ public class UsuarioProjetoPapelService {
               usuario.getId(), usuario.getNome(), usuario.getEmail(), entrada.getValue()));
     }
     return membros;
+  }
+
+  /**
+   * Usuarios ja provisionados (JIT) que ainda nao sao membros do projeto — a origem do seletor de
+   * pessoa da tela de associacao (RF-015). O provisionamento e JIT: quem nunca fez login nao
+   * aparece aqui.
+   */
+  @Transactional(readOnly = true)
+  public List<UsuarioResumoResponse> listarDisponiveis(UUID projetoId) {
+    permissaoGuard.exigir(CodigoPermissao.USUARIO_ASSOCIAR, projetoId);
+
+    Set<UUID> jaMembros =
+        usuarioProjetoPapelRepository.findByIdProjetoId(projetoId).stream()
+            .map(associacao -> associacao.getId().getUsuarioId())
+            .collect(Collectors.toSet());
+
+    return usuarioRepository.findAllByOrderByNomeAsc().stream()
+        .filter(usuario -> !jaMembros.contains(usuario.getId()))
+        .map(
+            usuario ->
+                new UsuarioResumoResponse(usuario.getId(), usuario.getNome(), usuario.getEmail()))
+        .toList();
   }
 
   /** Atribui um papel do catalogo ao usuario no projeto. Idempotente. */

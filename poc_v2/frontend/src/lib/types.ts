@@ -195,6 +195,13 @@ export interface NotificacaoResponse {
   lidaEm: string | null;
 }
 
+/** Usuario provisionado disponivel para associacao ao projeto (RF-015). */
+export interface UsuarioResumoResponse {
+  id: string;
+  nome: string;
+  email: string;
+}
+
 export interface MembroProjetoResponse {
   usuarioId: string;
   nome: string;

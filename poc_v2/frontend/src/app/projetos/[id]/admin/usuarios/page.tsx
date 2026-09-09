@@ -9,7 +9,12 @@ import { EstadoErro, EstadoVazio, Skeleton } from '@/components/Skeleton';
 import { usePermissoes } from '@/hooks/usePermissoes';
 import { api, mensagemDeErro } from '@/lib/api';
 import { iniciais } from '@/lib/format';
-import { PERMISSAO, type MembroProjetoResponse, type ProjetoResponse } from '@/lib/types';
+import {
+  PERMISSAO,
+  type MembroProjetoResponse,
+  type ProjetoResponse,
+  type UsuarioResumoResponse,
+} from '@/lib/types';
 
 /** Papeis associaveis a projeto: o catalogo fechado menos os globais/protegidos (RN-006). */
 const PAPEIS_DE_PROJETO = [
@@ -31,6 +36,7 @@ export default function AdminUsuariosPage() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [associando, setAssociando] = useState(false);
+  const [disponiveis, setDisponiveis] = useState<UsuarioResumoResponse[]>([]);
   const [novoUsuarioId, setNovoUsuarioId] = useState('');
   const [novoPapel, setNovoPapel] = useState('dev');
 
@@ -38,12 +44,14 @@ export default function AdminUsuariosPage() {
     setCarregando(true);
     setErro(null);
     try {
-      const [projetoCarregado, membrosCarregados] = await Promise.all([
+      const [projetoCarregado, membrosCarregados, disponiveisCarregados] = await Promise.all([
         api.projeto(projetoId),
         api.membros(projetoId),
+        api.usuariosDisponiveis(projetoId),
       ]);
       setProjeto(projetoCarregado);
       setMembros(membrosCarregados);
+      setDisponiveis(disponiveisCarregados);
     } catch (erroCarga) {
       setErro(mensagemDeErro(erroCarga));
     } finally {
@@ -58,7 +66,7 @@ export default function AdminUsuariosPage() {
   async function associar() {
     try {
       await api.associarPapel(projetoId, {
-        usuarioId: novoUsuarioId.trim(),
+        usuarioId: novoUsuarioId,
         codigoPapel: novoPapel,
       });
       feedback.sucesso('Usuário associado ao projeto.');
@@ -197,17 +205,25 @@ export default function AdminUsuariosPage() {
           >
             <h1 id="associar-titulo">Associar usuário</h1>
             <div className="form-field">
-              <label htmlFor="associar-usuario">Identificador do usuário</label>
-              <input
+              <label htmlFor="associar-usuario">Usuário</label>
+              <select
                 id="associar-usuario"
-                type="text"
                 aria-describedby="associar-usuario-desc"
+                disabled={disponiveis.length === 0}
                 value={novoUsuarioId}
                 onChange={(evento) => setNovoUsuarioId(evento.target.value)}
-              />
+              >
+                <option value="">Selecione um usuário</option>
+                {disponiveis.map((usuario) => (
+                  <option key={usuario.id} value={usuario.id}>
+                    {usuario.nome} — {usuario.email}
+                  </option>
+                ))}
+              </select>
               <span id="associar-usuario-desc" className="text-secondary">
-                O usuário precisa ter feito login ao menos uma vez para existir na base
-                (provisionamento JIT).
+                {disponiveis.length === 0
+                  ? 'Nenhum usuário disponível. O usuário precisa ter feito login ao menos uma vez para existir na base (provisionamento JIT).'
+                  : 'Apenas usuários já provisionados e que ainda não são membros deste projeto.'}
               </span>
             </div>
             <div className="form-field">
@@ -231,7 +247,7 @@ export default function AdminUsuariosPage() {
               <button
                 className="btn btn-primary"
                 type="button"
-                disabled={novoUsuarioId.trim() === ''}
+                disabled={novoUsuarioId === ''}
                 onClick={() => void associar()}
               >
                 Associar

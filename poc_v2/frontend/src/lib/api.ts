@@ -31,6 +31,7 @@ import type {
   TarefaResumoResponse,
   TransicaoResponse,
   UsuarioResponse,
+  UsuarioResumoResponse,
   WorkflowResponse,
 } from './types';
 
@@ -209,6 +210,11 @@ export const api = {
 
   membros: (projetoId: string) =>
     requisitar<MembroProjetoResponse[]>('GET', `/api/projetos/${projetoId}/usuarios`),
+  usuariosDisponiveis: (projetoId: string) =>
+    requisitar<UsuarioResumoResponse[]>(
+      'GET',
+      `/api/projetos/${projetoId}/usuarios/disponiveis`,
+    ),
   associarPapel: (projetoId: string, r: AssociarPapelRequest) =>
     requisitar<void>('POST', `/api/projetos/${projetoId}/usuarios`, r),
   desassociarPapel: (projetoId: string, usuarioId: string, codigoPapel: string) =>

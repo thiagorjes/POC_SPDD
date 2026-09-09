@@ -3,6 +3,7 @@ package br.com.crudao.kanban.api;
 import br.com.crudao.kanban.rbac.UsuarioProjetoPapelService;
 import br.com.crudao.kanban.rbac.dto.AssociarPapelRequest;
 import br.com.crudao.kanban.rbac.dto.MembroProjetoResponse;
+import br.com.crudao.kanban.rbac.dto.UsuarioResumoResponse;
 import br.com.crudao.kanban.security.UsuarioAtualProvider;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -33,6 +34,12 @@ public class AdminPapelController {
   @GetMapping
   public ResponseEntity<List<MembroProjetoResponse>> listar(@PathVariable UUID projetoId) {
     return ResponseEntity.ok(usuarioProjetoPapelService.listarMembros(projetoId));
+  }
+
+  @GetMapping("/disponiveis")
+  public ResponseEntity<List<UsuarioResumoResponse>> listarDisponiveis(
+      @PathVariable UUID projetoId) {
+    return ResponseEntity.ok(usuarioProjetoPapelService.listarDisponiveis(projetoId));
   }
 
   @PostMapping

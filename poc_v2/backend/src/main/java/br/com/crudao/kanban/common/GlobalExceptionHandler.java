@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
@@ -26,6 +27,8 @@ public class GlobalExceptionHandler {
       "Ocorreu um erro inesperado ao processar a requisicao.";
   private static final String MENSAGEM_INTEGRIDADE =
       "A operacao viola uma regra de integridade dos dados.";
+  private static final String MENSAGEM_REQUISICAO_INVALIDA =
+      "A requisicao esta malformada e nao pode ser processada.";
 
   @ExceptionHandler(BusinessException.class)
   public ResponseEntity<ErrorResponse> handleBusinessException(
@@ -55,6 +58,21 @@ public class GlobalExceptionHandler {
                 "Ha campos invalidos na requisicao.",
                 request.getRequestURI(),
                 campos));
+  }
+
+  /**
+   * Corpo de requisicao malformado: JSON invalido ou valor que nao converte para o tipo do campo
+   * (ex.: texto livre onde se espera UUID). Responde 400 sem ecoar o valor recebido nem o tipo
+   * interno esperado.
+   */
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ErrorResponse> handleCorpoIlegivel(
+      HttpMessageNotReadableException ex, HttpServletRequest request) {
+    log.warn("Corpo de requisicao malformado em {}", request.getRequestURI());
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(
+            ErrorResponse.of(
+                "REQUISICAO_INVALIDA", MENSAGEM_REQUISICAO_INVALIDA, request.getRequestURI()));
   }
 
   @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
