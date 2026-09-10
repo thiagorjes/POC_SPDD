@@ -54,4 +54,30 @@ public final class Sujeitos {
     public static RequestPostProcessor adminGlobal() {
         return comoSub(SUB_ADMIN_GLOBAL, "Admin", "admin@empresa.example");
     }
+
+    /**
+     * Um token <b>sintaticamente valido</b> e com assinatura que nao confere.
+     *
+     * <p>Serve a um caso so: fazer o servidor de recurso chegar ate a busca da
+     * chave de assinatura. Os demais testes usam o pos-processador {@code jwt()},
+     * que injeta a autenticacao ja pronta e nunca toca o decodificador — util
+     * para verificar contrato, inutil para verificar o que acontece quando o
+     * provedor nao responde.
+     *
+     * <p>Precisa ser bem formado, e nao uma cadeia qualquer: token que nao passa
+     * no parse e recusado <b>antes</b> de o JWKS ser procurado, e o teste
+     * receberia {@code 401} por credencial malformada — verde pelo motivo errado,
+     * afirmando ter verificado uma indisponibilidade que nunca chegou a ocorrer.
+     */
+    public static String bearerBemFormado() {
+        String cabecalho = base64Url("{\"alg\":\"RS256\",\"typ\":\"JWT\",\"kid\":\"chave-de-teste\"}");
+        String corpo = base64Url("{\"sub\":\"" + SUB_ANA + "\",\"name\":\"Ana\","
+                + "\"email\":\"ana@empresa.example\",\"exp\":4102444800}");
+        return cabecalho + "." + corpo + "." + base64Url("assinatura-que-nao-confere");
+    }
+
+    private static String base64Url(String texto) {
+        return java.util.Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(texto.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
 }

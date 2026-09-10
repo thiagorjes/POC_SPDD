@@ -30,6 +30,18 @@ spring:
   flyway:
     enabled: false
 
+idsd:
+  admin-global:
+    # Sujeito designado a administracao global (ADR-010). E o `sub` do token, e
+    # nunca o e-mail: e-mail e mutavel no provedor e, em realm com autocadastro,
+    # atribuivel por quem se registra — casar por e-mail poria o bypass universal
+    # a uma requisicao de distancia de qualquer um.
+    #
+    # Vazio por padrao, e vazio significa que ninguem e promovido. A ausencia de
+    # configuracao nunca pode ser lida como "qualquer um serve", que e o modo de
+    # falha desta classe de property.
+    subject-id: ${IDSD_ADMIN_GLOBAL_SUBJECT_ID:}
+
 management:
   endpoints:
     web:

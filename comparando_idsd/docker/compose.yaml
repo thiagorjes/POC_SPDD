@@ -150,6 +150,13 @@ services:
       # depender de uma unica chamada dar certo no instante exato.
       IDENTIDADE_ISSUER_URI: ${IDENTIDADE_HOSTNAME:-http://localhost:8180}/realms/${IDENTIDADE_REALM:-idsd}
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/${IDENTIDADE_REALM:-idsd}/protocol/openid-connect/certs
+      # Sujeito designado a administracao global (ADR-010). E o `sub` da conta
+      # `admin` do realm importado, e nao o e-mail dela: casar por e-mail poria o
+      # bypass universal a uma requisicao de distancia em realm com autocadastro.
+      # Sem esta variavel ninguem e promovido, e o ambiente de desenvolvimento
+      # nasceria sem administracao global — que e um estado do qual ele nao sai
+      # por dentro do produto.
+      IDSD_ADMIN_GLOBAL_SUBJECT_ID: ${IDSD_ADMIN_GLOBAL_SUBJECT_ID:-6f9d4c2a-0000-4000-8000-000000000005}
     secrets:
       # Montado em /run/secrets/banco-senha, que e o caminho que o
       # `application.yml` importa por configtree.

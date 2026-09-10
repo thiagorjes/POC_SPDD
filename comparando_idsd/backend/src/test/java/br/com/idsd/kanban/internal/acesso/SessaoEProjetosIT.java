@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.idsd.kanban.suporte.Sujeitos;
 import br.com.idsd.kanban.suporte.TesteDeIntegracao;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.DisplayName;
@@ -30,7 +31,12 @@ class SessaoEProjetosIT extends TesteDeIntegracao {
         // mandaria a pessoa tentar outra credencial que nao resolveria nada.
         provedorDeIdentidade().indisponivel();
 
-        mockMvc.perform(get("/v1/sessao").with(ana()))
+        // Token de verdade no cabecalho, e nao o pos-processador `jwt()`: ele
+        // injeta a autenticacao ja pronta e nunca chega ao decodificador, de
+        // modo que este teste responderia `200` com o provedor fora do ar —
+        // verde afirmando o contrario do que o cenario exige.
+        mockMvc.perform(get("/v1/sessao")
+                        .header("Authorization", "Bearer " + Sujeitos.bearerBemFormado()))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(header().exists("Retry-After"))
                 .andExpect(jsonPath("$.status").value(503))

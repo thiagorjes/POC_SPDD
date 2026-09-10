@@ -60,6 +60,19 @@ public class Usuario {
         this.email = email;
     }
 
+    /**
+     * Reflete no objeto em memoria a promocao ja gravada.
+     *
+     * <p>Nao ha setter livre de propriedade: a promocao a administracao global e
+     * feita pela atualizacao condicional de {@link UsuarioRepository}, que e
+     * quem garante a unicidade de ADR-010 no mesmo comando que promove. Este
+     * metodo existe so para que o objeto ja carregado nao continue afirmando o
+     * estado anterior, e nao para conceder o alcance.
+     */
+    void refletirPromocaoGravada() {
+        this.adminGlobal = true;
+    }
+
     public UUID getId() {
         return id;
     }

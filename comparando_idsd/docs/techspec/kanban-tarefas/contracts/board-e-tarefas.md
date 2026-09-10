@@ -42,7 +42,9 @@ devolve `200` com o estado atual. É o que SCN-007.2 e SCN-010.3 verificam. Não
 header `Idempotency-Key`.
 
 **Códigos comuns:** `400` corpo malformado; `401` sem token; `403` sem permissão
-(RN-015); `404` tarefa inexistente ou em projeto sem participação; `422` regra de
+(RN-015); `404` tarefa inexistente ou em projeto sem participação — a regra única
+que separa os dois está em `sessao-e-projetos.md`, e o caso do participante sem
+papel algum é `403`; `422` regra de
 negócio violada; `409` estado de origem divergente; `429` com `Retry-After` ao
 exceder o limite de requisições (TechSpec Seção 8).
 

@@ -40,14 +40,51 @@ public final class ProvedorSimulado {
         return servidor.baseUrl() + "/realms/idsd";
     }
 
-    /** Realm no ar: descoberta e JWKS respondem. */
+    /**
+     * Onde o servidor de recurso busca a chave de assinatura.
+     *
+     * <p>E esta URL, e nao o issuer, que o perfil de teste configura: apontar o
+     * issuer faria o autoconfigure resolver a descoberta OIDC <b>eagerly na
+     * subida do contexto</b>, e todo teste que sobe contexto passaria a depender
+     * de uma chamada de rede dar certo no instante exato do arranque.
+     */
+    public String jwkSetUri() {
+        return issuerUri() + "/protocol/openid-connect/certs";
+    }
+
+    /**
+     * Realm no ar: descoberta e JWKS respondem.
+     *
+     * <p>O corpo da descoberta e montado aqui, e nao lido de um arquivo de
+     * fixture, porque ele contem URLs absolutas e a porta do servidor e sorteada
+     * a cada execucao — um arquivo estatico estaria errado por construcao. Era o
+     * que a versao anterior tentava fazer, apontando para um
+     * {@code identidade/descoberta-200.json} que nunca existiu em disco.
+     *
+     * <p>O JWKS sai <b>sem chave nenhuma</b>, e isso e deliberado: nenhum teste
+     * desta suite valida assinatura de verdade — a identidade e injetada pelo
+     * pos-processador {@code jwt()}, que nao passa pelo decodificador. O unico
+     * teste que exercita o decodificador e o da indisponibilidade, e o que ele
+     * precisa e justamente que a busca da chave <b>falhe</b>.
+     */
     public void disponivel() {
         servidor.resetAll();
-        servidor.stubFor(WireMock.get(WireMock.urlPathMatching("/realms/idsd/.*"))
-                .willReturn(WireMock.aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBodyFile("identidade/descoberta-200.json")));
+        servidor.stubFor(WireMock.get(WireMock.urlPathEqualTo(
+                        "/realms/idsd/.well-known/openid-configuration"))
+                .willReturn(json(200, """
+                        {
+                          "issuer": "%1$s",
+                          "jwks_uri": "%1$s/protocol/openid-connect/certs",
+                          "authorization_endpoint": "%1$s/protocol/openid-connect/auth",
+                          "token_endpoint": "%1$s/protocol/openid-connect/token",
+                          "response_types_supported": ["code"],
+                          "subject_types_supported": ["public"],
+                          "id_token_signing_alg_values_supported": ["RS256"]
+                        }
+                        """.formatted(issuerUri()))));
+        servidor.stubFor(WireMock.get(WireMock.urlPathEqualTo(
+                        "/realms/idsd/protocol/openid-connect/certs"))
+                .willReturn(json(200, "{\"keys\": []}")));
     }
 
     /**
@@ -58,5 +95,13 @@ public final class ProvedorSimulado {
         servidor.resetAll();
         servidor.stubFor(WireMock.get(WireMock.urlPathMatching("/realms/idsd/.*"))
                 .willReturn(WireMock.aResponse().withStatus(503)));
+    }
+
+    private static com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder json(
+            int status, String corpo) {
+        return WireMock.aResponse()
+                .withStatus(status)
+                .withHeader("Content-Type", "application/json")
+                .withBody(corpo);
     }
 }

@@ -52,12 +52,37 @@ escreve a consulta e passa a ser propriedade do esquema.
 | --- | --- | --- |
 | `id` | `uuid` PK | |
 | `subject_id` | `text` UNIQUE NOT NULL | `sub` do token do provedor de identidade. Chave de vínculo, nunca o e-mail |
-| `nome` | `text` NOT NULL | Espelhado do token a cada entrada |
-| `email` | `text` NOT NULL | Idem |
+| `nome` | `text` NOT NULL | Espelhado do token a cada entrada, com recuo declarado abaixo |
+| `email` | `text` NULL | Idem. **Anulável desde 2026-09-10** — ver abaixo |
 | `admin_global` | `boolean` NOT NULL DEFAULT false | ADR-007 e BDR-001. Fora do vínculo por projeto |
 | `criado_em` | `timestamptz` NOT NULL | Autoprovisionamento na primeira entrada (RF-001) |
 
 Não há senha, não há cadastro local — ADR-006.
+
+**Token válido sem `name` ou sem `email` (decisão de 2026-09-10).** É estado
+alcançável, e não hipótese: em realm federado o provedor de origem decide quais
+claims propaga, e nada obriga as duas. Com as colunas `NOT NULL`, a primeira
+entrada dessa pessoa violava restrição e o autoprovisionamento de RF-001
+respondia `500` — falha de instalação disfarçada de defeito da aplicação, na
+única rota que a pessoa consegue alcançar.
+
+- `email` passa a ser **anulável**. Nada no sistema depende dele: ADR-010 fixou o
+  `sub` como chave e proíbe expressamente que autorização o consulte, de modo que
+  o e-mail é campo de exibição. Exigi-lo seria transformar um dado decorativo em
+  pré-condição de entrada.
+- `nome` continua `NOT NULL` e ganha recuo no serviço, nesta ordem: `name` →
+  `preferred_username` → `subject_id`. Ele **é** exibido — no cartão, na fila e na
+  relação de participações —, e nulo ali produziria interface sem quem, que é pior
+  que um identificador feio. O recuo é do serviço e não `DEFAULT` da coluna:
+  `DEFAULT` só age na inserção e deixaria a atualização a cada entrada gravar
+  nulo.
+- **Recusar a entrada foi considerado e descartado.** O token é legítimo e a
+  autenticação funcionou; o que falta é configuração do realm. Recusar deixaria a
+  pessoa sem caminho algum, porque ADR-006 não prevê autenticação alternativa, e
+  o erro apareceria para quem não tem como corrigi-lo.
+- O espelhamento a cada entrada não apaga o que já existe: claim ausente
+  **preserva** o valor gravado. Sem isso, uma mudança de configuração do provedor
+  esvaziaria em massa o e-mail de quem já havia entrado.
 
 ### `projeto`
 
@@ -404,12 +429,27 @@ de se autocorrigir — que é o comportamento correto.
 
 | Ordem | Conteúdo |
 | --- | --- |
-| 1 | `usuario`, `projeto`, `participacao`, `participacao_papel` e seus índices |
+| 1 | `usuario`, `projeto` — **inclusive `seq_atual`** —, `participacao`, `participacao_papel` e seus índices |
 | 2 | `etapa`, `raia`, restrição de ordem única por projeto |
 | 3 | `tarefa`, restrição de verificação sobre `condicao`, índices do board e da fila |
 | 4 | `evento_tarefa` e a concessão restrita de `SELECT, INSERT` à role de aplicação |
 | 5 | `intervalo_tarefa`, `impedimento` e os índices únicos parciais |
-| 6 | `projeto.seq_atual`, unicidade de `(projeto_id, seq)` e a coluna gerada `duracao` com seu índice |
+| 6 | unicidade de `(projeto_id, seq)` e a coluna gerada `duracao` com seu índice |
+| 7 | `ALTER TABLE usuario ALTER COLUMN email DROP NOT NULL` |
+
+A ordem 7 existe porque a 1 já foi aplicada pela TASK-01.3, e migration aplicada
+não se altera — corrige-se com uma nova. Ela é barata (`DROP NOT NULL` não
+reescreve a tabela) e pode ser executada a qualquer momento antes de a rota de
+sessão entrar em uso com realm federado.
+
+**Correção de 2026-09-10 (ACH-02 da revisão de TASK-01.3).** `projeto.seq_atual`
+estava listado na ordem 6 e nasce na 1, que é onde a TASK-01.3 corretamente o
+criou — a coluna é declarada em §3 como parte de `projeto`, e `POST /v1/projetos`
+insere o projeto já com `seq_atual = 0`. Quem implementasse a migration 6 seguindo
+a tabela antiga escreveria `ADD COLUMN` sobre coluna existente, e a migração
+falharia contra qualquer banco já migrado — no serviço dedicado, com o backend
+parado esperando por `service_completed_successfully` (ADR-011). A decisão estava
+certa desde a task; faltava propagá-la para cá.
 
 **Não há gatilho de `NOTIFY` no banco.** A versão anterior desta tabela previa um,
 e ele concorria com a publicação por `EventoBoardPublisher` em `afterCommit` que a

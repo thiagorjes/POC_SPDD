@@ -108,7 +108,15 @@
     </dependency>
     <dependency>
       <groupId>org.wiremock</groupId>
-      <artifactId>wiremock</artifactId>
+      <!--
+        `standalone` e nao `wiremock`: o artefato normal espera Jetty 11, e o BOM
+        do Spring Boot gerencia Jetty para a linha 12 — o WireMock sobe e falha
+        com "Jetty 11 is not present", derrubando todo teste que carrega o
+        provedor simulado. O standalone traz o servidor sombreado e nao disputa
+        versao com o BOM. O defeito ficou latente enquanto nada exercitava o
+        provedor de verdade.
+      -->
+      <artifactId>wiremock-standalone</artifactId>
       <version>${wiremock.version}</version>
       <scope>test</scope>
     </dependency>

@@ -6,6 +6,33 @@ _Normas: `_shared/api-standards.md`, `_shared/api-security.md`, BDR-001, BDR-002
 Todas as rotas exigem `Authorization: Bearer <jwt>` emitido pelo realm confiável.
 Rota não mapeada nega por padrão. Erro sempre em `application/problem+json`.
 
+## `403` ou `404`: a regra é única em todo o produto
+
+Decidida em 2026-09-10 (ACH-03 da revisão de TASK-01.3), vale para **toda** rota
+de recurso de projeto, aqui e nos demais contratos. Os dois eixos são
+independentes e não se misturam:
+
+| Situação | Resposta |
+| --- | --- |
+| Não há `participacao` do sujeito no projeto | `404` |
+| Há `participacao`, mas os papéis não concedem a permissão da rota | `403` |
+| Há `participacao` sem papel algum, ou só com `user` | `403` |
+
+**Participação é o eixo da existência; papel é o eixo da capacidade.** Quem
+participa já sabe que o projeto existe — alguém o incluiu, e `GET /v1/projetos`
+lista por participação e não por permissão, de modo que o projeto aparece na
+relação uma rota antes. Responder `404` ali contradiria aquele `200` e tiraria da
+pessoa a única informação acionável que ela tem: peça o papel a quem administra o
+projeto. Do outro lado, `403` para quem não participa revelaria a existência de um
+projeto que SCN-002.3 exige manter oculto.
+
+A distinção depende do sinalizador `participa` que o resolvedor de permissão
+devolve junto do conjunto de permissões. Derivá-la de conjunto vazio é o que a
+regra proíbe: os dois casos produzem conjunto vazio e exigem respostas opostas.
+
+O alcance de administração global (RN-035) precede os dois eixos: ele não
+participa de projeto algum e ainda assim recebe `200`.
+
 ---
 
 ## `GET /v1/sessao` — quem sou eu e o que posso
@@ -24,6 +51,13 @@ Serve RF-001. Autoprovisiona o `usuario` na primeira entrada, a partir do `sub`,
   no provedor e, em realm com autocadastro ou federação, atribuível por quem se
   registra — usá-lo como chave de promoção tornaria a escalada ao bypass
   universal uma única requisição.
+- **Claim ausente (decisão de 2026-09-10):** token válido sem `email`
+  autoprovisiona com `email` nulo; sem `name`, o nome recua para
+  `preferred_username` e, faltando esse, para o próprio `sub`. A entrada **não** é
+  recusada: o token é legítimo e o que falta é configuração do realm, que quem
+  entra não tem como corrigir — e ADR-006 não deixa caminho alternativo. Claim
+  ausente preserva o valor já gravado em vez de sobrescrevê-lo com nulo. Razões
+  em `../data-model.md` §3.
 - **Erros:** `401` token ausente, inválido ou expirado. `503` com `Retry-After`
   quando o provedor de identidade está indisponível e o JWKS não pode ser
   validado — SCN-001.3 exige recusa sem oferta de caminho alternativo, e `503`

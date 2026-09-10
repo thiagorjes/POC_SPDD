@@ -12,10 +12,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import br.com.idsd.kanban.suporte.TesteDeIntegracao;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
 /**
  * RF-021 — administracao global.
@@ -29,22 +34,31 @@ import org.junit.jupiter.api.Test;
  * <p>SCN-021.3 e o cenario que importa mais: o alcance e de escopo, nao de
  * imunidade.
  */
+@ExtendWith(OutputCaptureExtension.class)
 class AdminGlobalIT extends TesteDeIntegracao {
 
     @Test
     @DisplayName("SCN-021.1 — a promocao registra quem e quando, e a segunda e recusada")
-    void promocaoEUnicaEAuditada() throws Exception {
+    void promocaoEUnicaEAuditada(CapturedOutput saida) throws Exception {
         // Nao existe admin global ainda; a property de bootstrap aponta para o
         // `sub` designado. A entrada dessa pessoa promove.
         mockMvc.perform(get("/v1/sessao").with(adminGlobal()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.adminGlobal").value(true));
 
-        mockMvc.perform(get("/v1/administracao/promocoes").with(adminGlobal()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", Matchers.hasSize(1)))
-                .andExpect(jsonPath("$[0].subjectId").value(SUB_ADMIN_GLOBAL))
-                .andExpect(jsonPath("$[0].promovidoEm").isNotEmpty());
+        // O registro auditavel e o log, e nao uma superficie do produto: o
+        // RF-021 declara que a promocao nao tem interface, e o contrato de
+        // sessao nomeia o `WARN` como o historico que RN-035 exige. Verificar
+        // por uma rota de consulta obrigaria a existir uma, que e escopo que
+        // ninguem decidiu.
+        assertThat(linhasDaPromocao(saida))
+                .as("a promocao aparece uma vez, e uma so, no registro auditavel")
+                .hasSize(1)
+                .first(org.assertj.core.api.InstanceOfAssertFactories.STRING)
+                .contains(SUB_ADMIN_GLOBAL)
+                // "e quando": o instante precisa estar na linha, senao o
+                // registro nao responde a metade da pergunta do cenario.
+                .containsPattern("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}");
 
         // Segunda pessoa entrando pelo mesmo caminho: ja existe admin global,
         // logo ninguem mais e promovido. Sem esta recusa o bypass universal
@@ -55,9 +69,24 @@ class AdminGlobalIT extends TesteDeIntegracao {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.adminGlobal").value(false));
 
-        mockMvc.perform(get("/v1/administracao/promocoes").with(adminGlobal()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", Matchers.hasSize(1)));
+        assertThat(linhasDaPromocao(saida))
+                .as("a segunda entrada nao acrescenta promocao alguma")
+                .hasSize(1);
+    }
+
+    /**
+     * As linhas de log que registram promocao efetivada.
+     *
+     * <p>Casa pelo conteudo — nivel {@code WARN} e o identificador promovido —, e
+     * nao pela frase: o cenario exige que o registro diga quem e quando, e nao
+     * que ele use uma redacao especifica.
+     */
+    private static java.util.List<String> linhasDaPromocao(CapturedOutput saida) {
+        return saida.getOut().lines()
+                .filter(linha -> linha.contains("WARN"))
+                .filter(linha -> linha.toLowerCase(java.util.Locale.ROOT).contains("promo"))
+                .filter(linha -> linha.contains(SUB_ADMIN_GLOBAL))
+                .toList();
     }
 
     @Test

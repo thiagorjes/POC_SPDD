@@ -37,6 +37,66 @@ aplicação para verificar o broadcast entre instâncias. Ele vive no fonte de
 teste, a aplicação não o importa, e o que ele conhece do sistema é apenas o que
 o contrato congelado já expõe.
 
+### Correção de 2026-09-10 — e o que ela custa à independência
+
+A v1.0 acima descreve a escrita original, e continua valendo para ela. Esta
+seção registra uma correção posterior, feita **depois** de TASK-01.1 a TASK-01.4
+terem sido implementadas, e por isso **não independente**: quem a executou havia
+lido o código de produção da sessão e da configuração de segurança na mesma
+sessão de trabalho. O GATE-VERIFICACAO-INDEPENDENTE aprovado na v1.0 **não
+cobre** os três testes tocados aqui — SCN-001.3, SCN-021.1 e o suporte comum.
+Registrar isso é o ponto: uma correção não independente escondida dentro de uma
+suíte aprovada é pior que o defeito que ela conserta, porque herda uma
+credencial que não é dela.
+
+Nenhum `.feature` foi tocado, e `check_congelamento.py` continua em exit 0.
+
+O que estava errado, e por quê:
+
+- **SCN-021.1 verificava uma rota que a especificação nega.** O step definition
+  consultava `GET /v1/administracao/promocoes`, que não existe em PRD, contrato,
+  TechSpec nem em nenhuma das 43 tasks. O cenário congelado exige apenas que "a
+  promoção fica registrada com quem foi promovido e quando"; o RF-021 declara
+  que a promoção **não tem interface no produto**, e o contrato de sessão nomeia
+  o log `WARN` como o histórico auditável que RN-035 exige. A rota foi invenção
+  da suíte. Passa a verificar o log, casando por conteúdo — nível, identificador
+  promovido e instante — e nunca pela redação da mensagem.
+- **SCN-001.3 era inalcançável, e teria ficado verde afirmando o contrário.** O
+  provedor simulado não estava registrado em property nenhuma, e todos os testes
+  usam o pós-processador `jwt()`, que injeta a autenticação pronta e **nunca
+  chega ao decodificador**. Com o provedor fora do ar o teste receberia `200`. O
+  suporte passa a apontar `jwk-set-uri` para o provedor simulado, e este cenário
+  — só ele — envia um token real no cabeçalho. O token precisa ser bem formado:
+  cadeia inválida é recusada antes de o JWKS ser procurado, e o teste ficaria
+  verde por credencial malformada, sem que indisponibilidade alguma ocorresse.
+- **A fixture ausente não podia existir.** O provedor apontava para um
+  `identidade/descoberta-200.json` que nunca esteve em disco. O corpo da
+  descoberta contém URLs absolutas e a porta é sorteada a cada execução: um
+  arquivo estático estaria errado por construção. O corpo passa a ser montado em
+  código, e a referência ao arquivo sai.
+
+Dois defeitos vieram de carona, ambos latentes porque nada exercitava este
+caminho:
+
+- **A dependência do WireMock não trazia servidor HTTP.** `org.wiremock:wiremock`
+  espera Jetty 11 e o BOM do Spring Boot gerencia Jetty na linha 12; o provedor
+  falhava no arranque e derrubava o contexto de **todo** teste de integração.
+  Trocada por `wiremock-standalone`, que traz o servidor sombreado.
+- **A suíte não tinha isolamento entre testes.** O contêiner é reusado e o schema
+  aplicado uma vez só, sem limpeza. SCN-021.1 afirma "ainda não existe
+  administrador global no sistema", e essa pré-condição passava a ser falsa
+  assim que qualquer outro teste entrasse como administrador global — o cenário
+  passaria ou falharia conforme a ordem em que o JUnit resolvesse executar as
+  classes. O suporte comum passa a esvaziar as tabelas antes de cada teste,
+  varrendo o catálogo do próprio banco em vez de uma lista escrita à mão, que
+  envelheceria calada na próxima migration.
+
+Medido: os dois cenários **passam**, e as demais falhas das duas classes são
+`No static resource v1/projetos` — Red legítimo, pelas rotas de TASK-01.5 em
+diante. A execução exigiu excluir, numa cópia temporária, os cinco arquivos de
+teste que ainda não compilam por dependerem de tasks posteriores; nada foi
+removido do repositório.
+
 ### Costura interna fixada pelos testes unitários
 
 Cinco cenários são tipados `unitário` no PRD, e um teste unitário
@@ -270,6 +330,7 @@ defeito que este congelamento existe para impedir.
 | Data | Item | Tipo | Motivo | Aprovador |
 | --- | --- | --- | --- | --- |
 | 2026-09-10 | Suíte congelada na v1.0 — 66 cenários, 8 verificações além dos cenários | congelamento inicial | fecho da etapa `/tests`; a partir daqui a suíte só muda por emenda de cenário ou desvio aprovado | agente `/tests` (congelamento inicial não é alteração e não exige aprovação humana) |
+| 2026-09-10 | Correção de SCN-021.1 (verificava rota inexistente; passa a verificar o log auditável) e de SCN-001.3 (era inalcançável; passa a exercitar o decodificador), mais o suporte comum: `jwk-set-uri` do provedor simulado, isolamento entre testes e troca do artefato do WireMock | correção de defeito da suíte | os dois cenários verificavam outra coisa que não o que o Gherkin congelado afirma. Nenhum `.feature` tocado, nenhum ID alterado, nenhuma asserção afrouxada — SCN-021.1 continua exigindo "quem e quando", agora onde o registro de fato vive. **Não independente**: ver a declaração de independência | Thiago Goncalves Cavalcante (autorizou a correção; a natureza não independente foi declarada antes da execução) |
 | 2026-09-10 | Acréscimo de SCN-022.1, SCN-022.2 e SCN-022.3 — `CriacaoDeProjetoIT` criado, um teste novo em `CriacaoDeTarefaIT`, suporte E2E migrado para a rota real | emenda de cenário no PRD | emenda v1.3 do PRD, que criou RF-022 e fechou a lacuna de especificação registrada nesta etapa. Nenhum cenário preexistente teve ID, redação ou teste alterados | Thiago Goncalves Cavalcante (aprovador do gate de spec na reconfirmação da emenda v1.3) |
 
 ---
@@ -281,6 +342,7 @@ defeito que este congelamento existe para impedir.
 | D-01 | Os arquivos `.feature` do PRD **não** são duplicados em `features/kanban-tarefas/` | A ferramenta escolhida é JUnit/Jest/Playwright, e não Cucumber. Copiar os 21 arquivos criaria duas versões do mesmo cenário, que é a divergência que o congelamento guarda. Cada teste carrega o ID do cenário no nome que o relatório exibe, e a rastreabilidade fica pela tabela de cobertura acima | `/tests` |
 | D-02 | Projeto e primeira participação são semeados por SQL direto na suíte de integração | Forma de fixture, e não ausência de rota: `POST /v1/projetos` existe desde a emenda v1.3 e é verificado por `CriacaoDeProjetoIT`. A rota **sempre** cria uma primeira `project_admin`, e vários cenários congelados exigem um conjunto de participantes exatamente igual ao declarado — inclusive projeto em que o sujeito é só `gestor`, e projeto sem participação nenhuma, que SCN-002.2 exige. Semear pela rota tornaria esses estados inalcançáveis | `/tests` |
 | D-03 | O pacote raiz é fixado em `br.com.idsd.kanban` | As tasks usam marcador de posição; a suíte precisa de um nome concreto | TASK-01.1 |
+| D-05 | A correção de 2026-09-10 alterou `backend/pom.xml`, que é arquivo da TASK-01.1 e não da suíte | A troca de `wiremock` por `wiremock-standalone` é a única forma de o provedor simulado subir: o artefato anterior espera Jetty 11 contra o Jetty 12 do BOM, e a falha derruba o contexto de todo teste de integração. Alteração restrita à declaração de uma dependência de escopo `test` | `/tests`, com efeito em TASK-01.1 |
 
 ---
 
