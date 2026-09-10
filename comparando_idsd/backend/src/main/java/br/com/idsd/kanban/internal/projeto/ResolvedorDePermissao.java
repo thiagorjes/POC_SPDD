@@ -58,10 +58,13 @@ public class ResolvedorDePermissao {
      * precisa vir de quem decidiu o acesso — deriva-la de novo na borda seria a
      * segunda fonte da mesma decisao. E {@code participa} distingue quem esta no
      * projeto sem papel de quem nao esta nele: os dois tem conjunto de permissoes
-     * vazio, e a TechSpec §8 pede respostas diferentes para os dois (`403` contra
-     * `404`, SCN-002.3). Este servico nao escolhe entre elas — essa decisao esta
-     * em aberto com o {@code /techspec} —, mas entrega ao chamador o material
-     * para escolher, em vez de colapsar os dois casos num vazio indistinguivel.
+     * vazio, e a TechSpec §8 pede respostas diferentes para os dois. A regra foi
+     * fixada na TechSpec v1.8 e vale em todo o produto: participacao e o eixo da
+     * existencia e papel e o eixo da capacidade — quem nao participa recebe
+     * {@code 404}, quem participa sem o papel exigido recebe {@code 403}
+     * (SCN-002.3). Este servico nao aplica a regra, que e da borda; ele entrega o
+     * material para aplica-la, em vez de colapsar os dois casos num vazio
+     * indistinguivel — derivar a distincao de conjunto vazio e exatamente o erro.
      */
     public record Acesso(Set<Permissao> permissoes, boolean participa, boolean porAdministracaoGlobal) {
 
@@ -119,6 +122,27 @@ public class ResolvedorDePermissao {
             permissoes.addAll(papel.getPermissoes());
         }
         return Collections.unmodifiableSet(permissoes);
+    }
+
+    /**
+     * Monta o acesso a partir de vinculo <b>ja carregado</b>, sem nova ida ao banco.
+     *
+     * <p>Existe por uma razao unica: a relacao de projetos resolve N acessos numa
+     * requisicao so, e chamar {@link #acessoAoProjeto} por linha seria o N+1 que o
+     * criterio de aceite da rota proibe. Nao e um segundo caminho de decisao — a
+     * regra dos dois sujeitos, o alcance global que nao se soma a papel e a marca
+     * continuam sendo <b>desta</b> classe, e e por isso que o metodo mora aqui e
+     * nao em quem consulta.
+     *
+     * <p>Restrito ao pacote pelo mesmo motivo de {@link #permissoesDe}: os papeis
+     * chegam como argumento, e o chamador precisa te-los lido do banco. Nao ha uso
+     * legitimo fora do pacote.
+     */
+    Acesso acessoDerivado(Collection<Papel> papeis, boolean participa, boolean adminGlobal) {
+        if (adminGlobal) {
+            return new Acesso(ALCANCE_GLOBAL, participa, true);
+        }
+        return new Acesso(permissoesDe(papeis), participa, false);
     }
 
     /** Atalho de decisao. Existe para que o chamador nao reimplemente o teste. */
