@@ -1,6 +1,6 @@
 # TASK-01.3 — Migration 1 e entidades de usuário, projeto e participação
 
-- **Status:** pendente
+- **Status:** concluída
 - **Sistema:** idsd
 - **Executor:** agente
 - **Tentativas:** 3
@@ -17,11 +17,11 @@ migration e as entidades correspondentes.
 
 #### O que deve ser feito
 
-- [ ] Criar a migration de ordem 1 com as tabelas `usuario`, `projeto`,
+- [x] Criar a migration de ordem 1 com as tabelas `usuario`, `projeto`,
       `participacao` e `participacao_papel`, e seus índices.
-- [ ] Criar as entidades JPA e os repositórios correspondentes.
-- [ ] Definir o catálogo de papéis como **enumeração em código**, nunca tabela.
-- [ ] Implementar o resolvedor de permissões a partir dos papéis da
+- [x] Criar as entidades JPA e os repositórios correspondentes.
+- [x] Definir o catálogo de papéis como **enumeração em código**, nunca tabela.
+- [x] Implementar o resolvedor de permissões a partir dos papéis da
       participação real.
 
 #### Guia técnico — estrutura de arquivos
@@ -120,3 +120,9 @@ Catálogo fechado de papéis e permissões:
 | Data | Evento | Detalhe |
 | --- | --- | --- |
 | 2026-09-09 | criação | Task derivada do plano de execução do épico |
+| 2026-09-10 | Red medido | `mvn test-compile` reprova por `cannot find symbol` sobre classes de produção inexistentes — a suíte **não compila**, como em TASK-01.1. Nenhum teste dos cenários desta task chega a executar, e o Red segue sendo de compilação e não de asserção |
+| 2026-09-10 | tentativa 1 | Nove arquivos criados, todos dentro da tabela. A migration é `V2026091009__configuracao_base.sql`. Três decisões que a task deixava à implementação: **(a)** o código persistido do papel (`project_admin`, `dev`…) é atributo da enumeração, com conversor JPA aninhado em `Papel` — aninhado de propósito, para que renomear o código sem ver a coluna que depende dele fique difícil, e porque um arquivo próprio estaria fora da tabela; código desconhecido na leitura **levanta exceção**, já que catálogo fechado não serve para nada se linha inválida no banco virar papel silenciosamente nulo. **(b)** `participacao` referencia `usuario` e `projeto` por `@ManyToOne` preguiçoso, e os papéis são `@ElementCollection` sobre `Set`, porque a PK `(participacao_id, papel)` já torna papel repetido um estado impossível. **(c)** Nenhuma constraint `CHECK` sobre `participacao_papel.papel`: ela duplicaria o catálogo no banco, que é exatamente a segunda fonte que a decisão de enumeração existe para não ter — o critério 5 pede ausência de tabela de papel, e uma lista de valores presa na migration teria o mesmo defeito com outro nome |
+| 2026-09-10 | verificação | Critérios 1 a 6 medidos por execução. **1:** `up migracao` em banco limpo aplica a migration e sai (`Successfully applied 1 migration`, PostgreSQL 16.15, Flyway 13.6.0). **2:** o backend sobe com `ddl-auto=validate` contra o schema aplicado (`Started Aplicacao in 8.618 seconds`) — que é a prova real do mapeamento das cinco entidades, e a razão de a verificação não ter parado na compilação. **3:** segunda `participacao` para o mesmo par é recusada por `participacao_usuario_projeto_unico`. **4:** `project_admin` e `dev` convivem na mesma participação, duas linhas. **5:** `\dt` lista quatro tabelas do domínio e nenhuma de catálogo de papel. **6:** 8 testes verdes em `ResolvedorDePermissaoTest`. Suíte inteira reconferida: os símbolos ausentes continuam sendo só de tasks posteriores (tarefa, etapa, impedimento, evento) — nenhuma regressão |
+| 2026-09-10 | achado — critério 6 sem teste na suíte congelada | O critério pede "teste unitário por papel e por acúmulo", e a suíte escrita pelo `/tests` **não tem nenhum**: SCN-002.1 é o único cenário da task, é de integração, depende de `GET /v1/projetos` (TASK-01.5) e não exercita `project_admin` nem acúmulo. `ResolvedorDePermissaoTest` foi escrito aqui para cumprir o critério, **fora da tabela de arquivos** e declaradamente fora da suíte congelada: não cobre cenário Gherkin, não toca `.feature` nem step definition, e não altera nada do que já existia. Como a suíte não compila, ele foi executado isoladamente por `javac` + console do JUnit sobre o classpath do projeto — 8/8 verdes. Dono do buraco: `/tests` |
+| 2026-09-10 | achado — SCN-002.1 inalcançável nesta task | O único cenário coberto exige `GET /v1/projetos`, que é da **TASK-01.5**, e a rota de sessão que autoprovisiona, que é da TASK-01.4. Mesma assimetria que ACH-07 da revisão de TASK-01.1 registrou: a task está completa e o cenário que ela declara cobrir só fica verde duas tasks adiante. Dono `/tasks` |
+| 2026-09-10 | `check_escopo.py` | Oito erros, **nenhum desta task**: são os arquivos do fechamento dos bloqueantes de TASK-01.2, já commitados, que o script vê como alteração fora do escopo por comparar com o commit anterior. Os onze arquivos desta task não são acusados |
