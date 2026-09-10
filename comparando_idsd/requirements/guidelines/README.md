@@ -52,7 +52,7 @@ com o tempo, e a versão errada é sempre a que alguém leu.
 | [`backend/java`](backend/java/) | Elaborada | Java 25 + Spring Boot. Obrigatórios completos; condicionais: `spring-boot.md`, `database.md`, `integrations.md`, `openapi-swagger.md`, `sonarqube.md` |
 | [`frontend/nextjs`](frontend/nextjs/) | Elaborada | Next.js + TypeScript. Obrigatórios completos; condicionais: `design-system.md` + `design-tokens.json` + `components/`, `security.md` |
 | [`frontend/react`](frontend/react/) | Stub | Declarada como dívida. Ver o README da coleção |
-| [`infra/docker`](infra/docker/) | Stub | Declarada como dívida. Containerização hoje é coberta pelo `definition-of-done.md` de cada stack |
+| [`infra/docker`](infra/docker/) | Elaborada | Ambiente de execução: topologia, rede, volumes, ordem de subida, healthcheck, segredo, proveniência de imagem, ambiente de teste. Obrigatórios completos; condicionais não se aplicam à camada |
 
 Stub é dívida declarada, não ausência: existe para impedir que duas pessoas
 recriem a mesma coleção do zero em paralelo.
@@ -88,6 +88,8 @@ cross-link para o transversal, índice fora de sincronia, coleção declarada no
 
 ## Histórico
 
+- **2026-09-09** — `infra/docker` elaborada (ADR-011, ADR-012, ADR-013). Registry e
+  CI ficam como dívidas nomeadas, com os pré-requisitos já escritos.
 - **2026-09-04** — Índice criado; `infra/docker` aberta como stub. A coleção plana
   do CRUDAO que vivia na raiz foi movida para `../_legado/guidelines-crudao/`
   após extração de dois achados para `backend/java`.

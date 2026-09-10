@@ -1,6 +1,12 @@
 # ADR-007 — Bootstrap do primeiro admin via flag `adminGlobal` + e-mail configurado
 
-_Status: Aceito | Data: 2026-08-25 | Feature: kanban-tarefas_
+_Status: **Superado por [ADR-010](ADR-010-bootstrap-do-admin-global-por-subject-verificado.md)** | Data: 2026-08-25 | Feature: kanban-tarefas_
+
+> **Aviso.** Este DR é texto herdado da stack anterior: as rotas `/api/...`, a tabela
+> `UsuarioProjetoPapel`, o contrato `projetos.md` e a numeração de RF-008 e RN-015
+> não correspondem ao PRD v1.0 nem ao modelo de dados desta feature. O problema que
+> ele resolve permanece válido; o mecanismo de promoção por e-mail foi substituído em
+> ADR-010 por promoção única por `subject_id`, auditada.
 
 ## Contexto
 

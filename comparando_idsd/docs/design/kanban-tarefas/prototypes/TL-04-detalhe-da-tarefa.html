@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280">
+<title>TL-04 · Detalhe da tarefa — kanban-tarefas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="proto.css">
+</head>
+<body>
+<a class="skip-link" href="#painel">Pular para o detalhe da tarefa</a>
+
+<header class="topbar">
+  <span class="marca">Fluxo de Tarefas</span>
+  <span class="texto-sm texto-secundario">Portal de Crédito</span>
+  <span class="espaco"></span>
+  <button type="button" class="chip-tema" data-alternar-tema aria-pressed="false">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+    <span data-rotulo-tema>Tema claro</span>
+  </button>
+  <div class="usuario">
+    <span class="avatar" aria-hidden="true">CD</span>
+    <span><span class="nome" style="display:block">Caio Duarte</span><span class="papel">Desenvolvedor</span></span>
+  </div>
+</header>
+
+<main class="conteudo sidebar-colapsada" style="padding-left:0" aria-hidden="true">
+  <div class="board-envelope">
+    <div class="board-barra"><h1>Portal de Crédito</h1></div>
+    <div class="board">
+      <section class="etapa"><div class="etapa-cabecalho"><h2 class="titulo">Refinamento</h2><span class="qtd">2</span></div><p class="etapa-vazia">…</p></section>
+      <section class="etapa"><div class="etapa-cabecalho"><h2 class="titulo">Em desenvolvimento</h2><span class="qtd">3</span></div><p class="etapa-vazia">…</p></section>
+      <section class="etapa"><div class="etapa-cabecalho"><h2 class="titulo">Revisão de código</h2><span class="qtd">2</span></div><p class="etapa-vazia">…</p></section>
+      <section class="etapa"><div class="etapa-cabecalho"><h2 class="titulo">Validação</h2><span class="qtd">0</span></div><p class="etapa-vazia">…</p></section>
+    </div>
+  </div>
+</main>
+
+<div class="cortina"></div>
+
+<aside id="painel" class="painel-lateral" role="dialog" aria-modal="true" aria-labelledby="pt-titulo">
+
+  <div class="painel-cabecalho">
+    <div style="flex:1">
+      <p class="texto-xs texto-secundario" style="font-variant-numeric:tabular-nums">PC-297 · Portal de Crédito · Raia: Evolução</p>
+      <h1 id="pt-titulo" style="margin-top:var(--space-sm)">Integrar consulta de restritivos</h1>
+      <div class="linha-flex" style="margin-top:var(--space-lg);flex-wrap:wrap">
+        <span class="badge badge-neutro">Etapa: Em desenvolvimento</span>
+        <span class="badge badge-neutro">Condição: Em curso</span>
+        <span class="badge badge-impedida">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17.5v.5"/></svg>
+          Com impedimento aberto
+        </span>
+      </div>
+    </div>
+    <a class="btn btn-sm btn-icone btn-fantasma" href="TL-03-board-cartao-compacto.html" aria-label="Fechar o detalhe da tarefa e voltar ao board">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </a>
+  </div>
+
+  <div class="painel-corpo pilha-lg">
+
+    <p class="nota-proto" style="margin-bottom:0"><strong>TL-04 — Detalhe da tarefa.</strong>
+      Demonstra: as <strong>três dimensões independentes</strong> de RN-002 — etapa,
+      condição de trabalho e marca de impedimento — exibidas em campos separados;
+      impedimento aberto como bloco permanente com tempo travado correndo;
+      recusa por ação concorrente com o estado atual à vista (B-03); conclusão
+      recusada enquanto houver impedimento sem desfecho (RN-011, B-04); histórico com
+      espera de tomada e tempo de permanência separados (Q-09).
+      <strong>Mover continua disponível</strong> com impedimento aberto (RN-009,
+      RN-032, SCN-006.3).</p>
+
+    <!-- ---------- recusa por ação concorrente, inline ---------- -->
+    <div class="alerta alerta-erro" role="alert">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/></svg>
+      <div class="conteudo-alerta">
+        <strong>Sua alteração foi recusada — a tarefa mudou enquanto você lia</strong>
+        Você pediu para avançar esta tarefa para <em>Revisão de código</em> partindo de
+        <em>Em desenvolvimento</em>. Entre a sua leitura e a sua ação, Rafa Lemos declarou
+        a tarefa impedida. <strong>Nada foi sobrescrito.</strong> O estado corrente está
+        abaixo; refaça a decisão se ainda fizer sentido.
+      </div>
+    </div>
+
+    <!-- ---------- impedimento aberto: permanente, não é alerta que passa ---------- -->
+    <section class="alerta alerta-impedimento" aria-labelledby="imp-titulo" style="flex-direction:column;align-items:stretch">
+      <div class="linha-flex">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17.5v.5"/></svg>
+        <h2 id="imp-titulo" style="font-size:var(--text-base);line-height:var(--lh-base)">Impedimento aberto</h2>
+        <span class="contador contador-impedimento" data-desde="7280" data-prefixo-acessivel="Tempo de impedimento" style="margin-left:auto">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span data-valor>5d 01h</span><span class="sr-only" data-sr></span>
+        </span>
+      </div>
+      <p class="texto-sm" style="margin-top:var(--space-lg)">
+        <strong>Motivo:</strong> credencial do birô de crédito não liberada pelo time de
+        segurança. Sem ela não é possível chamar o serviço em homologação.
+      </p>
+      <p class="texto-xs" style="margin-top:var(--space-md)">
+        Aberto por Caio Duarte em 04/09, 10h05 · desbloqueio a cargo de Liderança técnica ·
+        enquanto durar, o tempo de impedimento corre em série própria. A tarefa continua
+        podendo mudar de etapa e ser assumida — só o registro do desfecho apaga esta marca (RN-032).
+      </p>
+      <div class="linha-flex" style="margin-top:var(--space-xl)">
+        <button type="button" class="btn btn-sm btn-impedimento">Registrar desfecho e resolver</button>
+        <button type="button" class="btn btn-sm btn-fantasma">Anexar informação ao impedimento</button>
+      </div>
+      <p class="texto-xs" style="margin-top:var(--space-md)">
+        Não existe “abrir um segundo impedimento”: informação nova se anexa a este (B-02).
+      </p>
+    </section>
+
+    <!-- ---------- ficha ---------- -->
+    <section aria-labelledby="ficha-titulo">
+      <h2 id="ficha-titulo" style="margin-bottom:var(--space-xl)">Situação</h2>
+      <dl class="pares">
+        <dt>Etapa</dt><dd>Em desenvolvimento (2ª de 5)</dd>
+        <dt>Condição</dt><dd>Em curso — a marca de impedimento é dimensão à parte, não substitui a condição (RN-002)</dd>
+        <dt>Impedimento</dt><dd>Aberto há 5d 01h — acompanha a tarefa por qualquer etapa (RN-009, RN-032)</dd>
+        <dt>Raia</dt><dd>Evolução <span class="texto-xs texto-secundario">(agrupamento; não restringe transição)</span></dd>
+        <dt>Assumida por</dt><dd>Caio Duarte, desde 03/09 às 09h30</dd>
+        <dt>Espera de tomada</dt><dd>1h12, encerrada quando Caio assumiu</dd>
+        <dt>Tempo de permanência</dt><dd>6d 23h na etapa — corre em paralelo ao impedimento e <strong>nunca é somado a ele</strong> (RN-008)</dd>
+        <dt>Participação</dt><dd>Você tem participação de escrita neste projeto</dd>
+      </dl>
+    </section>
+
+    <hr class="divisor">
+
+    <!-- ---------- histórico ---------- -->
+    <section aria-labelledby="hist-titulo">
+      <h2 id="hist-titulo" style="margin-bottom:var(--space-xl)">Histórico</h2>
+      <ul class="historico">
+        <li><span class="quando">04/09, 10h05</span><br>Impedimento aberto por Caio Duarte — credencial do birô não liberada.</li>
+        <li><span class="quando">03/09, 09h30</span><br>Assumida por Caio Duarte. Espera de tomada encerrada em 1h12.</li>
+        <li><span class="quando">03/09, 08h18</span><br>Movida de Refinamento para Em desenvolvimento por Marina Rosa. Passou a aguardar tomada.</li>
+        <li><span class="quando">01/09, 15h40</span><br>Criada por Ana Prado em Refinamento, aguardando tomada.</li>
+      </ul>
+    </section>
+  </div>
+
+  <div class="painel-rodape">
+    <button type="button" class="btn btn-secundario" aria-describedby="nota-mover">Mover de etapa</button>
+    <button type="button" class="btn btn-secundario">Devolver à espera de tomada</button>
+    <span class="espaco" style="flex:1"></span>
+    <button type="button" class="btn btn-primario" aria-disabled="true" disabled
+      aria-describedby="motivo-conclusao">Concluir</button>
+    <button type="button" class="btn btn-destrutivo" aria-disabled="true" disabled
+      aria-describedby="motivo-conclusao">Encerrar sem conclusão</button>
+  </div>
+  <p id="nota-mover" class="texto-xs texto-secundario" style="padding:var(--space-lg) var(--space-3xl) 0">
+    <strong>Mover de etapa continua disponível.</strong> O demandante decidiu em Q-01 que a
+    tarefa com impedimento aberto muda de etapa, inclusive voltando ao início. A marca e o
+    contador atravessam a transição sem serem reiniciados nem encerrados (RN-009, RN-032,
+    SCN-006.3), e as séries de impedimento e de permanência ficam sobrepostas de propósito —
+    é por isso que RN-008 proíbe somá-las. A versão anterior deste protótipo desabilitava a
+    ação, materializando a recomendação que o demandante rejeitou; era o achado INC-09.
+  </p>
+  <p id="motivo-conclusao" class="texto-xs texto-secundario" style="padding:var(--space-lg) var(--space-3xl) var(--space-3xl)">
+    <strong>Concluir e encerrar sem conclusão estão indisponíveis:</strong> há impedimento
+    sem desfecho registrado. São as duas únicas operações que a marca recusa (RN-011);
+    todas as demais continuam oferecidas. Fechar o intervalo em cascata inventaria um
+    desfecho que ninguém afirmou, e o tempo agregado passaria a incluir número sem origem
+    (B-04, SCN-011.3 e SCN-012.4). Registre o desfecho do impedimento antes — a tarefa sai
+    do fluxo em dois passos, e isso é deliberado.
+  </p>
+</aside>
+
+<!-- estado atual à vista de quem perdeu a ação concorrente -->
+<div class="recusa" role="alertdialog" aria-labelledby="rec2-titulo">
+  <h4 id="rec2-titulo">Estado atual, para você decidir de novo</h4>
+  <p class="texto-sm">Este é o estado corrente de PC-297 no momento em que a sua ação foi recusada.</p>
+  <div class="estado-atual">
+    Etapa: <strong>Em desenvolvimento</strong> · Condição: <strong>Em curso</strong> ·
+    Impedimento: <strong>aberto</strong><br>
+    Impedimento aberto por Rafa Lemos há 5d 01h · assumida por Caio Duarte.
+  </div>
+  <div class="rodape">
+    <button type="button" class="btn btn-sm btn-secundario" data-fechar-recusa-estatica>Entendi</button>
+  </div>
+</div>
+
+<script src="proto.js"></script>
+</body>
+</html>

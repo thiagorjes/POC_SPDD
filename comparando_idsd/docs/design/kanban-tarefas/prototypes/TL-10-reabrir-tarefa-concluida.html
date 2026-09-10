@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280">
+<title>TL-10 · Reabrir tarefa concluída — kanban-tarefas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="proto.css">
+</head>
+<body>
+<a class="skip-link" href="#dlg">Pular para a confirmação de reabertura</a>
+
+<header class="topbar">
+  <span class="marca">Fluxo de Tarefas</span>
+  <span class="texto-sm texto-secundario">Portal de Crédito</span>
+  <span class="espaco"></span>
+  <button type="button" class="chip-tema" data-alternar-tema aria-pressed="false">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+    <span data-rotulo-tema>Tema claro</span>
+  </button>
+  <div class="usuario">
+    <span class="avatar" aria-hidden="true">AP</span>
+    <span><span class="nome" style="display:block">Ana Prado</span><span class="papel">Product Owner</span></span>
+  </div>
+</header>
+
+<main class="conteudo" style="padding-left:0" aria-hidden="true">
+  <div class="pagina">
+    <p class="nota-proto"><strong>TL-10 — Reabrir tarefa concluída.</strong>
+      A única ação do produto visível para uma só pessoa. O tratamento visual usa o
+      papel semântico de <strong>impedimento</strong> como marca de exceção — não o
+      destrutivo: reabrir não destrói nada, contraria o curso normal. Abaixo do
+      diálogo, o mesmo caminho para quem não é PO.</p>
+    <div class="painel-caixa">
+      <p class="texto-xs texto-secundario">PC-260 · Portal de Crédito · Raia: Evolução</p>
+      <h1 style="margin-top:var(--space-sm)">Publicar tabela de taxas de setembro</h1>
+      <div class="linha-flex" style="margin-top:var(--space-lg)">
+        <span class="badge badge-neutro">Etapa: Concluída (terminal)</span>
+        <span class="badge badge-concluida">Concluída</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="cortina"></div>
+
+<div id="dlg" class="dialogo" role="alertdialog" aria-modal="true" aria-labelledby="dlg-titulo" aria-describedby="dlg-desc">
+  <p class="faixa-excecao">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17.5v.5"/></svg>
+    Exceção · ação exclusiva do Product Owner
+  </p>
+
+  <div class="dialogo-corpo">
+    <h1 id="dlg-titulo">Reabrir PC-260?</h1>
+    <p id="dlg-desc" class="texto-sm texto-secundario" style="margin-top:var(--space-md)">
+      <strong>Publicar tabela de taxas de setembro</strong> — concluída em 05/09 às 17h48,
+      após 3d 06h de travessia.
+    </p>
+
+    <div class="alerta alerta-impedimento" style="margin-top:var(--space-2xl)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="flex:none;margin-top:2px"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17.5v.5"/></svg>
+      <div class="conteudo-alerta">
+        <strong>Este não é o caminho normal</strong>
+        Sair de <em>Concluída</em> é uma transição proibida para todo mundo, com uma única
+        exceção: você. Ninguém mais vê esta ação. Se a demanda for outra, o caminho é
+        abrir uma nova tarefa.
+      </div>
+    </div>
+
+    <div class="alerta alerta-info" style="margin-top:var(--space-lg)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="9"/><path d="M12 8v.5M12 11v5"/></svg>
+      <div class="conteudo-alerta">
+        <strong>O que a reabertura faz com a medição</strong>
+        O tempo por etapa desta tarefa passa a ser <strong>soma de episódios</strong>: o
+        primeiro trecho já contado, mais o que vier agora. No painel de andamento ela
+        aparece marcada como reaberta, para não ser lida como travessia única. O
+        retorno fica registrado no histórico.
+      </div>
+    </div>
+
+    <div class="campo" style="margin-top:var(--space-3xl)">
+      <label for="dest">Reabrir em qual etapa</label>
+      <select class="selecao" id="dest" aria-describedby="dest-ajuda">
+        <option>Validação — última etapa não terminal</option>
+        <option>Revisão de código</option>
+        <option>Em desenvolvimento</option>
+        <option>Refinamento</option>
+      </select>
+      <p class="ajuda" id="dest-ajuda">
+        A tarefa volta <strong>aguardando tomada</strong> nessa etapa, sem responsável
+        nomeado, e a espera de tomada começa a contar de novo.
+      </p>
+    </div>
+
+    <div class="campo" style="margin-bottom:0">
+      <label for="motivo">Motivo da reabertura</label>
+      <textarea class="area" id="motivo" rows="3" required aria-describedby="motivo-ajuda"
+        placeholder="Ex.: a tabela publicada não contemplou a faixa de 36 parcelas."></textarea>
+      <p class="ajuda" id="motivo-ajuda">Obrigatório. Vai para o histórico e explica, meses depois, por que a travessia tem dois episódios.</p>
+    </div>
+  </div>
+
+  <div class="dialogo-rodape">
+    <button type="button" class="btn btn-secundario">Cancelar</button>
+    <button type="button" class="btn btn-impedimento">Reabrir tarefa</button>
+  </div>
+</div>
+
+<!-- ---------- variantes ---------- -->
+<div style="position:fixed;left:var(--space-3xl);bottom:var(--space-3xl);z-index:71;width:520px;max-width:44vw" class="pilha">
+
+  <div class="painel-caixa">
+    <h2 style="font-size:var(--text-base);line-height:var(--lh-base)">Estado — sem permissão</h2>
+    <p class="texto-sm texto-secundario" style="margin:var(--space-md) 0 var(--space-lg)">
+      Para quem não é o Product Owner do projeto, esta ação não aparece em lugar
+      nenhum — nem no cartão, nem no detalhe, nem em menu. Se alcançada por outro
+      caminho, é recusada:
+    </p>
+    <div class="alerta alerta-erro" role="alert">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/></svg>
+      <div class="conteudo-alerta">
+        <strong>Reabertura recusada</strong>
+        Só o Product Owner deste projeto pode reabrir uma tarefa concluída. Ana Prado
+        responde por ele. Para retomar o trabalho, abra uma nova tarefa vinculada a PC-260.
+      </div>
+    </div>
+  </div>
+
+  <div class="painel-caixa">
+    <h2 style="font-size:var(--text-base);line-height:var(--lh-base)">Estado — reaberta</h2>
+    <div class="alerta alerta-sucesso" role="status" style="margin-top:var(--space-lg)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="flex:none;margin-top:2px"><path d="m4 12 5 5L20 6"/></svg>
+      <div class="conteudo-alerta">
+        <strong>PC-260 reaberta em Validação</strong>
+        Aguardando tomada desde agora; já está na fila de quem responde pela etapa.
+        No andamento, a tarefa passa a constar como <strong>reaberta — 2 episódios</strong>.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="proto.js"></script>
+</body>
+</html>

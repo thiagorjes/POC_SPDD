@@ -1,10 +1,10 @@
 ---
 id: DDR-003
 type: DDR
-status: accepted
+status: superseded
 date: 2026-08-22
 supersedes: —
-superseded-by: —
+superseded-by: DDR-005
 ---
 
 # DDR-003 — Padrões de feedback, loading assíncrono e nível de acessibilidade

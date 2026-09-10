@@ -13,6 +13,8 @@ colecoes:
   - frontend/nextjs
   - infra/docker
 
-# infra/docker está declarada como stub (Status: não elaborada). Enquanto isso,
-# a norma de containerização vigente é a do definition-of-done.md de cada stack.
+# infra/docker foi elaborada em 2026-09-09 (ADR-011, ADR-012, ADR-013): governa o
+# ambiente de execução — topologia, rede, volumes, ordem de subida, healthcheck,
+# segredo, proveniência de imagem e ambiente de teste. Registry e CI seguem como
+# dívidas nomeadas na própria coleção.
 # frontend/react existe na biblioteca mas não governa este sistema.

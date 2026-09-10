@@ -22,7 +22,7 @@
 | Público declarado | `requirements/prd/kanban-tarefas-prd.md` §1 e §2 | Devs e liderança técnica; gestores de outros times que precisam de visibilidade sem participar da execução. | Alta — como **declaração do demandante**; não é pesquisa com os próprios usuários |
 | Restrições e premissas já assumidas | `requirements/prd/kanban-tarefas-prd.md` §7 | Notificação só interna; sem timesheet; single-tenant; sem dependência entre projetos. | Alta |
 | Decisões técnicas já tomadas antes do discovery | `docs/decisions/` (12 DRs: ADR-001 a ADR-008, BDR-001, DDR-001 a DDR-003) | Stack, armazenamento, modelo de RBAC, broadcast de eventos, versionamento de schema, bootstrap de admin, empacotamento, tokens de design, mecânica do board, padrões de feedback. | Alta |
-| Normas que governam o sistema | `guidelines.yaml` → `requirements/guidelines/` (`_shared`, `backend/java`, `frontend/nextjs`, `infra/docker`) | 4 coleções vinculadas; `infra/docker` é stub. | Alta |
+| Normas que governam o sistema | `guidelines.yaml` → `requirements/guidelines/` (`_shared`, `backend/java`, `frontend/nextjs`, `infra/docker`) | 4 coleções vinculadas. **Atualizado em 2026-09-09 (achado INC-16):** `infra/docker` era stub quando este contexto foi montado; foi elaborada e hoje governa o sistema com 19 critérios verificáveis e ADR-011, ADR-012 e ADR-013. | Alta |
 | Material de design já produzido | `requirements/design/kanban-tarefas-design-brief.md` e `requirements/design/kanban-tarefas/` | Identidade visual, inventário de 8 telas, fluxos, estados por tela, acessibilidade; 9 protótipos HTML navegáveis e `design-tokens.json`. | Alta |
 | Questão de design ainda aberta | `requirements/design/kanban-tarefas-design-brief.md` §8 | Densidade do card no board — compacto (TL-03) vs expandido (TL-03b); "decisão a ser validada com o time após revisão do protótipo". | Alta |
 | Modo de trabalho da execução | `docs/intent/kanban-tarefas-intent.md`, resposta do demandante em 2026-09-04 | "será feito por IA e o custo é parte da avaliação do processo" — sem prazo e sem orçamento; o custo é métrica observada, não teto. | Alta |
@@ -96,7 +96,7 @@ não deste artefato.
 | kanban-tarefas — backend | Sistema a construir: API, regras de fluxo, autorização, cálculo de lead-time, propagação de eventos | `requirements/guidelines/backend/java/` |
 | kanban-tarefas — frontend | Sistema a construir: board, dashboard, telas de administração | `requirements/guidelines/frontend/nextjs/` + `frontend/_shared/` |
 | Provedor de identidade corporativo | Dependência externa consumida, não alterada; autentica os usuários | Fora do escopo de guidelines deste sistema |
-| Plataforma de contêineres corporativa | Dependência externa de execução; alvo de empacotamento | `requirements/guidelines/infra/docker/` — **stub**, não elaborada |
+| Plataforma de contêineres corporativa | Dependência externa de execução; alvo de empacotamento | `requirements/guidelines/infra/docker/` — **elaborada** em 2026-09-09 (era stub na montagem deste contexto) |
 | Biblioteca compartilhada de guidelines | Norma que governa a implementação e serve de base ao `/code-review` | `guidelines.yaml` declara 4 coleções |
 
 ---

@@ -1,33 +1,45 @@
 # Guidelines — Infra Docker
 
-> **Status: não elaborada.** Transversais aplicáveis já existem em
-> [`../../_shared/`](../../_shared/): `vulnerable-and-proprietary-libs.md` (política de
-> CVE, que vale para imagem base tanto quanto para dependência de aplicação) e
-> `git-workflow.md`.
+> **Status: elaborada** em 2026-09-09. Substitui o stub aberto em 2026-09-04.
 
-Enquanto esta coleção não existir, a norma de containerização vigente é a que
-cada stack declara no seu `definition-of-done.md` — ver
-[`../../backend/java/definition-of-done.md`](../../backend/java/definition-of-done.md) e
-[`../../frontend/nextjs/definition-of-done.md`](../../frontend/nextjs/definition-of-done.md).
-Isso cobre o caso de imagem por serviço, e **não** cobre o que é transversal ao
-ambiente: rede, volumes, healthcheck, ordem de subida, gestão de segredo,
-política de tag e registry.
+Coleção da camada `infra`. Governa o **ambiente** em que os sistemas rodam —
+topologia de contêineres, rede, volumes, ordem de subida, healthcheck, segredo,
+proveniência de imagem e ambiente de teste. O conteúdo de cada imagem (qual JDK,
+qual gerenciador de pacotes) continua na coleção da stack correspondente.
 
-Para criar esta coleção, siga [`../../_templates/stack-guidelines-template.md`](../../_templates/stack-guidelines-template.md)
-e o processo em [`../../README.md`](../../README.md) (seção "Gerar guidelines para uma nova stack").
+| Arquivo | Assunto |
+|---|---|
+| [`stack.md`](stack.md) | Versões de Engine/Compose, ferramental de verificação, imagens base em uso, alvo de execução, estrutura de `docker/` |
+| [`architecture.md`](architecture.md) | Topologia, redes, volumes, ordem de subida, healthcheck, migração, segredo, log |
+| [`coding-standards.md`](coding-standards.md) | Nomenclatura, regras de `Dockerfile` e de `compose`, comentário, versionamento |
+| [`testing.md`](testing.md) | `compose.test.yaml`, suíte que sobe contêiner, cache, verificação da própria infraestrutura |
+| [`definition-of-done.md`](definition-of-done.md) | 19 critérios verificáveis, recomendados, proveniência de imagem e dívida de CI |
 
-Arquivos esperados: `stack.md`, `architecture.md`, `coding-standards.md`,
-`testing.md`, `definition-of-done.md`.
+Transversais materializados:
+[`../../_shared/vulnerable-and-proprietary-libs.md`](../../_shared/vulnerable-and-proprietary-libs.md),
+[`../../_shared/api-security.md`](../../_shared/api-security.md),
+[`../../_shared/architecture-principles.md`](../../_shared/architecture-principles.md),
+[`../../_shared/logging-and-levels.md`](../../_shared/logging-and-levels.md) e
+[`../../_shared/git-workflow.md`](../../_shared/git-workflow.md).
 
-Assuntos a decidir na entrevista, já levantados e ainda em aberto:
+Condicionais do [template](../../_templates/stack-guidelines-template.md) —
+`<framework>.md`, `database.md`, `integrations.md`, `openapi-swagger.md`,
+`sonarqube.md`, `design-system.md` — **não se aplicam**: são condicionais de camada
+de aplicação, e esta coleção não expõe API, não acessa banco e não tem UI.
 
-- Imagem base e política de fixação de tag — digest ou tag semântica; hoje o
-  backend fixa `maven:3.9-eclipse-temurin-25` / `eclipse-temurin:25-jre`.
-- Multi-stage build obrigatório e usuário não-root no runtime.
-- Healthcheck e `depends_on: condition: service_healthy` — o pré-requisito de
-  provedor OIDC no ar descrito em
-  [`../../backend/java/testing.md`](../../backend/java/testing.md) §5 depende disso.
-- Gestão de segredo: proibição de `ENV` com credencial, origem dos valores.
-- Registry, política de tag de release e varredura de vulnerabilidade da imagem,
-  materializando [`../../_shared/vulnerable-and-proprietary-libs.md`](../../_shared/vulnerable-and-proprietary-libs.md).
-- Alvo futuro OpenShift/Kubernetes (ADR-008) e o que isso restringe hoje.
+## Decisões que a originaram
+
+- [ADR-011](../../../../docs/decisions/ADR-011-migracao-de-schema-em-servico-dedicado.md) — migração em serviço dedicado.
+- [ADR-012](../../../../docs/decisions/ADR-012-testcontainers-por-socket-do-host.md) — socket do host para a suíte; DinD descartado.
+- [ADR-013](../../../../docs/decisions/ADR-013-proveniencia-de-imagem-por-digest-sem-registry.md) — digest obrigatório, sem registry.
+
+## Dívidas nomeadas
+
+| Dívida | Reabrir quando |
+|---|---|
+| Registry, política de tag de release e retenção | Houver publicação fora da máquina de quem desenvolve |
+| CI: runner, cache, publicação de relatório | Houver plataforma de CI decidida |
+
+Dívida nomeada não é ausência: os pré-requisitos de ambas já estão escritos em
+[`definition-of-done.md`](definition-of-done.md) §3 e §4, para que a decisão futura
+não recomece do zero.

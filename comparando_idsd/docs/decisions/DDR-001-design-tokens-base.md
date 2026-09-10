@@ -1,10 +1,10 @@
 ---
 id: DDR-001
 type: DDR
-status: accepted
+status: superseded
 date: 2026-08-22
 supersedes: —
-superseded-by: —
+superseded-by: DDR-004
 ---
 
 # DDR-001 — Tokens base de design: cores, tipografia e espaçamento

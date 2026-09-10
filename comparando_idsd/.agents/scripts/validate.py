@@ -107,10 +107,13 @@ def check_gherkin(
     content: str, id_types: list[str], patterns: dict[str, str]
 ) -> list[str]:
     errors = []
+    lines = content.splitlines()
     for id_type in id_types:
         pat = patterns.get(id_type, rf"{id_type}-\d{{3}}")
-        ids_found = re.findall(rf"\b{pat}\b", content)
-        lines = content.splitlines()
+        # dict.fromkeys preserva a ordem e elimina a repeticao: o mesmo ID citado
+        # em tabela de rastreabilidade nao deve ser cobrado — nem reportado — uma
+        # vez por mencao.
+        ids_found = list(dict.fromkeys(re.findall(rf"\b{pat}\b", content)))
         for rf_id in ids_found:
             # Find line index of this ID
             rf_line_idx = next(
@@ -118,11 +121,20 @@ def check_gherkin(
             )
             if rf_line_idx is None:
                 continue
-            # Search within 20 lines after for Gherkin keywords (pt_BR or en_US)
-            window = "\n".join(lines[rf_line_idx : rf_line_idx + 20])
+            # Search after the ID for Gherkin keywords (pt_BR or en_US). A janela
+            # e de 40 linhas porque entre o cabecalho do RF e o primeiro bloco
+            # ficam descricao, procedencia e a tabela de criterios de aceite.
+            window = "\n".join(lines[rf_line_idx : rf_line_idx + 40])
             has_gherkin = bool(
                 re.search(
-                    r"(\*\*Dado que\*\*|Given\b|\*\*When\*\*|\*\*Quando\*\*)", window
+                    r"(\*\*Dado que\*\*|\*\*When\*\*|\*\*Quando\*\*"
+                    # Bloco cercado ```gherkin, que e o formato que o proprio
+                    # template do /prd prescreve: palavra-chave no inicio da
+                    # linha, sem marcacao. Exigir negrito reprovava todo PRD
+                    # escrito conforme o template.
+                    r"|^\s*(Dado|Dada|Dados|Dadas|Given)\b)",
+                    window,
+                    re.M,
                 )
             )
             if not has_gherkin:
@@ -264,6 +276,7 @@ def main():
         artifact_path.stem.replace("-prd", "")
         .replace("-techspec", "")
         .replace("-tasks", "")
+        .replace("-verificacao", "")
     )
 
     rules = load_rules(Path(args.rules), args.system, feature, args.artifact)

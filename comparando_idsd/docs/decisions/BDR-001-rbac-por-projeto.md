@@ -9,6 +9,26 @@ superseded-by: —
 
 # BDR-001 — RBAC por projeto com papéis acumuláveis
 
+> **Nota de 2026-09-10 (INC-21) — a numeração deste DR é herdada e não é desta
+> cadeia.** O DR foi escrito em 2026-08-23 sobre o material da stack anterior, e
+> todo identificador citado no corpo — `RF-013`, `RF-016`, `RNF-003`, `RN-006`,
+> `RN-014`, `TASK-04.1`, `TASK-05.1`, `TASK-05.3`, `G-RT-01`, "PRD v1.2" —
+> pertence àquela numeração e **não corresponde** ao PRD de `kanban-tarefas`.
+> Coincidência de identificador entre os dois documentos não significa
+> correspondência de conteúdo, pela mesma razão já declarada no cabeçalho do PRD.
+>
+> A **decisão central continua em vigor e é a que esta cadeia adota**: papéis
+> atribuídos por par (usuário, projeto), acumuláveis, com catálogo fechado, e
+> `admin` global fora desse escopo. É por isso que o DR é emendado no lugar e não
+> superado — não houve decisão nova, houve referência que envelheceu.
+>
+> Nesta cadeia, o que o DR sustenta está escrito em RN-028, RN-035 e RF-022 do
+> PRD, e o alcance global foi respecificado por ADR-010, que supera ADR-007 e
+> troca a promoção por claim `email` por promoção por `subject_id` verificado.
+> Uma capacidade que o corpo abaixo não previa: **criar projeto é exclusivo da
+> administração global** (RN-036), porque nenhum papel de projeto existe antes de
+> o projeto existir.
+
 ## Decisão
 
 O papel `admin` continua global (sem vínculo de projeto, acesso total ao sistema). Os demais papéis (`project_admin`, `product_owner`, `dev`, `gestor`, e o legado `user`) passam a ser atribuídos por par (usuário, projeto): um usuário pode ter mais de um papel no mesmo projeto (permissões acumuladas) e papéis diferentes em projetos diferentes. `project_admin` administra usuários do seu projeto associando-os a papéis já existentes, mas não cria/edita papéis nem permissões — isso é exclusivo do admin global (RF-013).
