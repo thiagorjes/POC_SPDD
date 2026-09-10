@@ -47,8 +47,16 @@ para a causa.
       o teste de broadcast.
 - [ ] Referenciar toda imagem base por **digest**; `latest` é proibido; marcar
       a imagem construída com a revisão de código.
-- [ ] Prever credencial de banco por **arquivo montado** no perfil de produção,
-      e por variável apenas em desenvolvimento.
+- [ ] Prover a credencial de banco por **arquivo montado** (`secrets:` do
+      Compose) em **todo** ambiente, montado como `/run/secrets/banco-senha`,
+      que é o caminho que o `application.yml` importa por configtree. Em
+      desenvolvimento o valor é descartável, mas entra pelo mesmo mecanismo.
+
+
+> Ação de credencial emendada em 2026-09-10 (ACH-02). A redação original admitia
+> variável de ambiente em desenvolvimento; `infra/docker/architecture.md` §7
+> recusa isso pela razão de que caminho de produção não exercitado em
+> desenvolvimento não é caminho testado.
 
 #### Guia técnico — estrutura de arquivos
 

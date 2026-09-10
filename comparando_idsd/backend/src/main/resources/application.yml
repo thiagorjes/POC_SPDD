@@ -5,7 +5,12 @@ spring:
   datasource:
     url: ${BANCO_URL}
     username: ${BANCO_USUARIO}
-    password: ${BANCO_SENHA}
+    # A senha nao entra por variavel de ambiente: `infra/docker`
+    # architecture.md secao 7 obriga arquivo montado, porque variavel vaza em
+    # `docker inspect`, em log de crash e em dump de processo. O arquivo
+    # `/run/secrets/banco-senha` vira a propriedade `banco-senha` pelo
+    # configtree importado no documento de perfil "!test".
+    password: ${banco-senha}
 
   jpa:
     hibernate:
@@ -51,6 +56,11 @@ spring:
   config:
     activate:
       on-profile: "!test"
+    # Sem `optional:`: instancia que subiu sem o segredo montado deve falhar no
+    # arranque, e nao adiante, na primeira conexao. Em desenvolvimento o valor e
+    # descartavel, mas entra pelo mesmo mecanismo — caminho de producao que nao
+    # e exercitado em desenvolvimento nao e caminho testado.
+    import: "configtree:/run/secrets/"
   security:
     oauth2:
       resourceserver:
@@ -62,11 +72,11 @@ spring:
   config:
     activate:
       on-profile: test
-  datasource:
-    # Sobrescritos por @DynamicPropertySource a partir do Testcontainers.
-    url: jdbc:postgresql://localhost:5432/kanban
-    username: kanban
-    password: kanban
+  # Sem credencial literal aqui: url, usuario e senha chegam por
+  # @DynamicPropertySource a partir do Testcontainers, com precedencia sobre
+  # este arquivo. Valor de exemplo versionado e o comeco do habito que a
+  # secao 7 de `infra/docker` proibe, e nao serviria para nada — o contêiner
+  # sorteia porta e senha a cada execucao.
   security:
     oauth2:
       resourceserver:

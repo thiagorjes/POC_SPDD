@@ -26,12 +26,19 @@ declara escopo de arquivo contra ela.
       de pacote por camada técnica.
 - [x] Fixar `spring.jpa.hibernate.ddl-auto=validate` em **todo** perfil,
       inclusive teste, e **não** habilitar o Flyway na aplicação.
-- [x] Configurar por variável de ambiente: URL e credencial do banco, issuer
-      URI do provedor de identidade. Nada de credencial em arquivo versionado.
+- [x] Configurar por variável de ambiente o que **não** é segredo: URL do banco,
+      usuário do banco, issuer URI do provedor de identidade. A **senha** entra
+      por arquivo montado (`configtree:/run/secrets/`), nunca por variável.
+      Nada de credencial em arquivo versionado, inclusive no perfil de teste.
 - [x] Expor probes separados no Actuator: `GET /actuator/health/liveness` e
       `GET /actuator/health/readiness`.
 - [x] Configurar o JaCoCo com gate de cobertura de 80%.
 - [x] Espelhar a árvore principal em `backend/src/test/java`.
+
+> Ação de credencial emendada em 2026-09-10 (ACH-02). A redação original mandava
+> a credencial por variável de ambiente, contra `infra/docker/architecture.md`
+> §7, que só foi elaborada depois de esta task ser escrita. Variável vaza em
+> `docker inspect`, em log de crash e em dump de processo.
 
 #### Guia técnico — estrutura de arquivos
 
@@ -72,6 +79,10 @@ Propriedades obrigatórias em `application.yml`, em todo perfil:
 - `spring.flyway.enabled: false`
 - `management.endpoint.health.probes.enabled: true`
 - `spring.security.oauth2.resourceserver.jwt.issuer-uri` vindo de variável
+- `spring.config.import: "configtree:/run/secrets/"` fora do perfil de teste,
+  sem `optional:` — instância sem o segredo montado falha no arranque, e não
+  adiante, na primeira conexão
+- `spring.datasource.password: ${banco-senha}`, resolvido pelo configtree
 
 #### Guia técnico — pontos de atenção
 
@@ -103,6 +114,7 @@ Propriedades obrigatórias em `application.yml`, em todo perfil:
 | Data | Evento | Detalhe |
 | --- | --- | --- |
 | 2026-09-09 | criação | Task derivada do plano de execução do épico |
+| 2026-09-10 | ACH-02 e ACH-04 | Senha do banco sai da variável `BANCO_SENHA` e passa a vir de `/run/secrets/banco-senha` por `configtree`, importado sem `optional:` fora do perfil de teste; credenciais literais do perfil de teste removidas — Testcontainers já as fornece por `@DynamicPropertySource`. Verificado em contêiner: com o segredo montado o contexto sobe e conecta (`Started Aplicacao`), sem ele o arranque falha com `Config data resource 'config tree [/run/secrets]' ... does not exist`. Os probes seguem `401` (TASK-01.4) |
 | 2026-09-10 | tentativa 1 — Red | `mvn test-compile` no contêiner `maven:3.9-eclipse-temurin-25`: falha na **compilação** dos testes, não em asserção. Todo erro é `cannot find symbol` sobre classe de produção que ainda não existe (`EtapaService`, `TomadaService`, `ImpedimentoService`, `CriacaoDeTarefaService`, `RegistradorDeEvento`, `AplicadorDeIntervalos`, `VerificadorDeOrigem`, `ReconstrutorDeProjecao`, `Tarefa`, `Impedimento`, `Condicao`, `FluxoRequisicao`, `RegraDeNegocioViolada`, `EtapaRepositorio`, `DestaqueDeImpedimento`). É o Red previsto e o custo já declarado no plano de verificação por os cinco cenários unitários fixarem costura interna antes da implementação: a medição de Red por contagem de testes falhando só é possível quando essas classes existirem, ao fim do épico |
 | 2026-09-10 | tentativa 1 — achado do Red | A suíte congelada nomeia a classe de arranque: `InstanciasEmParalelo:64` referencia `br.com.idsd.kanban.Aplicacao`. A classe foi criada com esse nome; nenhum arquivo de teste foi tocado |
 | 2026-09-10 | tentativa 1 — achado de estrutura | A suíte pressupõe um quinto pacote de domínio, `internal/impedimento` (`ImpedimentoServiceTest`), que a tabela desta task não declara — ela lista quatro. Não criado aqui, por estar fora do escopo declarado. Dono: TASK-04.1 / TASK-04.2 |
