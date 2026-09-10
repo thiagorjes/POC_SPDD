@@ -8,26 +8,6 @@
   "resetPasswordAllowed": false,
   "editUsernameAllowed": false,
   "accessTokenLifespan": 1800,
-  "roles": {
-    "realm": [
-      {
-        "name": "project_admin",
-        "description": "Administra o projeto"
-      },
-      {
-        "name": "product_owner",
-        "description": "Responde pelo produto"
-      },
-      {
-        "name": "dev",
-        "description": "Executa as tarefas"
-      },
-      {
-        "name": "gestor",
-        "description": "Somente leitura sobre o projeto"
-      }
-    ]
-  },
   "clients": [
     {
       "clientId": "idsd-web",
@@ -75,10 +55,6 @@
           "value": "senha-de-teste",
           "temporary": false
         }
-      ],
-      "realmRoles": [
-        "project_admin",
-        "dev"
       ]
     },
     {
@@ -95,9 +71,6 @@
           "value": "senha-de-teste",
           "temporary": false
         }
-      ],
-      "realmRoles": [
-        "dev"
       ]
     },
     {
@@ -114,9 +87,6 @@
           "value": "senha-de-teste",
           "temporary": false
         }
-      ],
-      "realmRoles": [
-        "product_owner"
       ]
     },
     {
@@ -133,9 +103,6 @@
           "value": "senha-de-teste",
           "temporary": false
         }
-      ],
-      "realmRoles": [
-        "gestor"
       ]
     },
     {
@@ -152,8 +119,7 @@
           "value": "senha-de-teste",
           "temporary": false
         }
-      ],
-      "realmRoles": []
+      ]
     }
   ]
 }

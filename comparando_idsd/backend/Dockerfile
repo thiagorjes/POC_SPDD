@@ -15,7 +15,11 @@ RUN mvn -B -q dependency:go-offline
 COPY src/main ./src/main
 RUN mvn -B -q -Dmaven.test.skip=true package
 
-FROM eclipse-temurin:25-jre@sha256:15090d159279e5c158473eccb48cd87f57b3e3a47511a797eb5a7a7ea6f86b0f AS runtime
+# `-noble` e nao a tag generica: a `25-jre` roda sobre Ubuntu 26.04 e carrega o
+# binario `/usr/bin/pebble`, cuja stdlib Go acusa 8 HIGH sem digest mais novo
+# para onde ir (ACH-01 da revisao de TASK-01.2). A variante noble nao traz esse
+# binario e sai da varredura com zero HIGH/CRITICAL.
+FROM eclipse-temurin:25-jre-noble@sha256:d120abd9d8d7dec94520ce974ece62d0e4eed8576eb00bbc84e6128307ab48ef AS runtime
 
 # curl existe aqui por um motivo unico: o healthcheck de readiness que o
 # compose declara. A imagem base nao traz nenhuma ferramenta HTTP, e a norma
@@ -23,13 +27,13 @@ FROM eclipse-temurin:25-jre@sha256:15090d159279e5c158473eccb48cd87f57b3e3a47511a
 # digest com pacote nao fixado ainda muda sozinha.
 # hadolint ignore=DL3008
 RUN apt-get update \
-  && apt-get install --no-install-recommends -y curl=8.18.0-1ubuntu2.5 \
+  && apt-get install --no-install-recommends -y curl=8.5.0-2ubuntu10.13 \
   && rm -rf /var/lib/apt/lists/*
 
 RUN useradd --system --create-home --uid 10001 kanban
 WORKDIR /app
 
-COPY --from=construcao /construcao/target/kanban-0.1.0-SNAPSHOT.jar /app/kanban.jar
+COPY --from=construcao /construcao/target/kanban-*.jar /app/kanban.jar
 
 USER kanban
 EXPOSE 8080
