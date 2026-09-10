@@ -1,0 +1,78 @@
+spring:
+  application:
+    name: kanban-tarefas
+
+  datasource:
+    url: ${BANCO_URL}
+    username: ${BANCO_USUARIO}
+    password: ${BANCO_SENHA}
+
+  jpa:
+    hibernate:
+      # Vale em todo perfil, inclusive teste. A aplicacao valida o schema e
+      # falha se ele estiver desatualizado; autocorrecao silenciosa e como uma
+      # instancia antiga migra um schema que ela nao conhece.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  # A migracao roda em servico dedicado do compose e sai (ADR-011). O Flyway
+  # esta no classpath porque a suite o usa para ocupar o lugar desse servico,
+  # nunca porque a aplicacao migra.
+  flyway:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  health:
+    # Liveness observa so o processo. Banco e conexao de escuta entram no
+    # readiness: instabilidade do banco no liveness mataria todas as instancias
+    # ao mesmo tempo, durante a janela em que elas se recuperariam sozinhas.
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+---
+# Identidade real. Fora do perfil de teste, o issuer e obrigatorio e vem de
+# variavel de ambiente — nunca de arquivo versionado.
+spring:
+  config:
+    activate:
+      on-profile: "!test"
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${IDENTIDADE_ISSUER_URI}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    # Sobrescritos por @DynamicPropertySource a partir do Testcontainers.
+    url: jdbc:postgresql://localhost:5432/kanban
+    username: kanban
+    password: kanban
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Na suite de contrato a identidade e substituida pelo pos-processador
+          # jwt() do spring-security-test, que nunca chega a validar assinatura.
+          # Declarar jwk-set-uri em vez de issuer-uri evita a descoberta OIDC
+          # eager na subida do contexto, que nao teria a quem perguntar.
+          jwk-set-uri: http://localhost:1/jwks
