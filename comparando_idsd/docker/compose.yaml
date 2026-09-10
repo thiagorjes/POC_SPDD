@@ -1,0 +1,194 @@
+# Ambiente de desenvolvimento. Um comando sobe tudo:
+#
+#   docker compose -f docker/compose.yaml up --build
+#
+# Norma vinculante: `requirements/guidelines/infra/docker/`. Sem chave
+# `version:` — ela e obsoleta e proibida pelo stack.md da colecao.
+
+# O nome do projeto e o namespace de contêiner, rede e volume. `idsd` sozinho
+# ja colidiu com outra stack desta maquina: os nomes batem, o Compose reusa o
+# contêiner alheio e o backend passa a resolver `postgres` para um servico de
+# outra rede. Qualificar pelo sistema torna a colisao improvavel e o diagnostico
+# imediato quando ela acontecer.
+name: idsd-kanban
+
+networks:
+  idsd-net:
+    name: idsd-kanban-net
+
+volumes:
+  idsd-pgdata:
+
+secrets:
+  banco-senha:
+    file: ${BANCO_SENHA_FILE:-./secrets/banco-senha.dev}
+
+services:
+
+  # --------------------------------------------------------------- postgres
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685}
+    restart: unless-stopped
+    networks: [idsd-net]
+    environment:
+      POSTGRES_DB: ${BANCO_NOME:-kanban}
+      POSTGRES_USER: ${BANCO_USUARIO:-kanban}
+      # Excecao da secao 10: a senha nao entra por POSTGRES_PASSWORD, que e
+      # variavel e vazaria em `docker inspect`. A imagem oficial le o arquivo.
+      POSTGRES_PASSWORD_FILE: /run/secrets/banco-senha
+    secrets:
+      - banco-senha
+    volumes:
+      # Volume nomeado, nunca bind mount de diretorio do repositorio:
+      # permissao de host difere entre sistemas operacionais e o defeito so
+      # aparece na maquina de outra pessoa.
+      - idsd-pgdata:/var/lib/postgresql/data
+    ports:
+      # Excecao autorizada da secao 10 de architecture.md: porta de
+      # infraestrutura publicada apenas no ambiente de desenvolvimento, para
+      # inspecao manual. Nao existe equivalente em compose.test.yaml.
+      - "${PORTA_BANCO:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${BANCO_USUARIO:-kanban} -d ${BANCO_NOME:-kanban}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  # --------------------------------------------------------------- migracao
+  # Tarefa de ciclo de vida: roda ate o fim e sai (ADR-011). A aplicacao nao
+  # migra em nenhum perfil — ela sobe validando o schema. Migrar no boot poria
+  # as 3 instancias do teste de RNF-002 em disputa pelo lock, e a que espera
+  # estouraria o start_period antes de a outra terminar.
+  migracao:
+    build:
+      context: ..
+      dockerfile: docker/migracao/Dockerfile
+    image: idsd/migracao:${REVISAO:-dev}
+    restart: "no"
+    networks: [idsd-net]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/${BANCO_NOME:-kanban}
+      FLYWAY_USER: ${BANCO_USUARIO:-kanban}
+    secrets:
+      - banco-senha
+
+  # -------------------------------------------------------------- keycloak
+  keycloak:
+    image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.4@sha256:9409c59bdfb65dbffa20b11e6f18b8abb9281d480c7ca402f51ed3d5977e6007}
+    restart: unless-stopped
+    networks: [idsd-net]
+    command:
+      - start-dev
+      - --import-realm
+      # Endpoint de saude nao vem ligado. Healthcheck apontado para endpoint
+      # desligado e `service_started` com outro nome — exatamente a falha que a
+      # ordem de subida existe para evitar.
+      - --health-enabled=true
+      - --http-management-port=9000
+    environment:
+      # Nao ha conta administrativa do provedor, de proposito. O realm inteiro
+      # vem do arquivo importado e ninguem precisa do console para os cenarios;
+      # criar a conta exigiria uma credencial a mais em disco, e a que menos se
+      # justifica — o `_FILE` que a manteria fora de variavel nao e suportado
+      # nesta opcao, e a alternativa seria voltar a credencial por ENV, que a
+      # secao 7 da colecao recusa. Quem precisar do console sobe o provedor a
+      # parte.
+      # O `iss` do token precisa ser o endereco que o browser usa, senao o
+      # resource server recusa o token que ele proprio mandou emitir.
+      KC_HOSTNAME: ${IDENTIDADE_HOSTNAME:-http://localhost:8180}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "false"
+    volumes:
+      # Material de bootstrap: bind mount somente leitura, versionado.
+      - ./keycloak/realm.json:/opt/keycloak/data/import/realm.json:ro
+      - ./keycloak/health.sh:/opt/keycloak/health.sh:ro
+    ports:
+      # Excecao da secao 10: publicada porque a pessoa digita a senha nesta
+      # tela. A porta de gerenciamento (9000) nunca e publicada.
+      - "${PORTA_IDENTIDADE:-8180}:8080"
+    healthcheck:
+      # Sonda a porta de gerenciamento, nao a da aplicacao: a porta da
+      # aplicacao responde antes de o servico estar utilizavel. A imagem nao
+      # traz curl nem wget, so bash — dai o script com /dev/tcp em vez de um
+      # healthcheck com ferramenta HTTP que nao existe no runtime.
+      test: ["CMD", "bash", "/opt/keycloak/health.sh"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      # Dimensionado para a IMPORTACAO DO REALM, nao para o processo no ar.
+      # Processo no ar e realm importado nao sao a mesma condicao, e e a
+      # segunda que o backend precisa.
+      start_period: 120s
+
+  # --------------------------------------------------------------- backend
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    image: idsd/backend:${REVISAO:-dev}
+    restart: unless-stopped
+    networks: [idsd-net]
+    depends_on:
+      migracao:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      BANCO_URL: jdbc:postgresql://postgres:5432/${BANCO_NOME:-kanban}
+      BANCO_USUARIO: ${BANCO_USUARIO:-kanban}
+      # O issuer e o endereco publicado, porque e ele que aparece no `iss` do
+      # token emitido ao browser. A chave de assinatura, porem, e buscada pela
+      # rede interna: `localhost:8180` nao existe dentro deste contêiner.
+      # Declarar jwk-set-uri tambem evita a descoberta OIDC eager na subida do
+      # contexto — o depends_on acima continua valendo, mas o arranque deixa de
+      # depender de uma unica chamada dar certo no instante exato.
+      IDENTIDADE_ISSUER_URI: ${IDENTIDADE_HOSTNAME:-http://localhost:8180}/realms/${IDENTIDADE_REALM:-idsd}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/${IDENTIDADE_REALM:-idsd}/protocol/openid-connect/certs
+    secrets:
+      # Montado em /run/secrets/banco-senha, que e o caminho que o
+      # `application.yml` importa por configtree.
+      - banco-senha
+    ports:
+      - "${PORTA_BACKEND:-8080}:8080"
+    healthcheck:
+      # Readiness, nunca liveness. Liveness observa so o processo; readiness
+      # inclui as dependencias de que o trafego depende (ACH-03). Colapsar os
+      # dois derrubaria todas as replicas na mesma instabilidade momentanea do
+      # banco, durante a janela de backoff em que elas se recuperariam.
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  # -------------------------------------------------------------- frontend
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      target: desenvolvimento
+    image: idsd/frontend:${REVISAO:-dev}
+    restart: unless-stopped
+    networks: [idsd-net]
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:${PORTA_BACKEND:-8080}
+      NEXT_PUBLIC_IDENTIDADE_URL: ${IDENTIDADE_HOSTNAME:-http://localhost:8180}
+      NEXT_PUBLIC_IDENTIDADE_REALM: ${IDENTIDADE_REALM:-idsd}
+      NEXT_PUBLIC_IDENTIDADE_CLIENT_ID: idsd-web
+    ports:
+      - "${PORTA_FRONTEND:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s

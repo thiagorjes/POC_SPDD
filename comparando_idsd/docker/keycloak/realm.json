@@ -1,0 +1,159 @@
+{
+  "realm": "idsd",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "accessTokenLifespan": 1800,
+  "roles": {
+    "realm": [
+      {
+        "name": "project_admin",
+        "description": "Administra o projeto"
+      },
+      {
+        "name": "product_owner",
+        "description": "Responde pelo produto"
+      },
+      {
+        "name": "dev",
+        "description": "Executa as tarefas"
+      },
+      {
+        "name": "gestor",
+        "description": "Somente leitura sobre o projeto"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "idsd-web",
+      "name": "IDSD — interface",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
+      "redirectUris": [
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ]
+    },
+    {
+      "clientId": "idsd-e2e",
+      "name": "IDSD — suporte da suite e2e",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [],
+      "webOrigins": []
+    }
+  ],
+  "users": [
+    {
+      "id": "6f9d4c2a-0000-4000-8000-000000000001",
+      "username": "ana",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Ana",
+      "lastName": "Ribeiro",
+      "email": "ana@idsd.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "senha-de-teste",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "project_admin",
+        "dev"
+      ]
+    },
+    {
+      "id": "6f9d4c2a-0000-4000-8000-000000000002",
+      "username": "bruno",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Bruno",
+      "lastName": "Sales",
+      "email": "bruno@idsd.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "senha-de-teste",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "dev"
+      ]
+    },
+    {
+      "id": "6f9d4c2a-0000-4000-8000-000000000003",
+      "username": "carla",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Carla",
+      "lastName": "Nunes",
+      "email": "carla@idsd.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "senha-de-teste",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "product_owner"
+      ]
+    },
+    {
+      "id": "6f9d4c2a-0000-4000-8000-000000000004",
+      "username": "denis",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Denis",
+      "lastName": "Faria",
+      "email": "denis@idsd.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "senha-de-teste",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "gestor"
+      ]
+    },
+    {
+      "id": "6f9d4c2a-0000-4000-8000-000000000005",
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Administracao",
+      "lastName": "Global",
+      "email": "admin@idsd.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "senha-de-teste",
+          "temporary": false
+        }
+      ],
+      "realmRoles": []
+    }
+  ]
+}

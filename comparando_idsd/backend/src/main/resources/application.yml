@@ -40,6 +40,22 @@ management:
       probes:
         enabled: true
       show-details: never
+      group:
+        # ACH-03. Probe de readiness so e probe se contiver os indicadores das
+        # dependencias de que o trafego depende; grupo com `readinessState`
+        # sozinho e liveness com outro nome, e uma instancia com o banco fora
+        # responderia pronta ao healthcheck do compose e continuaria recebendo
+        # trafego.
+        #
+        # O indicador da conexao de escuta LISTEN ainda nao existe — ele nasce
+        # com o listener, no epico do broadcast — e entra aqui quando existir.
+        readiness:
+          include: readinessState,db
+        # Liveness observa so o processo, deliberadamente. Instabilidade do
+        # banco aqui mataria todas as instancias ao mesmo tempo, durante a
+        # janela em que elas se recuperariam sozinhas.
+        liveness:
+          include: livenessState
   health:
     # Liveness observa so o processo. Banco e conexao de escuta entram no
     # readiness: instabilidade do banco no liveness mataria todas as instancias
