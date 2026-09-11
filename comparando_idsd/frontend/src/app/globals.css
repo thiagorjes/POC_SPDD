@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Único lugar do frontend com hexadecimal cru — é a regra escrita no próprio
+ * arquivo de tokens. Fora destes dois blocos, superfície e texto só se
+ * alcançam por papel semântico.
+ */
+:root {
+  --cor-fundo: #ffffff;
+  --cor-superficie: #ffffff;
+  --cor-superficie-baixa: #f0f1f1;
+  --cor-texto: #374151;
+  --cor-texto-secundario: #61646c;
+  --cor-borda: #e5e7eb;
+  --cor-borda-forte: #cecfd2;
+  --cor-primario: #004b8d;
+  --cor-primario-hover: #003564;
+  --cor-primario-contraste: #ffffff;
+  --cor-secundario: #ffffff;
+  --cor-secundario-hover: #f9fafb;
+  --cor-destrutivo: #991b1b;
+  --cor-impedimento: #fff7e6;
+  --cor-impedimento-borda: #d9931f;
+  --cor-impedimento-texto: #7a4300;
+  --cor-info: #e6f2f9;
+  --cor-info-borda: #8ac3e3;
+  --cor-info-texto: #01446b;
+  --cor-sucesso: #ecfdf5;
+  --cor-sucesso-borda: #6ee7b7;
+  --cor-sucesso-texto: #065f46;
+
+  --raio-sm: 2px;
+  --raio-md: 6px;
+  --raio-lg: 8px;
+  --raio-xl: 12px;
+  --raio-2xl: 16px;
+
+  --altura-controle: 44px;
+  --altura-controle-sm: 36px;
+  --largura-painel-lateral: 560px;
+}
+
+[data-tema='escuro'] {
+  --cor-fundo: #0c111d;
+  --cor-superficie: #161b26;
+  --cor-superficie-baixa: #0c111d;
+  --cor-texto: #f5f5f6;
+  --cor-texto-secundario: #cecfd2;
+  --cor-borda: #333741;
+  --cor-borda-forte: #475467;
+  --cor-primario: #004b8d;
+  --cor-primario-hover: #336fa4;
+  --cor-primario-contraste: #ffffff;
+  --cor-secundario: #161b26;
+  --cor-secundario-hover: #1f242f;
+  --cor-destrutivo: #fecaca;
+  --cor-impedimento: #2e1c05;
+  --cor-impedimento-borda: #8a5a12;
+  --cor-impedimento-texto: #fbd89b;
+  --cor-info: #052e3f;
+  --cor-info-borda: #1a6a94;
+  --cor-info-texto: #bee3f5;
+  --cor-sucesso: #052e20;
+  --cor-sucesso-borda: #16704f;
+  --cor-sucesso-texto: #a7f3d0;
+}
+
+@layer base {
+  html {
+    font-family: Inter, system-ui, sans-serif;
+  }
+
+  body {
+    background-color: var(--cor-fundo);
+    color: var(--cor-texto);
+  }
+
+  /*
+   * DDR-005: foco visível é ring-2 com offset-2 e nunca é suprimido. Fica no
+   * `base` e não em cada componente porque supressão acidental de foco é o
+   * defeito de acessibilidade que ninguém percebe olhando a tela com o mouse.
+   */
+  :focus-visible {
+    outline: 2px solid var(--cor-primario);
+    outline-offset: 2px;
+  }
+}

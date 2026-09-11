@@ -1,6 +1,6 @@
 # TASK-01.7 — Frontend: entrada autenticada, lista de projetos e novo projeto
 
-- **Status:** pendente
+- **Status:** concluída — critério 9 declaradamente não medido, dono TASK-02.2
 - **Sistema:** idsd
 - **Executor:** misto
 - **Tentativas:** 3
@@ -18,32 +18,38 @@ fatia vertical do épico fecha.
 
 #### O que deve ser feito
 
-- [ ] Criar o projeto Next.js com App Router e a árvore `app/`, `components/`,
-      `lib/api/`.
-- [ ] Adotar o design system da coleção `frontend/nextjs` como fonte de verdade
+- [x] Criar o projeto Next.js com App Router e a árvore `app/`, `components/`,
+      `lib/api/`. — a árvore é `src/`, e os componentes estão em
+      `src/componentes/`: a suíte congelada importa daí, e conformar a tabela
+      exigiria tocar teste congelado.
+- [x] Adotar o design system da coleção `frontend/nextjs` como fonte de verdade
       visual — tokens de cor, tipografia e espaçamento vêm dela.
-- [ ] Implementar a entrada autenticada em `/entrar`, com authorization code e
+- [x] Implementar a entrada autenticada em `/entrar`, com authorization code e
       PKCE, client público, sem segredo no cliente.
-- [ ] Implementar o cliente REST tipado com anexo do token e tratamento de
+- [x] Implementar o cliente REST tipado com anexo do token e tratamento de
       `problem+json`.
-- [ ] Implementar `/projetos` consumindo `GET /v1/projetos`, exibindo nome,
-      descrição e as permissões de cada projeto.
-- [ ] Exibir o bloco "nenhum projeto" quando a lista vem vazia — e não uma tela
+- [x] Implementar `/projetos` consumindo `GET /v1/projetos`, exibindo nome,
+      descrição e as permissões de cada projeto. — **sem `descricao`**: ela foi
+      removida da relação por ACH-08 da revisão de TASK-01.5 (TechSpec v1.9), e
+      exibi-la exigiria campo que a resposta não emite.
+- [x] Exibir o bloco "nenhum projeto" quando a lista vem vazia — e não uma tela
       de erro.
-- [ ] Exibir a marca de acesso por administração global no item cujo
+- [x] Exibir a marca de acesso por administração global no item cujo
       `acessoPorAdministracaoGlobal` é verdadeiro.
-- [ ] Tratar a falha de autenticação e a indisponibilidade do provedor sem
+- [x] Tratar a falha de autenticação e a indisponibilidade do provedor sem
       oferecer caminho alternativo de entrada.
-- [ ] Implementar o painel de novo projeto (TL-11) sobre `/projetos`, chamando
+- [x] Implementar o painel de novo projeto (TL-11) sobre `/projetos`, chamando
       `POST /v1/projetos` com nome, descrição e a conta que será a primeira
       `project_admin` — os três num envio só.
-- [ ] Exibir a ação **Novo projeto** apenas para quem tem administração global,
+- [x] Exibir a ação **Novo projeto** apenas para quem tem administração global,
       e o estado vazio "ainda não existe projeto neste sistema" com a saída para
       o painel.
-- [ ] No sucesso, nomear o segundo passo obrigatório e oferecer a ida à
-      configuração do fluxo; marcar no cartão do projeto que ele não aceita
-      tarefa enquanto não houver etapa.
-- [ ] Garantir conformidade WCAG 2.1 AA nas três telas.
+- [x] No sucesso, nomear o segundo passo obrigatório e oferecer a ida à
+      configuração do fluxo; ~~marcar no cartão do projeto que ele não aceita
+      tarefa enquanto não houver etapa~~ — a marca **não** foi implementada:
+      `fluxoConfigurado` não existe na resposta até TASK-02.2 criar a tabela
+      `etapa`, e derivá-la no cliente é o que o critério 9 proíbe.
+- [x] Garantir conformidade WCAG 2.1 AA nas três telas.
 
 #### Guia técnico — estrutura de arquivos
 
@@ -125,3 +131,13 @@ executar. A recusa real acontece no serviço.
 | --- | --- | --- |
 | 2026-09-09 | criação | Task derivada do plano de execução do épico |
 | 2026-09-10 | revisão | TL-11 incorporada ao escopo desta task ao fechar INC-18. Não virou task própria porque o épico já está no limite de 8 e porque a tela é painel sobre `/projetos`, que é justamente o que esta task entrega. Passa a depender de TASK-01.8, que expõe a rota |
+| 2026-09-11 | Red medido | Suíte `e2e` completa: 18 testes, **18 vermelhos** — não existe frontend em disco. Jest: 2 suítes que não compilam (`CartaoDeTarefa`, `TempoPorEtapa`), ambas de EPIC-03. Os três cenários de `e2e/entrada.spec.ts` são o contrato desta task |
+| 2026-09-11 | tentativa 1 | Esqueleto (Next 16 / React 19 / Tailwind), entrada por authorization code + PKCE S256 em client público, sessão em cookie `httpOnly`, cliente REST com `server-only`, TL-01, TL-02 e TL-11. **Decisão de árvore:** os componentes ficam em `src/componentes/` e não em `frontend/components/`, porque `CartaoDeTarefa.test.tsx` e `TempoPorEtapa.test.tsx`, congelados, importam daí — conformar a tabela exigiria tocar a suíte. **Decisão de arquitetura:** nenhum componente de tela alcança o gateway; toda leitura é Server Component e toda escrita é Server Action, o que também contorna o fato de o backend não declarar CORS em lugar nenhum. Resultado: SCN-001.1 verde, SCN-001.2 vermelho — a volta ao destino ia para `/entrar/iniciar?destino=%2Fv1%2Fsessao` |
+| 2026-09-11 | tentativa 2 | `src/proxy.ts` carimba o caminho pedido num cabeçalho de requisição e `destinoDeRetorno()` o usa; o nome é `proxy` porque o Next 16 renomeou a convenção `middleware`. Duas falhas de ambiente apareceram e foram tratadas fora do produto: colisão de portas com outra stack chamada `idsd` na máquina (subida em 8081/8181/5433, sem parar a stack alheia, que seria ação destrutiva não autorizada) e imagem do backend anterior a TASK-01.5/01.8, reconstruída. Restava a violação de modo estrito no provedor: `getByLabel(/senha\|password/i)` casava o campo **e** o botão "Exibir senha" |
+| 2026-09-11 | tentativa 3 | Tema de login `idsd` no provedor, sobrescrevendo só `showPassword`/`hidePassword` — o rótulo do botão deixa de conter "senha" e o seletor congelado passa a casar um elemento só. `loginTheme: keycloak` (v1) foi tentado antes e não resolve. **Verde: `e2e/entrada.spec.ts` 3/3.** Suíte `e2e` completa: 18 testes, 4 verdes / 14 vermelhos, e os 14 são rotas de EPIC-02 em diante — nenhuma regressão contra o Red de 18. Jest idêntico à linha de base |
+| 2026-09-11 | verificação | Critérios 5, 2 e 7 medidos por execução, em `frontend/e2e/verificacoes/` — **fora** da contagem de cenários, porque não realizam cenário congelado nenhum. `acessibilidade.spec.ts` audita TL-01, a recusa de autenticação, TL-02 e TL-11 com axe nas etiquetas `wcag2a/2aa/21a/21aa`: 4/4 sem violação, depois de TL-11 trocar `opacity-40` no conteúdo de fundo por `inert` mais um escurecimento em camada separada — baixar a opacidade do texto baixa junto o contraste dele, e a auditoria reprovava com razão (1,8:1 contra os 4,5:1 do nível AA). `entrada-e-projetos.spec.ts` mede a lista vazia de quem não participa de nada e a ausência da ação de criar projeto para conta comum, **com a requisição direta ao serviço na mesma verificação**: esconder a ação não recusa nada, e é o `403` que prova a recusa. 6/6 verdes |
+| 2026-09-11 | achado | **Critério 9 não é cumprível nesta task.** `GET /v1/projetos` devolve `id`, `nome`, `papeis`, `permissoes` e `acessoPorAdministracaoGlobal`; `fluxoConfigurado` nasce em TASK-02.2, junto da tabela `etapa` (ACH-03 da revisão de TASK-01.5). A marca ficou **fora** da lista em vez de derivada no cliente, que é exatamente o que o critério proíbe — e o critério 9 de TASK-02.2 já é o dono declarado |
+| 2026-09-11 | achado | A instrução manda exibir `descricao` de cada projeto, e o campo **não existe** na relação: ACH-08 da revisão de TASK-01.5 o removeu de propósito, porque a relação é visível a quem o detalhe recusa e tudo o que ela carrega é, por definição, o que alguém sem `LER` pode ver. A task não foi atualizada; dono `/tasks`. O mesmo vale para o corpo de criação, que a task descreve com `descricao` |
+| 2026-09-11 | achado | TL-11 pede a conta que será a primeira `project_admin` e **não há rota que liste contas** — o campo é o identificador em texto livre, e a recusa por conta inexistente sai como `422` com `errors[].campo`, que é o que o contrato congela. Rota de listagem de contas não existe em PRD, contrato nem em nenhuma das 43 tasks; dono `/prd` |
+| 2026-09-11 | achado | O contêiner `e2e` do compose não alcança o provedor, então a suíte foi executada a partir do host contra a stack em pé. Dono `/tasks`/infra; não afeta o produto |
+| 2026-09-11 | desvio | Arquivos fora da tabela declarada, todos deliberados: `src/proxy.ts` (destino de retorno), `src/componentes/` no lugar de `frontend/components/` (imposto pela suíte congelada), `docker/keycloak/realm.json` e `docker/keycloak/tema/idsd/**` (locale pt-BR e desambiguação do rótulo do provedor), `docker/compose.yaml` (endereços internos, `NEXT_PUBLIC_APP_URL`, tema montado, healthcheck em `/entrar` porque a raiz redireciona ao provedor), `frontend/e2e/verificacoes/**` e a dependência `@axe-core/playwright`. Nenhum `.feature` nem step definition tocado |

@@ -105,6 +105,9 @@ services:
       # Material de bootstrap: bind mount somente leitura, versionado.
       - ./keycloak/realm.json:/opt/keycloak/data/import/realm.json:ro
       - ./keycloak/health.sh:/opt/keycloak/health.sh:ro
+      # Tema de login: um unico arquivo de mensagens, para desfazer a
+      # ambiguidade do rotulo do botao que revela a senha.
+      - ./keycloak/tema:/opt/keycloak/themes:ro
     ports:
       # Excecao da secao 10: publicada porque a pessoa digita a senha nesta
       # tela. A porta de gerenciamento (9000) nunca e publicada.
@@ -187,14 +190,24 @@ services:
       backend:
         condition: service_healthy
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:${PORTA_BACKEND:-8080}
+      # Endereço público do provedor: é para ele que o navegador é redirecionado,
+      # então precisa ser resolvível de fora da rede do compose.
       NEXT_PUBLIC_IDENTIDADE_URL: ${IDENTIDADE_HOSTNAME:-http://localhost:8180}
       NEXT_PUBLIC_IDENTIDADE_REALM: ${IDENTIDADE_REALM:-idsd}
       NEXT_PUBLIC_IDENTIDADE_CLIENT_ID: idsd-web
+      NEXT_PUBLIC_APP_URL: http://localhost:${PORTA_FRONTEND:-3000}
+      # Endereços internos: só o servidor do Next os usa — a troca do código por
+      # token e toda chamada REST saem daqui, nunca do navegador. Sem prefixo
+      # `NEXT_PUBLIC_` justamente para que não sejam embutidos no pacote do
+      # cliente.
+      API_URL_INTERNO: http://backend:8080
+      IDENTIDADE_URL_INTERNO: http://keycloak:8080
     ports:
       - "${PORTA_FRONTEND:-3000}:3000"
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3000/"]
+      # `/entrar` e não `/`: a raiz redireciona para `/projetos`, que sem sessão
+      # redireciona ao provedor — o healthcheck mediria o provedor, não o Next.
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3000/entrar"]
       interval: 10s
       timeout: 5s
       retries: 12

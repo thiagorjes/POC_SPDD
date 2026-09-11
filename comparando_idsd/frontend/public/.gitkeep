@@ -1,0 +1,2 @@
+# Diretório servido estaticamente pelo Next. Existe porque o estágio de
+# runtime do Dockerfile copia `public/` e falha se ele não existir.

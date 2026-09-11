@@ -8,6 +8,10 @@
   "resetPasswordAllowed": false,
   "editUsernameAllowed": false,
   "accessTokenLifespan": 1800,
+  "loginTheme": "idsd",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["pt-BR"],
+  "defaultLocale": "pt-BR",
   "clients": [
     {
       "clientId": "idsd-web",
