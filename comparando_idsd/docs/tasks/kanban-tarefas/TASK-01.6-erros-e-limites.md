@@ -1,6 +1,6 @@
 # TASK-01.6 — problem+json, negação por padrão e limite de requisições
 
-- **Status:** pendente
+- **Status:** concluída
 - **Sistema:** idsd
 - **Executor:** agente
 - **Tentativas:** 3
@@ -19,24 +19,24 @@ de tempo real, e os envelopes de desempenho não têm outra proteção.
 
 #### O que deve ser feito
 
-- [ ] Implementar o tratador global de exceções produzindo
+- [x] Implementar o tratador global de exceções produzindo
       `application/problem+json` em toda resposta de erro.
-- [ ] Incluir `traceId` em todo corpo de erro e propagar o identificador de
+- [x] Incluir `traceId` em todo corpo de erro e propagar o identificador de
       correlação por requisição.
-- [ ] Fazer rota não mapeada negar por padrão.
-- [ ] Implementar o limite de requisições por sujeito: **120 leituras** e
+- [x] Fazer rota não mapeada negar por padrão.
+- [x] Implementar o limite de requisições por sujeito: **120 leituras** e
       **30 escritas por minuto**, com `429` e `Retry-After` em problem+json.
-- [ ] Aplicar o limite também por origem.
+- [x] Aplicar o limite também por origem.
 
 #### Guia técnico — estrutura de arquivos
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/shared/TratadorDeErro.java` | criar | tratador global |
-| `backend/src/main/java/<pkg>/shared/ProblemaDetalhado.java` | criar | corpo de erro |
-| `backend/src/main/java/<pkg>/shared/FiltroDeCorrelacao.java` | criar | identificador por requisição |
-| `backend/src/main/java/<pkg>/shared/LimiteDeRequisicoes.java` | criar | contagem por sujeito e por origem |
-| `backend/src/main/java/<pkg>/config/SegurancaConfig.java` | alterar | negação por padrão, registro do filtro |
+| `backend/src/main/java/br/com/idsd/kanban/shared/TratadorDeErro.java` | criar | tratador global |
+| `backend/src/main/java/br/com/idsd/kanban/shared/ProblemaDetalhado.java` | criar | corpo de erro |
+| `backend/src/main/java/br/com/idsd/kanban/shared/FiltroDeCorrelacao.java` | criar | identificador por requisição |
+| `backend/src/main/java/br/com/idsd/kanban/shared/LimiteDeRequisicoes.java` | criar | contagem por sujeito e por origem |
+| `backend/src/main/java/br/com/idsd/kanban/config/SegurancaConfig.java` | alterar | negação por padrão, registro do filtro |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já
@@ -104,3 +104,14 @@ sujeito**.
 | Data | Evento | Detalhe |
 | --- | --- | --- |
 | 2026-09-09 | criação | Task derivada do plano de execução do épico |
+| 2026-09-11 | Red medido | Suíte alcançável: **139 testes, 35 verdes / 104 vermelhos**. A suíte inteira continua não compilando por cinco arquivos que referenciam classes de tasks posteriores (`ReconstrucaoDaProjecaoIT`, `ImpedimentoServiceTest`, `EtapaServiceTest`, `CriacaoDeTarefaServiceTest`, `TomadaServiceTest`), então a medição é por `javac` mais console do JUnit excluindo exatamente esses cinco — mesmo arnês das tasks anteriores (ACH-07 da revisão de TASK-01.3) |
+| 2026-09-11 | achado | **Nenhum cenário congelado exercita `429`, `Retry-After` ou `traceId`.** A varredura de `src/test` por esses termos devolve só a asserção de `Retry-After` do `503` de SCN-001.3. Os critérios de aceite 1 a 4 e 6 não tinham verificação alguma; os testes novos foram escritos **fora** da contagem de cenários, como `ExistenciaECapacidadeIT` e `AusenciaDeNMaisUmIT`. Nenhum `.feature`, step definition ou asserção congelada foi tocado |
+| 2026-09-11 | tentativa 1 | Quatro arquivos criados e `SegurancaConfig` alterado. Falha de compilação: `HttpHeaders.X_FORWARDED_FOR` não existe na versão do Spring em uso — trocado pelo literal |
+| 2026-09-11 | tentativa 2 | **Verde.** Suíte alcançável: **147 testes, 46 verdes / 101 vermelhos**. São 8 testes novos, todos verdes, e 3 que falhavam voltaram a passar (recusas que agora saem no formato único). Nenhuma regressão — a aritmética fecha nos dois sentidos. Os 101 vermelhos continuam sendo rotas de tasks posteriores, a maioria parando em `Cenario.fluxoPadrao` (EPIC-02) |
+| 2026-09-11 | decisão | **`traceId` central e não obrigação de cada rota.** `ProjetoController` monta o próprio `ProblemDetail` e está fora da tabela de arquivos; em vez de editá-lo, o tratador implementa `ResponseBodyAdvice` e enriquece todo corpo `ProblemDetail` na saída. Fecha o escopo declarado e faz a rota que ainda vai nascer sair correta sem que ninguém se lembre |
+| 2026-09-11 | decisão | **Ordem dos dois filtros.** A correlação é registrada por `FilterRegistrationBean` na precedência máxima, **fora** da cadeia de segurança, porque `401`, `503` e `429` nascem dentro dela e nunca chegam ao despachante — filtro posterior deixaria justamente os erros que mais precisam de correlação sem ela. O limite vai **depois** do filtro do bearer token, porque a contagem é por sujeito autenticado e antes dele todo mundo cairia na mesma chave vazia. Nenhum dos dois é bean de `Filter`: o Boot registra sozinho todo bean de filtro, e o registro automático não deixa fixar precedência |
+| 2026-09-11 | decisão | **Origem é rede grossa, e de propósito.** O envelope por origem é dez vezes o do sujeito. Atrás do proxy reverso, que é a única entrada do sistema, um endereço costuma ser a saída compartilhada de um time inteiro, e igualar os dois faria o escritório caber no orçamento de uma pessoa. `X-Forwarded-For` é forjável e por isso a origem é a dimensão fraca — ignorá-lo seria pior, porque toda requisição teria o mesmo endereço e a dimensão não distinguiria nada |
+| 2026-09-11 | decisão | **Ponto de extensão do `409` previsto e não serializado.** `ProblemaDetalhado.Falha` carrega um mapa de membros adicionais; o bloco `estadoAtual` de SCN-005.3, SCN-007.3 e SCN-020.3 entra por ali quando a task que o define chegar, sem reabrir o tratador para acrescentar campo de outro domínio |
+| 2026-09-11 | fora do escopo declarado | `backend/src/test/java/br/com/idsd/kanban/alem/ErrosELimitesIT.java` (criado) — os 8 testes que dão verificação aos critérios 1 a 4 e 6, fora da contagem de cenários |
+| 2026-09-11 | fora do escopo declarado | `backend/src/test/resources/application-test.yml` (criado) — **mina desarmada**: os contadores vivem no contexto e a massa dos cenários é montada pela própria API HTTP, no mesmo sujeito e dentro do mesmo minuto; com o envelope de produção, um cenário de EPIC-02 que semeia etapas e tarefas começaria a receber `429` no meio da preparação, com falha intermitente longe da causa. O envelope da suíte é alto, e não desligado — desligar faria o caminho exercitado deixar de ser o caminho de produção. Quem verifica o limite aperta o número de volta por `@TestPropertySource` |
+| 2026-09-11 | limite declarado | O critério 3 pede relógio controlado, e para isso `SegurancaConfig` passou a expor o relógio como bean, substituído no teste. Sem isso o resultado dependeria de a janela não virar no meio do teste, que é a forma mais cara de teste intermitente. Os envelopes verificados são apertados por propriedade e não os 120/30 de RNF-010: o mecanismo é o mesmo, e disparar 121 requisições por teste custaria minutos de suíte para provar a mesma coisa — o número de produção é o padrão em `SegurancaConfig` |

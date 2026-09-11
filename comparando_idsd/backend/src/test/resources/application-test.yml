@@ -1,0 +1,18 @@
+# Envelope do limite de requisicoes durante a suite.
+#
+# O mecanismo continua rodando em toda requisicao — o que muda e so o numero.
+# Desliga-lo aqui seria pior: o caminho exercitado pela suite deixaria de ser o
+# caminho de producao, e a diferenca so apareceria em producao.
+#
+# O motivo do teto alto e concreto: a massa dos cenarios e montada pela propria
+# API HTTP, no mesmo sujeito e dentro do mesmo minuto, entao com o envelope de
+# producao (RNF-010) um cenario de EPIC-02 que semeia etapas e tarefas comecaria
+# a receber 429 no meio da preparacao — falha intermitente, longe da causa.
+#
+# Quem verifica o limite aperta esses numeros de volta com @TestPropertySource.
+idsd:
+  limite:
+    leituras-por-sujeito: 100000
+    escritas-por-sujeito: 100000
+    leituras-por-origem: 100000
+    escritas-por-origem: 100000
