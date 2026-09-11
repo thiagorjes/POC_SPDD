@@ -84,6 +84,7 @@ servidor, e a tela precisa manter o rascunho na tela.
 | 4 | Renomear etapa não altera a identidade nem o histórico | renomear e conferir o andamento do projeto |
 | 5 | Toda a edição é possível apenas com teclado | percurso sem mouse |
 | 6 | A tela passa em auditoria de acessibilidade AA | verificação automatizada sem violação de nível AA |
+| 7 | **RNF-005** — TL-08 é funcional a 1280 px e a 1024 px de largura, sem perda de ação nem rolagem horizontal não indicada | verificação automatizada nas duas larguras extremas (ACH-16 da revisão de TASK-01.7) |
 
 #### Histórico
 

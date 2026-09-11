@@ -80,6 +80,7 @@ catálogo vindo do serviço — nunca uma lista fixa no cliente.
 | 4 | Nenhuma tela de consulta agregada oferece filtro por raia | inspeção das telas de andamento e de tempo por etapa |
 | 5 | O seletor de papéis permite múltipla escolha a partir do catálogo do serviço | inspeção da requisição que popula o seletor |
 | 6 | As telas passam em auditoria de acessibilidade AA | verificação automatizada sem violação de nível AA |
+| 7 | **RNF-005** — TL-09 é funcional a 1280 px e a 1024 px de largura, sem perda de ação nem rolagem horizontal não indicada | verificação automatizada nas duas larguras extremas (ACH-16 da revisão de TASK-01.7) |
 
 #### Histórico
 

@@ -74,6 +74,7 @@ próprio, e nunca zero.
 | 5 | Item com impedimento aberto oferece assumir | inspeção do item |
 | 6 | A tela passa em auditoria de acessibilidade AA | verificação automatizada sem violação de nível AA |
 | 7 | Nenhuma informação é transmitida apenas por cor | inspeção em modo monocromático |
+| 8 | **RNF-005** — TL-06 é funcional a 1280 px e a 1024 px de largura, sem perda de ação nem rolagem horizontal não indicada | verificação automatizada nas duas larguras extremas (ACH-16 da revisão de TASK-01.7) |
 
 #### Histórico
 

@@ -87,6 +87,7 @@ serviço.
 | 5 | Reabrir devolve a tarefa à primeira etapa e a tela avisa disso antes de confirmar | percurso em navegador |
 | 6 | Nenhuma contagem segue correndo em tarefa concluída ou encerrada | inspeção do cartão |
 | 7 | As telas passam em auditoria de acessibilidade AA, com os controles desabilitados explicados | verificação automatizada e leitura por tecnologia assistiva |
+| 8 | **RNF-005** — TL-10 é funcional a 1280 px e a 1024 px de largura, sem perda de ação nem rolagem horizontal não indicada | verificação automatizada nas duas larguras extremas (ACH-16 da revisão de TASK-01.7) |
 
 #### Histórico
 

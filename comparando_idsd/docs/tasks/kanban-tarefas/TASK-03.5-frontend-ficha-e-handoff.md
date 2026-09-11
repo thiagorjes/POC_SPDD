@@ -91,6 +91,7 @@ do fluxo. Etapa não alcançável não recebe destaque e não aceita a soltura.
 | 6 | Devolver deixa o cartão no pool da mesma etapa, com a espera recomeçada | percurso em navegador |
 | 7 | A ficha exibe etapa, condição e impedimento em campos distintos | inspeção da tela |
 | 8 | As telas passam em auditoria de acessibilidade AA | verificação automatizada sem violação de nível AA |
+| 9 | **RNF-005** — TL-04 é funcional a 1280 px e a 1024 px de largura, sem perda de ação nem rolagem horizontal não indicada | verificação automatizada nas duas larguras extremas (ACH-16 da revisão de TASK-01.7) |
 
 #### Histórico
 

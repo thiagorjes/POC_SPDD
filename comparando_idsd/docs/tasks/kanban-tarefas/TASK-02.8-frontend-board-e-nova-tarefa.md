@@ -98,6 +98,7 @@ este último orientando configurar as etapas antes.
 | 6 | Projeto sem fluxo recusa a criação e oferece configurar as etapas | percurso em projeto recém-criado |
 | 7 | As duas telas passam em auditoria de acessibilidade AA | verificação automatizada sem violação de nível AA |
 | 8 | Nenhuma informação é transmitida apenas por cor | inspeção dos estados em modo monocromático |
+| 9 | **RNF-005** — TL-03 e TL-05 são funcionais a 1280 px e a 1024 px de largura, sem perda de ação nem rolagem horizontal não indicada; no board, a rolagem horizontal das colunas é indicada e não conta como perda | verificação automatizada nas duas larguras extremas, por tela (ACH-16 da revisão de TASK-01.7) |
 
 #### Histórico
 

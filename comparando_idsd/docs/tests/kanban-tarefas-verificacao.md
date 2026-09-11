@@ -316,10 +316,20 @@ o que ele prova.
 
 ## Testes além dos cenários
 
-Doze verificações que a especificação obriga e que cenário algum descreve.
-Vivem em `br.com.idsd.kanban.alem` e em `backend/src/test/carga`, separadas de
-propósito: elas não são cobertura de cenário, e misturá-las faria a contagem
-de 70 parecer maior do que é.
+Catorze verificações que a especificação obriga e que cenário algum descreve.
+Vivem em `br.com.idsd.kanban.alem`, em `backend/src/test/carga` e em
+`frontend/e2e/verificacoes`, separadas de propósito: elas não são cobertura de
+cenário, e misturá-las faria a contagem de 70 parecer maior do que é.
+
+As duas últimas são de envelope e não de comportamento: RNF-005 e RNF-006 são
+medidos **por tela, na task que dá à luz a tela**, e não numa passagem única
+ao fim do épico. A alternativa era a que ACH-16 encontrou — envelope sem dono
+em lugar nenhum, reprovando por construção no fechamento, com a causa a
+quarenta e três arquivos de distância de quem recebe a reprovação. A soma dos
+critérios cobre as onze telas exatamente uma vez: TL-01, TL-02 e TL-11 em
+TASK-01.7; TL-08 em TASK-02.7; TL-03 e TL-05 em TASK-02.8; TL-04 em
+TASK-03.5; TL-10 em TASK-05.5; TL-09 em TASK-06.3; TL-06 em TASK-07.5; TL-07
+em TASK-07.6. TASK-04.4 e TASK-08.4 não entram porque não estreiam tela.
 
 | Teste | Origem | O que se perderia sem ele |
 | --- | --- | --- |
@@ -335,6 +345,8 @@ de 70 parecer maior do que é.
 | `PrimeiraParticipacaoIT` | Critérios 1, 2 e 5 de TASK-01.8 (RN-036, RN-037) | SCN-022.1 afirma a primeira participação lendo `GET /v1/projetos/{id}/participacoes`, que é rota de TASK-06.2 e ainda não existe, e SCN-022.2 afirma que "nada foi criado" lendo a relação **do próprio sujeito recusado** — que estaria vazia mesmo se o projeto tivesse sido gravado, porque quem cria não vira participante (RN-037) e o sujeito recusado não tem alcance global. As duas asserções são fracas por razões diferentes e nenhuma é corrigível sem tocar cenário congelado. Esta classe lê o estado **em SQL** e é o que dá poder de falha aos três critérios. Origem: ACH-08 da revisão de TASK-01.8 |
 | `TransacaoUnicaDeCriacaoIT` | Critério 5 de TASK-01.8 (RN-037) | A verificação da pessoa nomeada precede o primeiro `save`, então o caminho da pessoa inexistente passaria idêntico com `@Transactional` removido — critério cumprido por teste sem poder de falha. Este força a falha da participação **depois** da gravação do projeto, que é a única ordem em que a pergunta faz sentido: o repositório do Spring Data é ele próprio transacional, e sem a transação externa o projeto órfão fica em disco. Origem: ACH-02 da revisão de TASK-01.8 |
 | `rnf-009-consultas.js` | RNF-009 | 12 meses, 5.000 tarefas. A massa é semeada por `massa-12-meses.sql`, com a contrapartida declarada no próprio arquivo |
+| `verificacoes/largura.spec.ts` | RNF-005 | O envelope não era nomeado em task nenhuma, em critério nenhum e em nenhuma linha deste plano — varredura devolvia zero nas três fontes. Cada tela é percorrida a 1280 px e a 1024 px, e a asserção é sobre ausência de rolagem horizontal não indicada e sobre as ações continuarem alcançáveis; medir só a 1280 deixaria passar exatamente a largura que o requisito existe para proteger. Origem: ACH-16 da revisão de TASK-01.7 |
+| `verificacoes/acessibilidade.spec.ts` | RNF-006 | Mesma ausência de RNF-005 pela metade: o nível AA já era critério de aceite em toda task de tela, mas não havia linha aqui, de modo que o plano de verificação não dizia quem mede o envelope. Cada tela é auditada com âncora de página declarada antes da análise — sem a âncora, sessão que não se forma deixa a auditoria verde medindo a tela do provedor (ACH-04 da mesma revisão) |
 
 ---
 
