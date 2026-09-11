@@ -23,15 +23,28 @@ dist/
 *.swp
 *.swo
 .DS_Store
-*/Thumbs.db
+Thumbs.db
 
 # Artefatos temporários
 *.tmp
 *.bak
 
-*/node_modules/
-*/.next/
-*/coverage/
-*/.turbo/
-*/next-env.d.ts
-*/*.tsbuildinfo
+# Dependências e artefatos de build — sem prefixo de nível, para valer em
+# qualquer subpasta e não só nas de primeiro nível.
+node_modules/
+.next/
+.swc/
+out/
+coverage/
+.turbo/
+next-env.d.ts
+*.tsbuildinfo
+
+# Java
+target/
+
+# Saída de suíte de ponta a ponta
+test-results/
+playwright-report/
+blob-report/
+.playwright/
