@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { gravarTransacao } from '@/lib/auth/cookies'
+import { destinoInterno } from '@/lib/auth/destino'
 import { desafioDe, novoVerificador, urlDeAutorizacao } from '@/lib/auth/oidc'
 
 /**
@@ -14,10 +15,10 @@ import { desafioDe, novoVerificador, urlDeAutorizacao } from '@/lib/auth/oidc'
  * servidor, e quem chega por link não vê tela intermediária nenhuma.
  */
 export async function GET(requisicao: NextRequest) {
-  const pedido = requisicao.nextUrl.searchParams.get('destino') ?? '/projetos'
-  // Só destino interno: aceitar URL absoluta aqui transformaria a entrada num
-  // redirecionador aberto, que é como se leva alguém autenticado para fora.
-  const destino = pedido.startsWith('/') && !pedido.startsWith('//') ? pedido : '/projetos'
+  // Só destino interno: aceitar URL que resolva para fora transformaria a
+  // entrada num redirecionador aberto, que é como se leva alguém autenticado
+  // para fora. A recusa é por resolução — ver `destinoInterno`.
+  const destino = destinoInterno(requisicao.nextUrl.searchParams.get('destino'))
 
   const verificador = novoVerificador()
   const estado = randomBytes(16).toString('base64url')

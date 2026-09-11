@@ -4,6 +4,7 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
 import { tokenDeAcesso } from '@/lib/auth/cookies'
+import { destinoInterno } from '@/lib/auth/destino'
 import { config } from '@/lib/config'
 import { CABECALHO_CAMINHO } from '@/proxy'
 
@@ -43,8 +44,7 @@ type Opcoes = {
  * API que falhou — `/v1/sessao` não é lugar para devolver ninguém.
  */
 async function destinoDeRetorno(): Promise<string> {
-  const pedido = (await headers()).get(CABECALHO_CAMINHO)
-  return pedido && pedido.startsWith('/') ? pedido : '/projetos'
+  return destinoInterno((await headers()).get(CABECALHO_CAMINHO))
 }
 
 export async function chamar<T>(caminho: string, opcoes: Opcoes = {}): Promise<T> {

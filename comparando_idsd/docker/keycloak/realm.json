@@ -23,10 +23,10 @@
       "serviceAccountsEnabled": false,
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:3000/*"
+        "post.logout.redirect.uris": "http://localhost:3000/entrar"
       },
       "redirectUris": [
-        "http://localhost:3000/*"
+        "http://localhost:3000/entrar/retorno"
       ],
       "webOrigins": [
         "http://localhost:3000"
