@@ -38,7 +38,7 @@
           "pertence_a": "/prd"
         },
         {
-          "pattern": "^\\s*[-+]{3}\\s|^\\s*@@ ",
+          "pattern": "^[-+]{3}[ \\t]+\\S|^\\s*@@ ",
           "motivo": "patch de correção — o revisor não escreve código",
           "pertence_a": "/implement"
         },

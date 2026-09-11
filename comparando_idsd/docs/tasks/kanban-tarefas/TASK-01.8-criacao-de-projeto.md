@@ -30,9 +30,9 @@ antes de o projeto existir.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/projeto/ProjetoController.java` | alterar | acrescenta a rota de escrita às duas de leitura |
-| `backend/src/main/java/<pkg>/internal/projeto/CriacaoDeProjeto.java` | criar | registro de entrada |
-| `backend/src/main/java/<pkg>/internal/projeto/ProjetoServico.java` | criar | a transação única de projeto + participação |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/ProjetoController.java` | alterar | acrescenta a rota de escrita às duas de leitura |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/CriacaoDeProjeto.java` | criar | registro de entrada |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/ProjetoServico.java` | criar | a transação única de projeto + participação |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

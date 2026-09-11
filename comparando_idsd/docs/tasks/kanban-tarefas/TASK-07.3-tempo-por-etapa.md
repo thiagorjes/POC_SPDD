@@ -34,8 +34,8 @@ mantida deliberadamente.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/consulta/TempoPorEtapaController.java` | criar | rota agregada |
-| `backend/src/main/java/<pkg>/internal/consulta/TempoPorEtapaQuery.java` | criar | agregação por etapa e por tipo |
+| `backend/src/main/java/br/com/idsd/kanban/internal/consulta/TempoPorEtapaController.java` | criar | rota agregada |
+| `backend/src/main/java/br/com/idsd/kanban/internal/consulta/TempoPorEtapaQuery.java` | criar | agregação por etapa e por tipo |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

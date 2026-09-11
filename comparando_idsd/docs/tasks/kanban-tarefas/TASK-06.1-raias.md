@@ -28,8 +28,8 @@ entra em nenhuma agregação. Essa ausência é a regra, e ela é garantida no e
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/projeto/RaiaController.java` | criar | duas rotas |
-| `backend/src/main/java/<pkg>/internal/projeto/RaiaService.java` | criar | substituição transacional |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/RaiaController.java` | criar | duas rotas |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/RaiaService.java` | criar | substituição transacional |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

@@ -31,8 +31,8 @@ resolver o problema que existe para resolver.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/fila/FilaController.java` | criar | rota sem projeto no caminho |
-| `backend/src/main/java/<pkg>/internal/fila/FilaQuery.java` | criar | consulta entre projetos |
+| `backend/src/main/java/br/com/idsd/kanban/internal/fila/FilaController.java` | criar | rota sem projeto no caminho |
+| `backend/src/main/java/br/com/idsd/kanban/internal/fila/FilaQuery.java` | criar | consulta entre projetos |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

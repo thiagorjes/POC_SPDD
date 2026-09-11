@@ -30,9 +30,9 @@ condição.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/tarefa/ConclusaoController.java` | criar | rota de conclusão |
-| `backend/src/main/java/<pkg>/internal/tarefa/ConclusaoService.java` | criar | apenas recusa e resposta idempotente |
-| `backend/src/main/java/<pkg>/internal/tarefa/VerificadorDeMarca.java` | alterar | segunda chamadora da verificação compartilhada |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/ConclusaoController.java` | criar | rota de conclusão |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/ConclusaoService.java` | criar | apenas recusa e resposta idempotente |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/VerificadorDeMarca.java` | alterar | segunda chamadora da verificação compartilhada |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

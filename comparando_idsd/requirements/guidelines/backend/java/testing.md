@@ -88,3 +88,37 @@ URL configurada; sem ele o contexto nem inicializa.
 
 - JaCoCo; meta geral **> 80%** (recomendado, ver [`definition-of-done.md`](definition-of-done.md)).
 - Cobrir fluxo principal + casos de erro do domínio.
+
+## Verificação de decisão de acesso e de custo
+
+_Acrescentado em 2026-09-11, a partir dos guardrails extraídos das revisões do
+sistema IDSD._
+
+- **Método restrito ao pacote que decide acesso é testado como se fosse
+  público.** Quando alguém otimiza o caminho de N acessos, o normal é nascer um
+  segundo método ao lado do primeiro — e é o novo que passa a rodar em produção,
+  enquanto os testes continuam verdes sobre o antigo. Se existem dois métodos que
+  decidem a mesma coisa, exista também um teste que afirme que **eles
+  concordam**; é ele que falha no dia em que um dos dois mudar sozinho.
+- **Critério de aceite cujo verificador é contagem de comandos exige o
+  instrumento de contagem na mesma entrega.** Sem ele, "não há N+1" é leitura de
+  código com outro nome, e leitura de código não falha.
+- **Contagem de consultas se afirma como invariância à massa, nunca como número
+  absoluto.** Meça o mesmo caminho duas vezes, sobre volumes diferentes, e
+  afirme que as contagens são iguais. Número absoluto quebra por mudança inócua,
+  e teste que quebra por nada acaba desabilitado — teste desabilitado não
+  verifica coisa alguma. A semeadura fica **fora** do trecho medido.
+- **Asserção sobre coleção filtrada é escrita sobre o item, nunca sobre o
+  resultado do filtro.** Caminho com filtro devolve coleção cujo elemento é o
+  próprio array, e o matcher acaba comparando contra o array: a forma positiva
+  reprova com o valor presente e a negativa passa para qualquer resposta.
+  Achate o resultado, e **preceda toda asserção negativa de uma positiva** —
+  negativa sobre coleção vazia é verde que não verifica nada.
+
+**Verificador:** revisão do diff. Os dois primeiros itens são também itens do
+`definition-of-done.md`.
+
+> **Dívida nomeada.** Os dois últimos itens não são específicos de Java — valem
+> para qualquer suíte com asserção sobre JSON e qualquer instrumento de contagem
+> de consultas. Promovê-los a `_shared/` é decisão de biblioteca e pertence ao
+> `/guidelines`; a coleção `_shared` ainda não tem arquivo de testes.

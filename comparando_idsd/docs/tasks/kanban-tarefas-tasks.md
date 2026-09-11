@@ -42,8 +42,8 @@ TechSpec para saber o que fazer**. Isso implica cópia integral, não referênci
 
 | ID | Épico | Sistema | Cenários entregues | Tasks | Executor | Pode iniciar |
 | --- | --- | --- | --- | --- | --- | --- |
-| EPIC-01 | Acesso, sessão e projetos visíveis | idsd | SCN-001.1, SCN-001.2, SCN-001.3, SCN-002.1, SCN-002.2, SCN-002.3, SCN-002.4, SCN-021.1, SCN-021.2, SCN-021.3, SCN-022.1, SCN-022.2 | 8 | misto | imediatamente |
-| EPIC-02 | Fluxo de etapas, criação de tarefa e board | idsd | SCN-017.1, SCN-017.2, SCN-017.3, SCN-004.1, SCN-004.2, SCN-004.3, SCN-022.3, SCN-003.1, SCN-003.2 | 8 | misto | após EPIC-01 |
+| EPIC-01 | Acesso, sessão e projetos visíveis | idsd | SCN-001.1, SCN-001.2, SCN-001.3, SCN-002.1, SCN-002.2, SCN-002.3, SCN-021.1, SCN-021.2, SCN-021.3, SCN-022.1, SCN-022.2 | 8 | misto | imediatamente |
+| EPIC-02 | Fluxo de etapas, criação de tarefa e board | idsd | SCN-002.4, SCN-017.1, SCN-017.2, SCN-017.3, SCN-004.1, SCN-004.2, SCN-004.3, SCN-022.3, SCN-003.1, SCN-003.2 | 8 | misto | após EPIC-01 |
 | EPIC-03 | Handoff: mover, assumir e devolver | idsd | SCN-005.1, SCN-005.2, SCN-005.3, SCN-006.1, SCN-006.2, SCN-007.1, SCN-007.2, SCN-007.3, SCN-008.1, SCN-008.2 | 5 | misto | após EPIC-02 |
 | EPIC-04 | Impedimento como terceira dimensão | idsd | SCN-009.1, SCN-009.2, SCN-009.3, SCN-010.1, SCN-010.2, SCN-010.3, SCN-003.3, SCN-006.3, SCN-007.4, SCN-008.3 | 4 | misto | após EPIC-03 |
 | EPIC-05 | Desfechos: conclusão, encerramento e reabertura | idsd | SCN-011.1, SCN-011.2, SCN-011.3, SCN-012.1, SCN-012.2, SCN-012.3, SCN-012.4, SCN-013.1, SCN-013.2, SCN-013.3 | 5 | misto | após EPIC-04 |
@@ -71,7 +71,7 @@ Deixá-los no épico de origem exigiria implementar meio impedimento ali.
 | SCN-002.1 | RF-002 | EPIC-01 | integração |
 | SCN-002.2 | RF-002 | EPIC-01 | integração |
 | SCN-002.3 | RF-002 | EPIC-01 | integração |
-| SCN-002.4 | RF-002 | EPIC-01 | integração |
+| SCN-002.4 | RF-002 | EPIC-02 | integração |
 | SCN-003.1 | RF-003 | EPIC-02 | e2e |
 | SCN-003.2 | RF-003 | EPIC-02 | integração |
 | SCN-003.3 | RF-003 | EPIC-04 | integração |
@@ -176,7 +176,7 @@ EPIC-01
 
 EPIC-02 (depende de EPIC-01)
   ├── TASK-02.1
-  ├── TASK-02.2 (depende de TASK-02.1)
+  ├── TASK-02.2 (depende de TASK-02.1; e de TASK-01.5, por SCN-002.4)
   ├── TASK-02.3 (depende de TASK-02.1)
   ├── TASK-02.4 (depende de TASK-02.3)
   ├── TASK-02.5 (depende de TASK-02.4, TASK-02.2)
@@ -234,13 +234,13 @@ A ordem dentro do épico é serial — as tasks compartilham o mesmo PR.
 ## EPIC-01 — Acesso, sessão e projetos visíveis
 
 - **Sistema:** idsd
-- **Entrega:** SCN-001.1, SCN-001.2, SCN-001.3, SCN-002.1, SCN-002.2, SCN-002.3, SCN-002.4, SCN-021.1, SCN-021.2, SCN-021.3, SCN-022.1, SCN-022.2
+- **Entrega:** SCN-001.1, SCN-001.2, SCN-001.3, SCN-002.1, SCN-002.2, SCN-002.3, SCN-021.1, SCN-021.2, SCN-021.3, SCN-022.1, SCN-022.2
 - **Depende de:** nenhuma
 - **Fatia vertical:** ao final, uma pessoa autentica no provedor de identidade, é
   autoprovisionada, vê a lista dos projetos em que participa com as permissões de
   cada um, e o primeiro administrador global existe por promoção auditada. Sobe
   em contêiner com um comando, com banco migrado por serviço dedicado.
-- **Gate do épico:** PR aberto e os doze cenários entregues passando.
+- **Gate do épico:** PR aberto e os onze cenários entregues passando.
 
 ### TASK-01.1 — Esqueleto do backend e estrutura por domínio
 
@@ -293,7 +293,7 @@ A ordem dentro do épico é serial — as tasks compartilham o mesmo PR.
 - **Executor:** agente
 - **Tentativas:** 3
 - **Depende de:** TASK-01.4
-- **Cenários cobertos:** SCN-002.1, SCN-002.2, SCN-002.3, SCN-002.4, SCN-021.2, SCN-021.3
+- **Cenários cobertos:** SCN-002.1, SCN-002.2, SCN-002.3, SCN-021.2, SCN-021.3
 - **Origem:** RF-002, RF-021, RN-015, RN-035, BDR-001
 - **Detalhe:** `docs/tasks/kanban-tarefas/TASK-01.5-projetos-visiveis.md`
 
@@ -336,13 +336,13 @@ A ordem dentro do épico é serial — as tasks compartilham o mesmo PR.
 ## EPIC-02 — Fluxo de etapas, criação de tarefa e board
 
 - **Sistema:** idsd
-- **Entrega:** SCN-017.1, SCN-017.2, SCN-017.3, SCN-004.1, SCN-004.2, SCN-004.3, SCN-022.3, SCN-003.1, SCN-003.2
+- **Entrega:** SCN-002.4, SCN-017.1, SCN-017.2, SCN-017.3, SCN-004.1, SCN-004.2, SCN-004.3, SCN-022.3, SCN-003.1, SCN-003.2
 - **Depende de:** EPIC-01
 - **Fatia vertical:** ao final, quem configura define o fluxo de etapas do
   projeto, qualquer participante cria tarefa e todos veem o board com as etapas,
   as tarefas e os contadores. É a primeira fatia em que o produto faz o que o
   nome promete.
-- **Gate do épico:** PR aberto e os nove cenários entregues passando.
+- **Gate do épico:** PR aberto e os dez cenários entregues passando.
 
 ### TASK-02.1 — Migration 2 e entidades de etapa e raia
 
@@ -361,9 +361,9 @@ A ordem dentro do épico é serial — as tasks compartilham o mesmo PR.
 - **Sistema:** idsd
 - **Executor:** agente
 - **Tentativas:** 3
-- **Depende de:** TASK-02.1
-- **Cenários cobertos:** SCN-017.1, SCN-017.2, SCN-017.3
-- **Origem:** RF-017, RN-001, RN-020, RN-021, RN-022
+- **Depende de:** TASK-02.1, TASK-01.5
+- **Cenários cobertos:** SCN-002.4, SCN-017.1, SCN-017.2, SCN-017.3
+- **Origem:** RF-002, RF-017, RN-001, RN-020, RN-021, RN-022, RN-038
 - **Detalhe:** `docs/tasks/kanban-tarefas/TASK-02.2-configuracao-do-fluxo.md`
 
 ### TASK-02.3 — Migrations 3 a 6 do anel de verdade e da projeção

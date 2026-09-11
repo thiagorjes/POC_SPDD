@@ -29,12 +29,12 @@ migration e as entidades correspondentes.
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
 | `backend/src/main/resources/db/migration/V<ANO><MES><DIA><HORA>__configuracao_base.sql` | criar | tabelas e índices desta task |
-| `backend/src/main/java/<pkg>/internal/acesso/Usuario.java` | criar | entidade |
-| `backend/src/main/java/<pkg>/internal/projeto/Projeto.java` | criar | entidade |
-| `backend/src/main/java/<pkg>/internal/projeto/Participacao.java` | criar | entidade |
-| `backend/src/main/java/<pkg>/internal/projeto/Papel.java` | criar | enumeração fechada |
-| `backend/src/main/java/<pkg>/internal/projeto/Permissao.java` | criar | enumeração derivada dos papéis |
-| `backend/src/main/java/<pkg>/internal/projeto/ResolvedorDePermissao.java` | criar | serviço |
+| `backend/src/main/java/br/com/idsd/kanban/internal/acesso/Usuario.java` | criar | entidade |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/Projeto.java` | criar | entidade |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/Participacao.java` | criar | entidade |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/Papel.java` | criar | enumeração fechada |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/Permissao.java` | criar | enumeração derivada dos papéis |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/ResolvedorDePermissao.java` | criar | serviço |
 | repositórios dos quatro agregados | criar | interfaces de repositório |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,

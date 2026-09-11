@@ -39,10 +39,10 @@ a peça mais sensível do sistema.
 | `.../db/migration/V<...>__evento_tarefa.sql` | criar | ordem 4, com a concessão restrita |
 | `.../db/migration/V<...>__intervalo_e_impedimento.sql` | criar | ordem 5 |
 | `.../db/migration/V<...>__sequencia_e_duracao.sql` | criar | ordem 6 |
-| `backend/src/main/java/<pkg>/internal/tarefa/Tarefa.java` | criar | entidade, com controle de versão |
-| `backend/src/main/java/<pkg>/internal/tarefa/EventoTarefa.java` | criar | entidade somente de inserção |
-| `backend/src/main/java/<pkg>/internal/tarefa/Impedimento.java` | criar | entidade |
-| `backend/src/main/java/<pkg>/internal/tempo/IntervaloTarefa.java` | criar | entidade |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/Tarefa.java` | criar | entidade, com controle de versão |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/EventoTarefa.java` | criar | entidade somente de inserção |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/Impedimento.java` | criar | entidade |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tempo/IntervaloTarefa.java` | criar | entidade |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

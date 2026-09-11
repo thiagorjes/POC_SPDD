@@ -30,8 +30,8 @@ serviço, não da tela.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/consulta/AndamentoController.java` | criar | rota de andamento |
-| `backend/src/main/java/<pkg>/internal/consulta/AndamentoQuery.java` | criar | contagem por etapa e impedimentos abertos |
+| `backend/src/main/java/br/com/idsd/kanban/internal/consulta/AndamentoController.java` | criar | rota de andamento |
+| `backend/src/main/java/br/com/idsd/kanban/internal/consulta/AndamentoQuery.java` | criar | contagem por etapa e impedimentos abertos |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

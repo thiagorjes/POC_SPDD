@@ -30,9 +30,9 @@ inteira existe para evitar.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/tarefa/BoardController.java` | criar | rota de leitura |
-| `backend/src/main/java/<pkg>/internal/tarefa/BoardQuery.java` | criar | consultas de projeção |
-| `backend/src/main/java/<pkg>/internal/tarefa/BoardResposta.java` | criar | registro de saída |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/BoardController.java` | criar | rota de leitura |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/BoardQuery.java` | criar | consultas de projeção |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/BoardResposta.java` | criar | registro de saída |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

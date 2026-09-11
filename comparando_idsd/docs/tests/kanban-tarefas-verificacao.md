@@ -1,6 +1,6 @@
 # Plano de Verificação — kanban-tarefas
 
-_Versão 1.3 — 2026-09-10_
+_Versão 1.4 — 2026-09-11_
 
 Feature: `kanban-tarefas`
 Origem: PRD v1.5 (70 cenários congelados), TechSpec v1.7, Tasks (8 épicos, 43 tasks)
@@ -36,6 +36,25 @@ A única exceção declarada, e ela não é de produção: o arnês de topologia
 aplicação para verificar o broadcast entre instâncias. Ele vive no fonte de
 teste, a aplicação não o importa, e o que ele conhece do sistema é apenas o que
 o contrato congelado já expõe.
+
+### Correção de 2026-09-11 (v1.4) — achados de custo e de contrato
+
+Também **não independente**, pela mesma razão das duas anteriores.
+
+Nenhum `.feature`, ID, redação ou tipo de cenário foi alterado, e nenhum teste
+de cenário foi tocado.
+
+- **`AusenciaDeNMaisUmIT` acrescentado** (ACH-09), fora da contagem de cenários,
+  com o arnês `ContagemDeConsultas`. O critério de aceite que proíbe N+1 vinha
+  sendo marcado por inspeção do JPQL, e inspeção não falha. A forma da asserção
+  é o que decide se o teste sobrevive: afirma-se **invariância à massa** — a
+  mesma rota medida duas vezes, sobre volumes diferentes, com as duas contagens
+  iguais —, e nunca um número absoluto de consultas. Número absoluto quebra por
+  mudança inócua, e teste que quebra por nada acaba desabilitado.
+- **`ExistenciaECapacidadeIT` ganhou a asserção do corolário** (ACH-08): a
+  relação não carrega `descricao`. Ela é a única classe em que o participante
+  sem papel aparece, que é exatamente o sujeito para quem a distinção entre
+  metadado e dado protegido importa.
 
 ### Correção de 2026-09-10 (v1.3) — achados da revisão de TASK-01.5
 
@@ -297,7 +316,7 @@ o que ele prova.
 
 ## Testes além dos cenários
 
-Nove verificações que a especificação obriga e que cenário algum descreve.
+Dez verificações que a especificação obriga e que cenário algum descreve.
 Vivem em `br.com.idsd.kanban.alem` e em `backend/src/test/carga`, separadas de
 propósito: elas não são cobertura de cenário, e misturá-las faria a contagem
 de 70 parecer maior do que é.
@@ -312,6 +331,7 @@ de 70 parecer maior do que é.
 | `BroadcastMultiInstanciaIT` | RNF-002 | 3 instâncias, 300 sessões. Suíte de uma instância só passa em verde sobre o desenho que ADR-004 existe para resolver |
 | `rnf-001-tempo-real.js` | RNF-001 | 100 tarefas, 50 sessões; mede do aceite da escrita até a chegada à sessão que observa, e não a latência do próprio clique |
 | `ExistenciaECapacidadeIT` | TechSpec v1.8 (regra única `403`/`404`) | Os cenários cobrem as duas pontas — quem participa e lê, quem não participa e recebe `404` — e deixam de fora o meio: o participante sem papel. Trocar o `403` dele por `404`, ou removê-lo deixando `200`, não deixava teste algum vermelho. Origem: ACH-07 da revisão de TASK-01.5 |
+| `AusenciaDeNMaisUmIT` | Critério 6 de TASK-01.5 (ausência de N+1) | O critério era marcado por inspeção do JPQL, e critério que não pode falhar não é critério. Montar cada item navegando a associação devolve o mesmo corpo, deixa todo cenário verde e emite uma consulta por projeto. Afirma invariância à massa, nunca contagem absoluta. Origem: ACH-09 da revisão de TASK-01.5 |
 | `rnf-009-consultas.js` | RNF-009 | 12 meses, 5.000 tarefas. A massa é semeada por `massa-12-meses.sql`, com a contrapartida declarada no próprio arquivo |
 
 ---
@@ -365,6 +385,7 @@ defeito que este congelamento existe para impedir.
 | 2026-09-10 | Suíte congelada na v1.0 — 66 cenários, 8 verificações além dos cenários | congelamento inicial | fecho da etapa `/tests`; a partir daqui a suíte só muda por emenda de cenário ou desvio aprovado | agente `/tests` (congelamento inicial não é alteração e não exige aprovação humana) |
 | 2026-09-10 | Correção de SCN-021.1 (verificava rota inexistente; passa a verificar o log auditável) e de SCN-001.3 (era inalcançável; passa a exercitar o decodificador), mais o suporte comum: `jwk-set-uri` do provedor simulado, isolamento entre testes e troca do artefato do WireMock | correção de defeito da suíte | os dois cenários verificavam outra coisa que não o que o Gherkin congelado afirma. Nenhum `.feature` tocado, nenhum ID alterado, nenhuma asserção afrouxada — SCN-021.1 continua exigindo "quem e quando", agora onde o registro de fato vive. **Não independente**: ver a declaração de independência | Thiago Goncalves Cavalcante (autorizou a correção; a natureza não independente foi declarada antes da execução) |
 | 2026-09-10 | Correção das asserções de SCN-002.1 (`[*]` no caminho com filtro, positiva antes da negativa) e da ordem de `AdminGlobalIT` em SCN-021.2; SCN-002.4 deixa de ser declarado coberto; `ExistenciaECapacidadeIT` acrescentado além dos cenários | correção de defeito da suíte | achados ACH-01, ACH-04, ACH-05, ACH-06 e ACH-07 da revisão de TASK-01.5: duas asserções não verificavam o que afirmavam e uma cobertura era declarada sem teste. Nenhum `.feature` tocado, nenhum ID alterado, nenhuma asserção afrouxada. **Não independente**: ver a declaração de independência | Thiago Goncalves Cavalcante (autorizou a correção dos achados; a natureza não independente foi declarada antes da execução) |
+| 2026-09-11 | `AusenciaDeNMaisUmIT` e o arnês `ContagemDeConsultas` acrescentados além dos cenários; `ExistenciaECapacidadeIT` ganha a asserção de que a relação não carrega `descricao` | acréscimo além dos cenários | achados ACH-08 e ACH-09 da revisão de TASK-01.5: o critério de ausência de N+1 era marcado por inspeção, e o corolário de contrato instituído na emenda da TechSpec precisava de verificador. Nenhum `.feature` tocado, nenhum cenário alterado. **Não independente**: ver a declaração de independência | Thiago Goncalves Cavalcante (autorizou a correção dos achados) |
 | 2026-09-10 | Acréscimo de SCN-022.1, SCN-022.2 e SCN-022.3 — `CriacaoDeProjetoIT` criado, um teste novo em `CriacaoDeTarefaIT`, suporte E2E migrado para a rota real | emenda de cenário no PRD | emenda v1.3 do PRD, que criou RF-022 e fechou a lacuna de especificação registrada nesta etapa. Nenhum cenário preexistente teve ID, redação ou teste alterados | Thiago Goncalves Cavalcante (aprovador do gate de spec na reconfirmação da emenda v1.3) |
 
 ---

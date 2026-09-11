@@ -31,10 +31,10 @@ o relógio — anexa informação ao que já está aberto.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/impedimento/ImpedimentoController.java` | criar | rota de abertura |
-| `backend/src/main/java/<pkg>/internal/impedimento/ImpedimentoService.java` | criar | abertura e anotação |
-| `backend/src/main/java/<pkg>/internal/impedimento/ImpedimentoRequisicao.java` | criar | origem e motivo |
-| `backend/src/main/java/<pkg>/internal/impedimento/DestaqueDeImpedimento.java` | criar | resolve a quem o impedimento se destaca |
+| `backend/src/main/java/br/com/idsd/kanban/internal/impedimento/ImpedimentoController.java` | criar | rota de abertura |
+| `backend/src/main/java/br/com/idsd/kanban/internal/impedimento/ImpedimentoService.java` | criar | abertura e anotação |
+| `backend/src/main/java/br/com/idsd/kanban/internal/impedimento/ImpedimentoRequisicao.java` | criar | origem e motivo |
+| `backend/src/main/java/br/com/idsd/kanban/internal/impedimento/DestaqueDeImpedimento.java` | criar | resolve a quem o impedimento se destaca |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

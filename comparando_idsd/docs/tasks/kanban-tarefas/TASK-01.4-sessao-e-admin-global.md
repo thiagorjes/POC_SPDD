@@ -35,10 +35,10 @@ vez, com registro auditável.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/acesso/SessaoController.java` | criar | rota `GET /v1/sessao` |
-| `backend/src/main/java/<pkg>/internal/acesso/SessaoService.java` | criar | autoprovisionamento e promoção |
-| `backend/src/main/java/<pkg>/internal/acesso/SessaoResposta.java` | criar | registro de saída |
-| `backend/src/main/java/<pkg>/config/SegurancaConfig.java` | criar | Resource Server, negação por padrão |
+| `backend/src/main/java/br/com/idsd/kanban/internal/acesso/SessaoController.java` | criar | rota `GET /v1/sessao` |
+| `backend/src/main/java/br/com/idsd/kanban/internal/acesso/SessaoService.java` | criar | autoprovisionamento e promoção |
+| `backend/src/main/java/br/com/idsd/kanban/internal/acesso/SessaoResposta.java` | criar | registro de saída |
+| `backend/src/main/java/br/com/idsd/kanban/config/SegurancaConfig.java` | criar | Resource Server, negação por padrão |
 | `backend/src/main/resources/application.yml` | alterar | property do sujeito a promover |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,

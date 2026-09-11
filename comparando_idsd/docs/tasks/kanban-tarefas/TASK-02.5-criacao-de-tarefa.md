@@ -31,10 +31,10 @@ contando dois intervalos.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/tarefa/TarefaController.java` | criar | rota de criação |
-| `backend/src/main/java/<pkg>/internal/tarefa/CriacaoDeTarefaService.java` | criar | usa o registrador de evento |
-| `backend/src/main/java/<pkg>/internal/tarefa/NovaTarefaRequisicao.java` | criar | registro de entrada |
-| `backend/src/main/java/<pkg>/internal/tarefa/CartaoResposta.java` | criar | forma do cartão, reusada pelo board |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/TarefaController.java` | criar | rota de criação |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/CriacaoDeTarefaService.java` | criar | usa o registrador de evento |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/NovaTarefaRequisicao.java` | criar | registro de entrada |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/CartaoResposta.java` | criar | forma do cartão, reusada pelo board |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

@@ -32,9 +32,9 @@ registro de quem havia assumido preservado no histórico.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/projeto/ParticipacaoController.java` | criar | três rotas |
-| `backend/src/main/java/<pkg>/internal/projeto/ParticipacaoService.java` | criar | papéis e remoção com devolução |
-| `backend/src/main/java/<pkg>/internal/projeto/CatalogoDePapeis.java` | criar | catálogo fechado e matriz de permissões |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/ParticipacaoController.java` | criar | três rotas |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/ParticipacaoService.java` | criar | papéis e remoção com devolução |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/CatalogoDePapeis.java` | criar | catálogo fechado e matriz de permissões |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

@@ -45,12 +45,12 @@ declara escopo de arquivo contra ela.
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
 | `backend/pom.xml` | criar | dependências e plugin do JaCoCo com gate de 80% |
-| `backend/src/main/java/<pkg>/internal/projeto/` | criar | projeto, etapa, raia, participacao, papel |
-| `backend/src/main/java/<pkg>/internal/tarefa/` | criar | tarefa, evento, impedimento, movimentos, tomada |
-| `backend/src/main/java/<pkg>/internal/tempo/` | criar | intervalos, projeção, consultas agregadas |
-| `backend/src/main/java/<pkg>/internal/acesso/` | criar | sessão, autoprovisionamento, resolução de permissão |
-| `backend/src/main/java/<pkg>/shared/` | criar | problem+json, correlação, porta de publicação de evento |
-| `backend/src/main/java/<pkg>/config/` | criar | segurança, STOMP, listener de escuta do banco |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/` | criar | projeto, etapa, raia, participacao, papel |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/` | criar | tarefa, evento, impedimento, movimentos, tomada |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tempo/` | criar | intervalos, projeção, consultas agregadas |
+| `backend/src/main/java/br/com/idsd/kanban/internal/acesso/` | criar | sessão, autoprovisionamento, resolução de permissão |
+| `backend/src/main/java/br/com/idsd/kanban/shared/` | criar | problem+json, correlação, porta de publicação de evento |
+| `backend/src/main/java/br/com/idsd/kanban/config/` | criar | segurança, STOMP, listener de escuta do banco |
 | `backend/src/main/resources/application.yml` | criar | perfis, `ddl-auto=validate`, Actuator |
 | `backend/src/main/resources/db/migration/` | criar | pasta vazia; as migrations chegam nas tasks seguintes |
 | `backend/src/test/java/` | criar | espelha a árvore principal |

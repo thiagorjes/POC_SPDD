@@ -30,10 +30,10 @@ todas as operações dos épicos seguintes.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/tarefa/OrigemDeclarada.java` | criar | registro de entrada compartilhado |
-| `backend/src/main/java/<pkg>/internal/tarefa/VerificadorDeOrigem.java` | criar | reavaliação e decisão entre `409` e `200` |
-| `backend/src/main/java/<pkg>/internal/tarefa/EstadoAtualResposta.java` | criar | bloco devolvido no `409` |
-| `backend/src/main/java/<pkg>/internal/tarefa/RegistradorDeEvento.java` | alterar | passa a exigir a verificação antes de aplicar |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/OrigemDeclarada.java` | criar | registro de entrada compartilhado |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/VerificadorDeOrigem.java` | criar | reavaliação e decisão entre `409` e `200` |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/EstadoAtualResposta.java` | criar | bloco devolvido no `409` |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/RegistradorDeEvento.java` | alterar | passa a exigir a verificação antes de aplicar |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

@@ -31,9 +31,9 @@ terminou.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/tarefa/EncerramentoController.java` | criar | rota de encerramento |
-| `backend/src/main/java/<pkg>/internal/tarefa/EncerramentoService.java` | criar | aplicação e recusas |
-| `backend/src/main/java/<pkg>/internal/tarefa/VerificadorDeMarca.java` | alterar | terceira chamadora da verificação compartilhada |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/EncerramentoController.java` | criar | rota de encerramento |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/EncerramentoService.java` | criar | aplicação e recusas |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/VerificadorDeMarca.java` | alterar | terceira chamadora da verificação compartilhada |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

@@ -32,9 +32,9 @@ impedimento.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/tarefa/MovimentoController.java` | criar | rota única de movimentação |
-| `backend/src/main/java/<pkg>/internal/tarefa/MovimentoService.java` | criar | alcançabilidade e aplicação |
-| `backend/src/main/java/<pkg>/internal/tarefa/MovimentoRequisicao.java` | criar | origem e etapa de destino |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/MovimentoController.java` | criar | rota única de movimentação |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/MovimentoService.java` | criar | alcançabilidade e aplicação |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/MovimentoRequisicao.java` | criar | origem e etapa de destino |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

@@ -28,8 +28,8 @@ continuação do primeiro.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/tarefa/TomadaController.java` | alterar | acrescenta a rota de devolução |
-| `backend/src/main/java/<pkg>/internal/tarefa/TomadaService.java` | alterar | aplicação da devolução |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/TomadaController.java` | alterar | acrescenta a rota de devolução |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/TomadaService.java` | alterar | aplicação da devolução |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

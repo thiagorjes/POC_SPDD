@@ -81,3 +81,18 @@ Proibido `@SuppressWarnings("squid:...")` e `// NOSONAR`. Corrigir estruturalmen
 - [ ] `@Slf4j`; sem `System.out`; mensagem parametrizada
 - [ ] Complexidade cognitiva < 15
 - [ ] Sem `// NOSONAR` / `@SuppressWarnings`
+
+## Javadoc que nomeia mecanismo é conferida contra o código
+
+_Acrescentado em 2026-09-11, a partir dos guardrails extraídos das revisões do
+sistema IDSD._
+
+Quando a documentação de uma classe **nomeia o mecanismo** de uma decisão de
+acesso — "a distinção vem de `X#participa()`" —, a revisão confere se esse
+mecanismo é de fato consultado. Mecanismo documentado e não usado é pior que
+ausência de documentação: o desfecho costuma estar correto por outro caminho, o
+teste passa, e a próxima rota copia o que está **escrito** em vez do que é
+executado — nela o caminho alternativo não existe, e a garantia some.
+
+- [ ] Todo mecanismo nomeado em javadoc de decisão de acesso aparece em uma
+      chamada real (busca pelo nome do método devolve uso, não só a menção).

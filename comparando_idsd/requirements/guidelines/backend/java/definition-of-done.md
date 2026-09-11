@@ -48,3 +48,29 @@ Uma task está **concluída** quando todos os critérios obrigatórios forem ate
 - [ ] Exceções de negócio nomeadas (não `RuntimeException` genérica)
 - [ ] Timeout configurado em toda integração (`WebClient`)
 - [ ] DTOs de integração isolados em `integrations/<api>/models/`
+
+## Critério não medido se declara
+
+_Acrescentado em 2026-09-11, a partir dos guardrails extraídos das revisões do
+sistema IDSD._
+
+- [ ] Todo critério de aceite cuja única prova depende de trabalho de uma
+      entrega posterior está **declarado como não medido**, com o motivo e o
+      destino, em vez de deixado em silêncio na tabela de aceite.
+
+O silêncio é o problema, não a dependência. Tabela de aceite que afirma um
+verificador que nunca roda produz entrega marcada como concluída sobre critério
+que ninguém conferiu, e o defeito só aparece quando alguém tenta rodá-lo — em
+geral na revisão do épico, quando já custa reabrir. Declarar transfere o custo
+para o momento em que ele é barato.
+
+- [ ] Tabela de arquivos de instrução escreve o **caminho real**, e nunca
+      marcador de pacote. Verificador de escopo compara texto com a saída do
+      `git diff`: com marcador, ele reprova os próprios arquivos que a instrução
+      manda criar, e o sinal deixa de distinguir desvio real de notação.
+
+**Verificador:** o verificador de escopo do sistema, sobre a entrega fechada.
+
+> **Dívida nomeada.** O segundo item não é específico de Java — vale para
+> qualquer stack cujo processo tenha verificador de escopo. Promovê-lo a
+> `_shared/` pertence ao `/guidelines`.

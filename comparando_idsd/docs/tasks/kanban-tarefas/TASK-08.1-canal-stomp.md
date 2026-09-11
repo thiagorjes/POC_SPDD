@@ -30,9 +30,9 @@ projeto do qual já foi removido.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/tempo_real/ConfiguracaoWebSocket.java` | criar | registro do ponto de entrada e do broker |
-| `backend/src/main/java/<pkg>/internal/tempo_real/InterceptadorDeCanal.java` | criar | autorização de `CONNECT` e `SUBSCRIBE` |
-| `backend/src/main/java/<pkg>/internal/tempo_real/Topicos.java` | criar | montagem dos destinos |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tempo_real/ConfiguracaoWebSocket.java` | criar | registro do ponto de entrada e do broker |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tempo_real/InterceptadorDeCanal.java` | criar | autorização de `CONNECT` e `SUBSCRIBE` |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tempo_real/Topicos.java` | criar | montagem dos destinos |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

@@ -29,9 +29,9 @@ entre tarefas reabertas e não reabertas.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/tarefa/ReaberturaController.java` | criar | rota de reabertura |
-| `backend/src/main/java/<pkg>/internal/tarefa/ReaberturaService.java` | criar | novo episódio |
-| `backend/src/main/java/<pkg>/internal/tempo/AplicadorDeIntervalos.java` | alterar | evento de reabertura abre intervalos do episódio novo |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/ReaberturaController.java` | criar | rota de reabertura |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/ReaberturaService.java` | criar | novo episódio |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tempo/AplicadorDeIntervalos.java` | alterar | evento de reabertura abre intervalos do episódio novo |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

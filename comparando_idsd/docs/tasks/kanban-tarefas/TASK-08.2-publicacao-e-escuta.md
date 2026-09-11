@@ -33,10 +33,10 @@ sequência destrói essa rede, e é por isso que ele nasce no banco.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/tempo_real/PublicadorDeEventos.java` | criar | publicação após o commit |
-| `backend/src/main/java/<pkg>/internal/tempo_real/OuvinteDeEventos.java` | criar | escuta do canal e redistribuição |
-| `backend/src/main/java/<pkg>/internal/tempo_real/VarreduraDeRetomada.java` | criar | recuperação por sequência |
-| `backend/src/main/java/<pkg>/internal/escrita/NucleoDeEscrita.java` | alterar | obtenção do número de sequência |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tempo_real/PublicadorDeEventos.java` | criar | publicação após o commit |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tempo_real/OuvinteDeEventos.java` | criar | escuta do canal e redistribuição |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tempo_real/VarreduraDeRetomada.java` | criar | recuperação por sequência |
+| `backend/src/main/java/br/com/idsd/kanban/internal/escrita/NucleoDeEscrita.java` | alterar | obtenção do número de sequência |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

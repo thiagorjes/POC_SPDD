@@ -32,9 +32,9 @@ o impede de apagar a marca por engano.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/tarefa/MovimentoService.java` | alterar | apenas se divergir; nenhuma verificação nova |
-| `backend/src/main/java/<pkg>/internal/tarefa/TomadaService.java` | alterar | idem |
-| `backend/src/main/java/<pkg>/internal/tempo/AplicadorDeIntervalos.java` | alterar | confirma que os eventos de etapa e tomada não tocam o intervalo de impedimento |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/MovimentoService.java` | alterar | apenas se divergir; nenhuma verificação nova |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/TomadaService.java` | alterar | idem |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tempo/AplicadorDeIntervalos.java` | alterar | confirma que os eventos de etapa e tomada não tocam o intervalo de impedimento |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

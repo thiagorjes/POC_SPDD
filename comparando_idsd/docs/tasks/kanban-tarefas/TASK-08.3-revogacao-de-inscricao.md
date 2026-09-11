@@ -31,9 +31,9 @@ lembrada.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/tempo_real/RevogacaoDeInscricao.java` | criar | invalidação e derrubada |
-| `backend/src/main/java/<pkg>/internal/tempo_real/OuvinteDeEventos.java` | alterar | tratamento do aviso de revogação |
-| `backend/src/main/java/<pkg>/internal/participacao/ParticipacaoService.java` | alterar | acionamento na mesma transação |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tempo_real/RevogacaoDeInscricao.java` | criar | invalidação e derrubada |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tempo_real/OuvinteDeEventos.java` | alterar | tratamento do aviso de revogação |
+| `backend/src/main/java/br/com/idsd/kanban/internal/participacao/ParticipacaoService.java` | alterar | acionamento na mesma transação |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

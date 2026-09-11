@@ -29,8 +29,8 @@ cartão, e quem perde precisa saber quem ganhou — não apenas que houve erro.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/tarefa/TomadaController.java` | criar | rota de tomada |
-| `backend/src/main/java/<pkg>/internal/tarefa/TomadaService.java` | criar | aplicação e disputa |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/TomadaController.java` | criar | rota de tomada |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/TomadaService.java` | criar | aplicação e disputa |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

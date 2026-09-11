@@ -28,8 +28,8 @@ o identificador, e não o nome.
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
 | `backend/src/main/resources/db/migration/V<ANO><MES><DIA><HORA>__etapa_e_raia.sql` | criar | tabelas e índice |
-| `backend/src/main/java/<pkg>/internal/projeto/Etapa.java` | criar | entidade |
-| `backend/src/main/java/<pkg>/internal/projeto/Raia.java` | criar | entidade |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/Etapa.java` | criar | entidade |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/Raia.java` | criar | entidade |
 | repositórios de etapa e raia | criar | interfaces |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,

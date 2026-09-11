@@ -89,7 +89,9 @@ def main() -> int:
             erros.append(f"ERRO: cenario {sid} sem resultado decidido.")
         elif passa.startswith("n"):
             erros.append(f"ERRO: cenario {sid} nao passa — o epico nao fecha.")
-        if conforme not in {"sim", "não", "nao", "parcial"}:
+        # "n/a": cenario que a revisao nao tinha como executar — conformidade
+        # inavaliavel e diferente de conformidade nao avaliada.
+        if conforme not in {"sim", "não", "nao", "parcial", "n/a"}:
             erros.append(
                 f"ERRO: cenario {sid} sem avaliacao de conformidade com a task "
                 f"— passar e ter sido implementado como especificado sao "

@@ -349,7 +349,7 @@ compostos que as consultas do PRD exigem.
 | `(projeto_id)` parcial em `desfecho IS NULL` | `impedimento` | Listas de impedimento aberto de RF-014 e RF-015, e a marca de impedimento do board de RF-003 — dimensão 3 é derivada, então toda leitura que a exibe passa por aqui. **Não** é único |
 | `(projeto_id, seq)` único | `evento_tarefa` | Resincronização por `seq` do ADR-004. Único porque duplicata torna a lacuna indetectável — SDR-004 |
 | `(tarefa_id, id)` | `evento_tarefa` | Histórico da tarefa e reconstrução da projeção |
-| `(usuario_id, projeto_id)` único | `participacao` | Checagem de autorização por projeto (BDR-001) |
+| `(usuario_id, projeto_id)` único | `participacao` | Checagem de autorização por projeto (BDR-001) **e percurso da relação de RF-002**. Nota de 2026-09-11 (ACH-15): a relação parte de `usuario_id` e o prefixo deste índice a serve. Isso passa a ser **decisão declarada** e não coincidência — nenhum índice adicional em `(usuario_id)` é criado, porque seria duplicata do prefixo e custo de escrita sem ganho de leitura. A consequência é que **encolher esta restrição para `(projeto_id, usuario_id)` degrada a rota mais quente da navegação**, e quem o fizer precisa criar o índice de `usuario_id` no mesmo passo. Os papéis são alcançados pelo prefixo da chave primária de `participacao_papel` |
 | `(projeto_id, ordem)` único parcial em `arquivada_em IS NULL` | `etapa` | Adjacência de RN-005 sem ambiguidade de ordem |
 
 **Leituras que precisam ser consulta única, não navegação de entidade.** As duas

@@ -29,9 +29,9 @@ nunca alterou condição nenhuma.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/impedimento/ImpedimentoController.java` | alterar | acrescenta a rota de resolução |
-| `backend/src/main/java/<pkg>/internal/impedimento/ImpedimentoService.java` | alterar | fechamento e autorização |
-| `backend/src/main/java/<pkg>/internal/impedimento/ResolucaoRequisicao.java` | criar | origem e desfecho |
+| `backend/src/main/java/br/com/idsd/kanban/internal/impedimento/ImpedimentoController.java` | alterar | acrescenta a rota de resolução |
+| `backend/src/main/java/br/com/idsd/kanban/internal/impedimento/ImpedimentoService.java` | alterar | fechamento e autorização |
+| `backend/src/main/java/br/com/idsd/kanban/internal/impedimento/ResolucaoRequisicao.java` | criar | origem e desfecho |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

@@ -27,9 +27,9 @@ formas de chegar ao mesmo estado, com duas validações que podem divergir.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/tarefa/MovimentoService.java` | alterar | destino terminal conclui |
-| `backend/src/main/java/<pkg>/internal/tarefa/VerificadorDeMarca.java` | criar | recusa compartilhada por conclusão e encerramento |
-| `backend/src/main/java/<pkg>/internal/tempo/AplicadorDeIntervalos.java` | alterar | conclusão fecha os intervalos abertos |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/MovimentoService.java` | alterar | destino terminal conclui |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/VerificadorDeMarca.java` | criar | recusa compartilhada por conclusão e encerramento |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tempo/AplicadorDeIntervalos.java` | alterar | conclusão fecha os intervalos abertos |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já

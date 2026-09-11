@@ -34,10 +34,10 @@ isso que ela precede a primeira delas.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/tarefa/RegistradorDeEvento.java` | criar | grava evento, obtém a sequência, delega intervalos |
-| `backend/src/main/java/<pkg>/internal/tempo/AplicadorDeIntervalos.java` | criar | abre e fecha intervalos por tipo de evento |
-| `backend/src/main/java/<pkg>/shared/EventoBoardPublisher.java` | criar | porta; implementação vazia nesta task |
-| `backend/src/main/java/<pkg>/internal/tempo/ReconstrutorDeProjecao.java` | criar | rotina administrativa idempotente |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/RegistradorDeEvento.java` | criar | grava evento, obtém a sequência, delega intervalos |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tempo/AplicadorDeIntervalos.java` | criar | abre e fecha intervalos por tipo de evento |
+| `backend/src/main/java/br/com/idsd/kanban/shared/EventoBoardPublisher.java` | criar | porta; implementação vazia nesta task |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tempo/ReconstrutorDeProjecao.java` | criar | rotina administrativa idempotente |
 | repositórios de evento e intervalo | criar | sem métodos de atualização ou remoção sobre o log |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,

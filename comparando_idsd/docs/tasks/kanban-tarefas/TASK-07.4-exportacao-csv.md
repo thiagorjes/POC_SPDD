@@ -27,8 +27,8 @@ mesmas regras.
 
 | Arquivo | Ação | Observação |
 | --- | --- | --- |
-| `backend/src/main/java/<pkg>/internal/consulta/TempoPorEtapaController.java` | alterar | negociação de conteúdo |
-| `backend/src/main/java/<pkg>/internal/consulta/TempoPorEtapaCsv.java` | criar | serialização |
+| `backend/src/main/java/br/com/idsd/kanban/internal/consulta/TempoPorEtapaController.java` | alterar | negociação de conteúdo |
+| `backend/src/main/java/br/com/idsd/kanban/internal/consulta/TempoPorEtapaCsv.java` | criar | serialização |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já
