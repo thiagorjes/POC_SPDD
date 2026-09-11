@@ -48,14 +48,28 @@ export function BarraSuperior({ nome, adminGlobal }: { nome: string; adminGlobal
             sideOffset={8}
             className="min-w-52 rounded-xl border border-borda bg-superficie p-1 shadow-lg"
           >
-            <Menu.Item asChild>
-              <a
-                href="/sair"
-                className="flex cursor-pointer items-center rounded-lg px-3 py-2 text-sm outline-none data-[highlighted]:bg-[var(--cor-secundario-hover)]"
-              >
-                Sair
-              </a>
-            </Menu.Item>
+            {/*
+              Formulário e não link: encerrar sessão é efeito, e verbo de
+              navegação torna o efeito acionável por qualquer site (ACH-14).
+              O item continua sendo `menuitem` para o leitor de tela e para o
+              teclado — muda o verbo, não a semântica.
+            */}
+            <form action="/sair" method="post">
+              {/*
+                `preventDefault` no `onSelect` impede que o Radix feche o menu:
+                fechar desmonta o portal — e com ele o formulário — no mesmo
+                clique, de modo que o envio nativo nunca chega a sair. Medido:
+                sem isso a sessão continuava de pé depois de clicar em Sair.
+              */}
+              <Menu.Item asChild onSelect={(evento) => evento.preventDefault()}>
+                <button
+                  type="submit"
+                  className="flex w-full cursor-pointer items-center rounded-lg px-3 py-2 text-left text-sm outline-none data-[highlighted]:bg-[var(--cor-secundario-hover)]"
+                >
+                  Sair
+                </button>
+              </Menu.Item>
+            </form>
           </Menu.Content>
         </Menu.Portal>
       </Menu.Root>

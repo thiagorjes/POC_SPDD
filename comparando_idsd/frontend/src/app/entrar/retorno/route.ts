@@ -18,14 +18,22 @@ import { config } from '@/lib/config'
  * — com `-H 0.0.0.0` ela vira `http://0.0.0.0:3000`, que navegador nenhum
  * alcança, e foi assim que a suíte quebrou —, e ela é derivada do cabeçalho
  * `Host`, que quem chama controla.
+ *
+ * Toda recusa **também** apaga a transação. O verificador PKCE e o estado são
+ * de uso único, e deixá-los de pé depois de uma tentativa que falhou mantém
+ * viva por dez minutos a única coisa que um código de autorização plantado por
+ * link precisaria encontrar aqui — a recusa passaria a ser a porta que o
+ * mecanismo existe para fechar (ACH-13 da revisão).
  */
-const recusa = (razao: string) =>
-  NextResponse.redirect(new URL(`/entrar?erro=${razao}`, config.aplicacao))
+const recusa = async (razao: string) => {
+  await limparTransacao()
+  return NextResponse.redirect(new URL(`/entrar?erro=${razao}`, config.aplicacao))
+}
 
 export async function GET(requisicao: NextRequest) {
   const parametros = requisicao.nextUrl.searchParams
 
-  if (parametros.get('error')) return recusa('recusado')
+  if (parametros.get('error')) return await recusa('recusado')
 
   const codigo = parametros.get('code')
   const estadoRecebido = parametros.get('state')
@@ -37,14 +45,14 @@ export async function GET(requisicao: NextRequest) {
   // redirecionamento, e o valor chega por cookie — que a pessoa controla.
   const destino = destinoInterno(jar.get(DESTINO)?.value)
 
-  if (!codigo || !verificador || !estadoEsperado) return recusa('expirado')
+  if (!codigo || !verificador || !estadoEsperado) return await recusa('expirado')
 
   // Sem esta comparação, um código de autorização obtido em outra sessão
   // poderia ser plantado aqui por link — é o CSRF do fluxo de autorização.
-  if (estadoRecebido !== estadoEsperado) return recusa('estado')
+  if (estadoRecebido !== estadoEsperado) return await recusa('estado')
 
   const tokens = await trocarCodigo(codigo, verificador)
-  if (!tokens) return recusa('provedor')
+  if (!tokens) return await recusa('provedor')
 
   await gravarSessao(tokens)
   await limparTransacao()
