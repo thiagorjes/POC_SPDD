@@ -60,8 +60,17 @@ public final class ProblemaDetalhado {
         ProblemDetail corpo = ProblemDetail.forStatusAndDetail(status, detalhe);
         corpo.setType(URI.create(PREFIXO_TIPO + slug));
         corpo.setTitle(titulo);
+        // O caminho vem do cliente e `URI.create` levanta em caminho malformado.
+        // Levantar daqui seria levantar de dentro do tratador de ultimo recurso,
+        // trocando o corpo padronizado pela pagina de erro do contêiner —
+        // exatamente na requisicao que ja deu errado (ACH-12). `instance` e campo
+        // informativo: omiti-lo custa menos do que perder o corpo inteiro.
         if (instancia != null && !instancia.isBlank()) {
-            corpo.setInstance(URI.create(instancia));
+            try {
+                corpo.setInstance(URI.create(instancia));
+            } catch (IllegalArgumentException malformado) {
+                corpo.setProperty("instancePath", instancia);
+            }
         }
         return comTraceId(corpo);
     }
@@ -82,12 +91,26 @@ public final class ProblemaDetalhado {
         return corpo;
     }
 
-    /** O identificador da requisicao em curso, ou um novo se nao houver. */
+    /**
+     * O identificador da requisicao em curso.
+     *
+     * <p><b>Quando nao ha, cunha um e o fixa no MDC</b> em vez de devolver um
+     * valor novo a cada chamada (ACH-02 da revisao de TASK-01.6). A versao
+     * anterior divergia em silencio no caminho que mais importa: no despacho de
+     * erro do contêiner o MDC esta vazio, o tratador consulta o identificador uma
+     * vez para a linha de log e outra para o corpo, e os dois saiam diferentes —
+     * ambos com cara de validos, e nenhum casando com o outro. Fixar torna a
+     * segunda chamada da mesma requisicao concordante com a primeira, que e a
+     * unica propriedade que faz o par ser acionavel.
+     */
     public static String traceId() {
         String doContexto = MDC.get(CHAVE_TRACE);
-        return doContexto != null && !doContexto.isBlank()
-                ? doContexto
-                : UUID.randomUUID().toString();
+        if (doContexto != null && !doContexto.isBlank()) {
+            return doContexto;
+        }
+        String cunhado = UUID.randomUUID().toString();
+        MDC.put(CHAVE_TRACE, cunhado);
+        return cunhado;
     }
 
     /**

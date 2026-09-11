@@ -99,9 +99,11 @@ Product Owner; nenhum papel novo é criado para ela.
 | 6 | A devolução e a remoção acontecem na mesma transação | falha injetada não deixa estado parcial |
 | 7 | A permissão de desbloqueio existe nos papéis previstos, sem papel novo | inspeção do catálogo e da matriz |
 | 8 | Participante sem permissão de configuração recebe `403` nas três rotas | requisição por papel comum |
+| 9 | SCN-022.1 fica verde de ponta a ponta | O cenário está alocado em EPIC-01 e sua última asserção lê `GET /v1/projetos/{id}/participacoes`, que é rota **desta** task: hoje ele falha em `404` depois de já ter verificado o `201`, o `Location` e `etapas: []`. Com a rota existindo, rodar `CriacaoDeProjetoIT` e confirmar que a primeira `project_admin` aparece na relação |
 
 #### Histórico
 
 | Data | Evento | Detalhe |
 | --- | --- | --- |
 | 2026-09-09 | criação | Task derivada do plano de execução do épico |
+| 2026-09-11 | recebimento de escopo | Critério 9 acrescentado por ACH-09 da revisão de TASK-01.8. Custo declarado nos dois arquivos: até esta task rodar, SCN-022.1 permanece vermelho por dependência de rota, e os critérios 1, 2 e 5 de TASK-01.8 são medidos por `PrimeiraParticipacaoIT`, que lê o efeito em SQL. Mesma assimetria de alocação de cenário registrada em TASK-01.3 e TASK-01.5 — dono `/tasks` |

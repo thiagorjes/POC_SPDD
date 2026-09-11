@@ -1,6 +1,12 @@
 package br.com.idsd.kanban.shared;
 
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.MethodParameter;
@@ -14,6 +20,10 @@ import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -61,9 +71,9 @@ public class TratadorDeErro extends ResponseEntityExceptionHandler
     @ExceptionHandler(ProblemaDetalhado.Falha.class)
     ResponseEntity<ProblemDetail> falhaDeNegocio(
             ProblemaDetalhado.Falha falha, HttpServletRequest requisicao) {
-        LOG.info("Requisicao recusada em {} {} com {}; traceId={}",
+        LOG.info("Requisicao recusada em {} {} com {}",
                 requisicao.getMethod(), requisicao.getRequestURI(),
-                falha.status().value(), ProblemaDetalhado.traceId());
+                falha.status().value());
         return resposta(falha.comoCorpo(requisicao.getRequestURI()));
     }
 
@@ -76,9 +86,8 @@ public class TratadorDeErro extends ResponseEntityExceptionHandler
     @ExceptionHandler(IllegalArgumentException.class)
     ResponseEntity<ProblemDetail> requisicaoInvalida(
             IllegalArgumentException invalida, HttpServletRequest requisicao) {
-        LOG.info("Requisicao invalida em {} {}; traceId={}",
-                requisicao.getMethod(), requisicao.getRequestURI(),
-                ProblemaDetalhado.traceId(), invalida);
+        LOG.info("Requisicao invalida em {} {}",
+                requisicao.getMethod(), requisicao.getRequestURI(), invalida);
         return resposta(ProblemaDetalhado.de(
                 HttpStatus.BAD_REQUEST,
                 "requisicao-invalida",
@@ -94,12 +103,24 @@ public class TratadorDeErro extends ResponseEntityExceptionHandler
      * razao que faz o projeto de terceiro responder {@code 404} sem dizer o nome:
      * o texto de uma excecao e o lugar de onde o dado protegido escapa sem que
      * ninguem tenha decidido publica-lo.
+     *
+     * <p><b>Recusa de acesso nao passa por aqui</b>, e a excecao e declarada e nao
+     * acidental (ACH-03 da revisao de TASK-01.6). {@link AccessDeniedException} e
+     * {@link AuthenticationException} sao traduzidas pelo
+     * {@code ExceptionTranslationFilter} da cadeia de seguranca, que produz
+     * {@code 403} e {@code 401}; capturadas aqui, elas nunca chegariam la e a
+     * negacao sairia como {@code 500}. Relancar e o que mantem os dois codigos
+     * corretos no dia em que houver seguranca de metodo — que hoje nao ha, e e por
+     * isso que este cuidado seria facil de esquecer ate deixar de ser barato.
      */
     @ExceptionHandler(Exception.class)
-    ResponseEntity<ProblemDetail> naoPrevisto(Exception erro, HttpServletRequest requisicao) {
-        LOG.error("Falha nao prevista em {} {}; traceId={}",
-                requisicao.getMethod(), requisicao.getRequestURI(),
-                ProblemaDetalhado.traceId(), erro);
+    ResponseEntity<ProblemDetail> naoPrevisto(Exception erro, HttpServletRequest requisicao)
+            throws Exception {
+        if (erro instanceof AccessDeniedException || erro instanceof AuthenticationException) {
+            throw erro;
+        }
+        LOG.error("Falha nao prevista em {} {}",
+                requisicao.getMethod(), requisicao.getRequestURI(), erro);
         return resposta(ProblemaDetalhado.de(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "erro-interno",
@@ -128,21 +149,99 @@ public class TratadorDeErro extends ResponseEntityExceptionHandler
         return naoEncontrado(requisicao);
     }
 
-    /** Corpo ilegivel: JSON quebrado, tipo incompativel, campo com valor absurdo. */
+    /**
+     * Corpo que nao pode ser lido, ou campo cujo valor o contrato nao aceita.
+     *
+     * <p><b>A linha entre {@code 400} e {@code 422} e onde o corpo para de ser
+     * ilegivel e passa a ser inaceitavel</b> (ACH-04 da revisao de TASK-01.8). JSON
+     * quebrado ou ausente nao chega a dizer nada: e {@code 400}, e e o que
+     * SCN-004.2 congela. Ja um campo bem posicionado com valor que nao converte —
+     * um {@code primeiroAdministradorId} que nao e UUID — <b>disse</b> alguma
+     * coisa, e o que ha e recusa de conteudo: sai em {@code 422}, com o campo
+     * nomeado, o mesmo codigo que o contrato promete para esse campo ausente ou sem
+     * {@code usuario} correspondente. Sem essa distincao o cliente recebia dois
+     * codigos para a mesma classe de erro, decidida por um detalhe do desserializador.
+     */
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(
             HttpMessageNotReadableException ilegivel,
             HttpHeaders cabecalhos,
             HttpStatusCode status,
             WebRequest requisicao) {
-        LOG.info("Corpo ilegivel em {}; traceId={}",
-                caminho(requisicao), ProblemaDetalhado.traceId());
+        String campo = campoIncompativel(ilegivel);
+        if (campo != null) {
+            LOG.info("Valor incompativel em {} no campo {}", caminho(requisicao), campo);
+            ProblemDetail problema = ProblemaDetalhado.de(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    "entrada-invalida",
+                    "Entrada invalida",
+                    "Os dados enviados nao atendem ao contrato. Confira os campos indicados.",
+                    caminho(requisicao));
+            problema.setProperty("errors", List.of(Map.of(
+                    "campo", campo,
+                    "mensagem", "O valor informado nao e valido para este campo.")));
+            return corpo(problema);
+        }
+        LOG.info("Corpo ilegivel em {}", caminho(requisicao));
         return corpo(ProblemaDetalhado.de(
                 HttpStatus.BAD_REQUEST,
                 "requisicao-invalida",
                 "Requisicao invalida",
                 "Os dados enviados nao puderam ser lidos. Confira o conteudo da requisicao.",
                 caminho(requisicao)));
+    }
+
+    /**
+     * Validacao de fronteira: {@code 422}, com os campos nomeados.
+     *
+     * <p>{@code 422} e nao {@code 400} porque e o codigo que os contratos congelam
+     * para entrada recusada — nome em branco, papel fora do catalogo, motivo vazio.
+     * O padrao do Spring MVC e {@code 400}, e deixa-lo faria a rota que valida por
+     * anotacao responder diferente da rota que valida no servico, para o mesmo erro.
+     *
+     * <p>Os campos vao em {@code errors} porque a tela precisa saber <b>onde</b> por
+     * a mensagem (RNF-003); {@code detail} sozinho obriga o cliente a adivinhar.
+     */
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException invalido,
+            HttpHeaders cabecalhos,
+            HttpStatusCode status,
+            WebRequest requisicao) {
+        LOG.info("Entrada invalida em {}", caminho(requisicao));
+        ProblemDetail problema = ProblemaDetalhado.de(
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                "entrada-invalida",
+                "Entrada invalida",
+                "Os dados enviados nao atendem ao contrato. Confira os campos indicados.",
+                caminho(requisicao));
+        List<Map<String, String>> campos = new ArrayList<>();
+        for (FieldError erro : invalido.getBindingResult().getFieldErrors()) {
+            campos.add(Map.of(
+                    "campo", erro.getField(),
+                    "mensagem", erro.getDefaultMessage() == null
+                            ? "Valor invalido." : erro.getDefaultMessage()));
+        }
+        problema.setProperty("errors", campos);
+        return corpo(problema);
+    }
+
+    /**
+     * O campo cujo valor nao converteu, se foi isso que aconteceu.
+     *
+     * <p>Devolve {@code null} quando o corpo nem chegou a ser JSON valido — a
+     * causa, ai, nao tem caminho de campo nenhum a apontar.
+     */
+    private String campoIncompativel(HttpMessageNotReadableException ilegivel) {
+        if (!(ilegivel.getCause() instanceof MismatchedInputException incompativel)
+                || incompativel.getPath().isEmpty()) {
+            return null;
+        }
+        String caminhoDoCampo = incompativel.getPath().stream()
+                .map(JsonMappingException.Reference::getFieldName)
+                .filter(nome -> nome != null)
+                .collect(Collectors.joining("."));
+        return caminhoDoCampo.isEmpty() ? null : caminhoDoCampo;
     }
 
     /**
@@ -161,8 +260,7 @@ public class TratadorDeErro extends ResponseEntityExceptionHandler
         Object enriquecido = corpo instanceof ProblemDetail problema
                 ? ProblemaDetalhado.comTraceId(problema)
                 : corpo;
-        LOG.info("Requisicao recusada com {} pelo tratamento padrao; traceId={}",
-                status.value(), ProblemaDetalhado.traceId());
+        LOG.info("Requisicao recusada com {} pelo tratamento padrao", status.value());
         HttpHeaders comTipo = new HttpHeaders();
         comTipo.putAll(cabecalhos);
         comTipo.setContentType(MediaType.APPLICATION_PROBLEM_JSON);
@@ -170,8 +268,7 @@ public class TratadorDeErro extends ResponseEntityExceptionHandler
     }
 
     private ResponseEntity<Object> naoEncontrado(WebRequest requisicao) {
-        LOG.info("Caminho nao mapeado: {}; traceId={}",
-                caminho(requisicao), ProblemaDetalhado.traceId());
+        LOG.info("Caminho nao mapeado: {}", caminho(requisicao));
         return corpo(ProblemaDetalhado.de(
                 HttpStatus.NOT_FOUND,
                 "recurso-nao-encontrado",

@@ -30,6 +30,18 @@ spring:
   flyway:
     enabled: false
 
+# ACH-02. O identificador de correlacao entra pelo padrao de log, e nao por
+# concatenacao em cada chamada. Concatenar a mao so correlaciona a linha que
+# alguem lembrou de instrumentar: linha de framework, linha de biblioteca e o
+# stacktrace do 500 — que e onde a correlacao mais vale — sairiam sem ela, e o
+# esquecimento nao quebra nada que se perceba. `%X{traceId}` le a chave que o
+# FiltroDeCorrelacao fixa no MDC no inicio da requisicao, e vale para toda linha
+# emitida dentro dela, por quem quer que a emita.
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%X{traceId:-sem-correlacao}] %-40.40logger{39} : %m%n%wEx"
+    file: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%X{traceId:-sem-correlacao}] %-40.40logger{39} : %m%n%wEx"
+
 idsd:
   admin-global:
     # Sujeito designado a administracao global (ADR-010). E o `sub` do token, e

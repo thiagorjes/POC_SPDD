@@ -40,7 +40,7 @@ public class FiltroDeCorrelacao extends OncePerRequestFilter {
             HttpServletRequest requisicao,
             HttpServletResponse resposta,
             FilterChain cadeia) throws ServletException, IOException {
-        String correlacao = resolver(requisicao.getHeader(ProblemaDetalhado.CABECALHO_CORRELACAO));
+        String correlacao = resolver(requisicao, resposta);
         MDC.put(ProblemaDetalhado.CHAVE_TRACE, correlacao);
         resposta.setHeader(ProblemaDetalhado.CABECALHO_CORRELACAO, correlacao);
         try {
@@ -53,9 +53,43 @@ public class FiltroDeCorrelacao extends OncePerRequestFilter {
         }
     }
 
-    private String resolver(String doCliente) {
-        return doCliente != null && ACEITAVEL.matcher(doCliente).matches()
-                ? doCliente
-                : UUID.randomUUID().toString();
+    /**
+     * <b>Tambem no despacho de erro e no assincrono</b> (ACH-10 da revisao de
+     * TASK-01.6). Os dois sao passagens proprias do contêiner, e
+     * {@link OncePerRequestFilter} as dispensa por padrao: o MDC ja teria sido
+     * limpo no {@code finally} da passagem original quando o tratador de ultimo
+     * recurso monta o {@code 500}, e a linha de log do stacktrace — a que mais
+     * precisa de correlacao — sairia sem ela.
+     */
+    @Override
+    protected boolean shouldNotFilterErrorDispatch() {
+        return false;
+    }
+
+    @Override
+    protected boolean shouldNotFilterAsyncDispatch() {
+        return false;
+    }
+
+    /**
+     * O identificador desta requisicao, o mesmo em toda passagem do contêiner.
+     *
+     * <p>A resposta e consultada antes do cliente porque ela e o unico estado que
+     * sobrevive entre as passagens: no despacho de erro o cabecalho ja foi escrito
+     * pela passagem original, e ignora-lo cunharia um segundo identificador para a
+     * mesma requisicao — dois valores com cara de validos, nenhum casando com o
+     * outro, que e exatamente o defeito que a correlacao existe para nao ter.
+     */
+    private String resolver(HttpServletRequest requisicao, HttpServletResponse resposta) {
+        String jaEmitido = resposta.getHeader(ProblemaDetalhado.CABECALHO_CORRELACAO);
+        if (aceitavel(jaEmitido)) {
+            return jaEmitido;
+        }
+        String doCliente = requisicao.getHeader(ProblemaDetalhado.CABECALHO_CORRELACAO);
+        return aceitavel(doCliente) ? doCliente : UUID.randomUUID().toString();
+    }
+
+    private boolean aceitavel(String valor) {
+        return valor != null && ACEITAVEL.matcher(valor).matches();
     }
 }

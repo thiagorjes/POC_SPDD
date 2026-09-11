@@ -159,9 +159,18 @@ de o projeto existir.
     chamador, então não há existência a ocultar — o `404` de
     `GET /projetos/{id}` protege a existência de um projeto específico, que é
     outro caso.
-  - `422` nome ausente ou em branco; `422` `primeiroAdministradorId` ausente ou
-    sem `usuario` correspondente, com `detail` dizendo que a pessoa precisa ter
-    entrado ao menos uma vez no sistema.
+  - `422` nome ausente ou em branco; `422` `primeiroAdministradorId` ausente,
+    **malformado** ou sem `usuario` correspondente, com `detail` dizendo que a
+    pessoa precisa ter entrado ao menos uma vez no sistema.
+  - **A linha entre `400` e `422`** vale para todo contrato do produto e ficou
+    escrita aqui porque foi aqui que ela apareceu (ACH-04 da revisão de
+    TASK-01.8): `400` é o corpo que **não pôde ser lido** — JSON quebrado ou
+    ausente, que é o que SCN-004.2 congela; `422` é o corpo lido cujo **conteúdo
+    é recusado**, inclusive quando o valor de um campo não converte para o tipo
+    do contrato. Sem a linha, a mesma classe de erro saía com dois códigos
+    conforme o desserializador conseguisse ou não ler o valor, e quem consome não
+    tinha como saber qual esperar. Toda recusa de conteúdo nomeia os campos em
+    `errors[].campo` (RNF-003).
 - **Sem broadcast.** Não há canal a que a criação pudesse ser publicada: a
   inscrição em `/topic/projetos/{projetoId}` pressupõe o projeto.
 - **Ordem de instalação, com o custo declarado (RN-038).** Criar o projeto não
@@ -244,8 +253,8 @@ Exige permissão de configuração.
 
 ## Limite de requisições
 
-Todas as rotas deste e dos demais contratos estão sob throttling por sujeito e
-por origem, com `429` e `Retry-After` em `problem+json`
+Todas as rotas deste e dos demais contratos estão sob throttling **por sujeito
+autenticado**, com `429` e `Retry-After` em `problem+json`
 (`_shared/api-security.md` §4). O envelope numérico é **RNF-010** — 120 leituras
 e 30 escritas por minuto por sujeito —, replicado na TechSpec Seção 8. Ele deixou
 de ser instituído aqui: INC-05 apontou que comportamento recusável pelo usuário
@@ -254,3 +263,23 @@ Pesa mais aqui do que num CRUD: cada escrita aceita dispara fan-out de `NOTIFY`
 para todas as instâncias e todas as sessões, então o custo de uma requisição
 abusiva é amplificado pelo desenho de ADR-004, e RNF-001 e RNF-002 não têm outra
 proteção.
+
+**Uma dimensão só, e ela é o sujeito.** Houve uma segunda, por endereço de
+origem, e ela foi removida na revisão de TASK-01.6 (ACH-01, ACH-05). Ela se
+apoiava em premissa que o `docker/compose.yaml` desmente — não há proxy reverso
+em produção, e o único nginx do repositório existe no arnês de broadcast de
+`compose.test.yaml` —, de modo que `X-Forwarded-For` é escolhido pelo cliente:
+trocá-lo a cada requisição zerava a contagem, e escolher o endereço alheio
+queimava o envelope de terceiro. Mais decisivo que os dois: a condição de medição
+de RNF-010 exige provar que **o consumo de um sujeito não afeta a resposta de
+outro**, e envelope compartilhado por origem afirma o contrário. Conter rajada
+anônima é trabalho da borda, e não há o que atribuir a ninguém antes de haver
+sujeito.
+
+**A contagem é por instância, e o desenho prevê três (RNF-002)** — o envelope
+efetivo em produção é o número de RNF-010 multiplicado pelo número de réplicas.
+Está declarado e não é defeito escondido: contador compartilhado exigiria Redis
+ou tabela de contagem, e ADR-002 recusa armazenamento adicional nesta fase. A
+condição que reabre a decisão é o envelope efetivo passar a importar — quando
+houver medição de uso real que o confronte, que é o mesmo gatilho de revisão que
+RNF-010 já carrega.

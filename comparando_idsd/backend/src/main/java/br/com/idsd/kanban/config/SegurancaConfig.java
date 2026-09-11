@@ -3,6 +3,7 @@ package br.com.idsd.kanban.config;
 import br.com.idsd.kanban.shared.FiltroDeCorrelacao;
 import br.com.idsd.kanban.shared.LimiteDeRequisicoes;
 import br.com.idsd.kanban.shared.ProblemaDetalhado;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.Filter;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -55,23 +56,20 @@ public class SegurancaConfig {
     private static final String RETRY_AFTER_SEGUNDOS = "30";
 
     /**
-     * O envelope de RNF-010, por sujeito, e a rede mais grossa por origem.
+     * O envelope de RNF-010, por sujeito autenticado.
      *
      * <p>Configuravel porque o teste precisa apertar o numero para provar o
      * mecanismo, e nao porque o envelope seja negociavel: o valor de producao e o
      * que esta escrito aqui como padrao.
+     *
+     * <p>Nao ha mais dimensao por origem — ver o javadoc de
+     * {@link LimiteDeRequisicoes}.
      */
     @Value("${idsd.limite.leituras-por-sujeito:120}")
     private int leiturasPorSujeito;
 
     @Value("${idsd.limite.escritas-por-sujeito:30}")
     private int escritasPorSujeito;
-
-    @Value("${idsd.limite.leituras-por-origem:1200}")
-    private int leiturasPorOrigem;
-
-    @Value("${idsd.limite.escritas-por-origem:300}")
-    private int escritasPorOrigem;
 
     /**
      * O identificador de correlacao, registrado <b>fora</b> da cadeia de seguranca
@@ -83,11 +81,22 @@ public class SegurancaConfig {
      * {@link FilterRegistrationBean} em vez de expor um bean de {@link Filter} e
      * deliberado: o Boot registra sozinho todo bean de filtro, e o registro
      * automatico nao permite fixar a precedencia.
+     *
+     * <p><b>Vale tambem no despacho de erro</b> (ACH-10 da revisao de TASK-01.6).
+     * O padrao de {@link FilterRegistrationBean} e so {@code REQUEST}, e o
+     * contêiner reprocessa o despacho de erro numa passagem propria: sem
+     * {@code ERROR} declarado, o MDC ja teria sido limpo quando o tratador de
+     * ultimo recurso monta o {@code 500} — justamente a resposta cuja correlacao
+     * com o stacktrace e a razao de este filtro existir. {@code ASYNC} entra pelo
+     * mesmo motivo, antes que a primeira rota assincrona apareca e perca a
+     * correlacao sem que ninguem note.
      */
     @Bean
     FilterRegistrationBean<FiltroDeCorrelacao> registroDaCorrelacao() {
         var registro = new FilterRegistrationBean<>(new FiltroDeCorrelacao());
         registro.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        registro.setDispatcherTypes(
+                DispatcherType.REQUEST, DispatcherType.ERROR, DispatcherType.ASYNC);
         return registro;
     }
 
@@ -110,9 +119,7 @@ public class SegurancaConfig {
             MappingJackson2HttpMessageConverter conversor,
             Clock relogio) throws Exception {
         var limite = new LimiteDeRequisicoes(
-                new LimiteDeRequisicoes.Envelope(
-                        leiturasPorSujeito, escritasPorSujeito,
-                        leiturasPorOrigem, escritasPorOrigem),
+                new LimiteDeRequisicoes.Envelope(leiturasPorSujeito, escritasPorSujeito),
                 conversor.getObjectMapper(),
                 relogio);
         return http
@@ -122,7 +129,17 @@ public class SegurancaConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(rotas -> rotas
-                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        // Os tres caminhos exatos, e nao `/actuator/health/**`
+                        // (ACH-04 da revisao de TASK-01.6). O curinga abre todo
+                        // grupo de health que alguem vier a declarar, inclusive um
+                        // criado para depurar producao com detalhe de dependencia —
+                        // e a abertura seria retroativa e silenciosa, porque nascer
+                        // publico nao quebra nada que se perceba. Grupo novo que
+                        // precise ser publico entra aqui por decisao.
+                        .requestMatchers(
+                                "/actuator/health",
+                                "/actuator/health/liveness",
+                                "/actuator/health/readiness").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(Customizer.withDefaults())
@@ -210,8 +227,8 @@ public class SegurancaConfig {
             try {
                 cadeia.doFilter(requisicao, resposta);
             } catch (AuthenticationServiceException indisponivel) {
-                LOG.warn("Provedor de identidade inalcancavel; a entrada foi recusada com 503,"
-                        + " traceId={}", ProblemaDetalhado.traceId(), indisponivel);
+                LOG.warn("Provedor de identidade inalcancavel; a entrada foi recusada com 503",
+                        indisponivel);
                 var http = (HttpServletResponse) resposta;
                 var problema = ProblemaDetalhado.de(
                         HttpStatus.SERVICE_UNAVAILABLE,

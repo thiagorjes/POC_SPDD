@@ -3,6 +3,7 @@ package br.com.idsd.kanban.internal.projeto;
 import br.com.idsd.kanban.internal.acesso.SessaoResposta;
 import br.com.idsd.kanban.internal.acesso.SessaoService;
 import br.com.idsd.kanban.internal.acesso.UsuarioRepository;
+import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -90,9 +91,11 @@ public class ProjetoController {
      * do chamador e nao ha existencia a ocultar. O {@code 404} do detalhe protege
      * outro caso — la o que se esconde e <i>qual</i> projeto existe.
      *
-     * <p>A gravacao nao acontece aqui, e a transacao tambem nao: o {@code 403} e
-     * decidido antes de qualquer escrita, e o que grava e
-     * {@link ProjetoServico#criar}, numa transacao so.
+     * <p><b>Nenhuma escrita do dominio de projeto acontece antes do {@code 403}</b>,
+     * e quem grava e {@link ProjetoServico#criar}, numa transacao so. A fronteira
+     * precisa ser dita nesses termos e nao em "antes de qualquer escrita", porque a
+     * afirmacao larga seria falsa: quando a conta ainda nao existe, ela e criada
+     * antes da decisao — ver {@link #alcancaCriacao}.
      *
      * <p><b>A conta e garantida aqui, e pela mesma via da sessao.</b> Num sistema
      * recem-instalado esta e a primeira rota de escrita que alguem alcanca, e exigir
@@ -103,8 +106,8 @@ public class ProjetoController {
      */
     @PostMapping
     public ResponseEntity<Object> criar(
-            JwtAuthenticationToken autenticacao, @RequestBody CriacaoDeProjeto pedido) {
-        if (!entrar(autenticacao).adminGlobal()) {
+            JwtAuthenticationToken autenticacao, @Valid @RequestBody CriacaoDeProjeto pedido) {
+        if (!alcancaCriacao(autenticacao)) {
             // Alcance global e a unica via desta rota (RN-036), e nenhum papel de
             // projeto a concede.
             return criacaoRecusada();
@@ -165,13 +168,39 @@ public class ProjetoController {
         return ResponseEntity.ok(alcance.comoDetalhe());
     }
 
+    /**
+     * Se este token alcanca a criacao de projeto (RN-036), escrevendo o minimo.
+     *
+     * <p>A conta e lida <b>antes</b> de qualquer tentativa de grava-la: quem ja
+     * entrou uma vez e recusado sem que a requisicao deixe efeito nenhum em disco,
+     * que e o caso de toda recusa depois do primeiro dia de uso.
+     *
+     * <p>Sobra um caminho em que a escrita precede a decisao, e ele e deliberado:
+     * token valido de quem nunca entrou. A conta precisa nascer para que a promocao
+     * designada de ADR-010 possa acontecer, e ela e o que decide a resposta — nao ha
+     * como decidir antes de existir o registro que carrega a decisao. O efeito e
+     * exatamente o que {@code GET /v1/sessao} produziria para o mesmo token, e essa
+     * porta ja esta aberta a qualquer credencial valida: a rota nao concede nada que
+     * a pessoa nao pudesse obter abrindo qualquer tela. Conta nao e privilegio — o
+     * privilegio e {@code adminGlobal}, e ele vem do registro gravado, jamais de
+     * claim.
+     */
+    private boolean alcancaCriacao(JwtAuthenticationToken autenticacao) {
+        Sujeito conta = sujeito(autenticacao);
+        if (conta != null) {
+            return conta.adminGlobal();
+        }
+        return entrar(autenticacao, "criacao-de-projeto").adminGlobal();
+    }
+
     /** A conta por tras do token, criada agora se esta e a primeira entrada. */
-    private SessaoResposta entrar(JwtAuthenticationToken autenticacao) {
+    private SessaoResposta entrar(JwtAuthenticationToken autenticacao, String via) {
         Jwt token = autenticacao.getToken();
         return sessoes.entrar(
                 token.getSubject(),
                 token.getClaimAsString("name"),
-                token.getClaimAsString("email"));
+                token.getClaimAsString("email"),
+                via);
     }
 
     /**

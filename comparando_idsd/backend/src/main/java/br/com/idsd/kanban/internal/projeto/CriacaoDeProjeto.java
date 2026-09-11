@@ -1,5 +1,7 @@
 package br.com.idsd.kanban.internal.projeto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,13 +14,24 @@ import java.util.UUID;
  * em duas chamadas reintroduziria, entre uma e outra, exatamente o estado que esta
  * rota existe para eliminar.
  *
+ * <p><b>A fronteira valida por anotacao</b> (ACH-03 da revisao de TASK-01.8). A
+ * verificacao equivalente continua no servico, e a duplicacao e deliberada: a
+ * anotacao protege o contrato HTTP e nomeia o campo em {@code errors} para a tela,
+ * enquanto a do servico e a invariante de quem grava — chamada de dentro do
+ * sistema nao passa pelo {@code @Valid} da borda.
+ *
  * @param nome nome do projeto; branco e recusado com {@code 422}
  * @param descricao texto livre, opcional
  * @param primeiroAdministradorId {@code id} de um {@code usuario} <b>ja
  *     existente</b> — a conta nasce na primeira entrada da pessoa, pelo
  *     autoprovisionamento da sessao, e nao aqui
  */
-public record CriacaoDeProjeto(String nome, String descricao, UUID primeiroAdministradorId) {
+public record CriacaoDeProjeto(
+        @NotBlank(message = "O nome do projeto não pode ficar em branco.")
+        String nome,
+        String descricao,
+        @NotNull(message = "É preciso nomear quem será a primeira administradora do projeto.")
+        UUID primeiroAdministradorId) {
 
     /**
      * Saida de {@code 201}.
@@ -26,6 +39,14 @@ public record CriacaoDeProjeto(String nome, String descricao, UUID primeiroAdmin
      * <p>{@code etapas} sai vazia, e isso e a resposta correta e nao um estado
      * transitorio: o projeto nasce sem fluxo (RN-038), e configura-lo e o segundo
      * passo obrigatorio do caminho de partida.
+     *
+     * <p><b>A constante e verdadeira e nao verificada</b> (ACH-07 da revisao de
+     * TASK-01.8): enquanto a tabela {@code etapa} nao existir, nao ha de onde
+     * derivar a colecao, e a assercao {@code etapas: []} do criterio 3 fica verde
+     * por construcao. <b>Gatilho:</b> quando TASK-02.2 criar a tabela, esta fabrica
+     * passa a ler as etapas do projeto — se continuar constante, todo projeto
+     * respondera sem fluxo logo depois de o fluxo ser configurado, e nenhum teste
+     * desta task falhara por isso.
      */
     public record Criado(UUID id, String nome, String descricao, List<Object> etapas) {
 

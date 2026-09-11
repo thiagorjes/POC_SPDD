@@ -91,10 +91,12 @@ muda.
 | 6 | A leitura não devolve etapas arquivadas | arquivar uma etapa e ler |
 | 7 | Projeto sem etapa alguma vem com `fluxoConfigurado` falso, e projeto com etapa vem verdadeiro | SCN-002.4 — lista com os dois projetos numa mesma resposta |
 | 8 | O campo novo não custa consulta por item | `AusenciaDeNMaisUmIT` continua verde: derive o `EXISTS` na mesma consulta, e nunca navegando a coleção de etapas por projeto |
+| 9 | A resposta de `POST /v1/projetos` deixa de devolver `etapas` constante | `CriacaoDeProjeto.Criado.de(...)` fixa `List.of()` porque a tabela `etapa` não existia; com ela existindo, derivar do projeto. Se continuar constante, todo projeto responderá sem fluxo logo depois de o fluxo ser configurado, e nenhum teste de TASK-01.8 falhará por isso |
 
 #### Histórico
 
 | Data | Evento | Detalhe |
 | --- | --- | --- |
 | 2026-09-09 | criação | Task derivada do plano de execução do épico |
+| 2026-09-11 | recebimento de escopo | Critério 9 recebido de TASK-01.8 por ACH-07 da revisão dela: `Criado.etapas` é constante porque não há tabela de onde derivar, e a constante é verdadeira hoje. O gatilho está escrito no javadoc de `CriacaoDeProjeto.Criado` para que a próxima pessoa o encontre onde vai editar |
 | 2026-09-11 | recebimento de escopo | SCN-002.4 e `fluxoConfigurado` vieram de TASK-01.5 por ACH-03 da revisão dela. O cenário é congelado e é do escopo de RF-002, mas exige `EXISTS` sobre `etapa`, que não existe antes de TASK-02.1 — fechar a task de origem com um cenário do próprio escopo irrealizável é o defeito que este movimento corrige. A dependência de TASK-01.5 é o que garante que a rota já exista para receber o campo |

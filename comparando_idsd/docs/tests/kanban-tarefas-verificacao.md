@@ -316,7 +316,7 @@ o que ele prova.
 
 ## Testes além dos cenários
 
-Dez verificações que a especificação obriga e que cenário algum descreve.
+Doze verificações que a especificação obriga e que cenário algum descreve.
 Vivem em `br.com.idsd.kanban.alem` e em `backend/src/test/carga`, separadas de
 propósito: elas não são cobertura de cenário, e misturá-las faria a contagem
 de 70 parecer maior do que é.
@@ -332,6 +332,8 @@ de 70 parecer maior do que é.
 | `rnf-001-tempo-real.js` | RNF-001 | 100 tarefas, 50 sessões; mede do aceite da escrita até a chegada à sessão que observa, e não a latência do próprio clique |
 | `ExistenciaECapacidadeIT` | TechSpec v1.8 (regra única `403`/`404`) | Os cenários cobrem as duas pontas — quem participa e lê, quem não participa e recebe `404` — e deixam de fora o meio: o participante sem papel. Trocar o `403` dele por `404`, ou removê-lo deixando `200`, não deixava teste algum vermelho. Origem: ACH-07 da revisão de TASK-01.5 |
 | `AusenciaDeNMaisUmIT` | Critério 6 de TASK-01.5 (ausência de N+1) | O critério era marcado por inspeção do JPQL, e critério que não pode falhar não é critério. Montar cada item navegando a associação devolve o mesmo corpo, deixa todo cenário verde e emite uma consulta por projeto. Afirma invariância à massa, nunca contagem absoluta. Origem: ACH-09 da revisão de TASK-01.5 |
+| `PrimeiraParticipacaoIT` | Critérios 1, 2 e 5 de TASK-01.8 (RN-036, RN-037) | SCN-022.1 afirma a primeira participação lendo `GET /v1/projetos/{id}/participacoes`, que é rota de TASK-06.2 e ainda não existe, e SCN-022.2 afirma que "nada foi criado" lendo a relação **do próprio sujeito recusado** — que estaria vazia mesmo se o projeto tivesse sido gravado, porque quem cria não vira participante (RN-037) e o sujeito recusado não tem alcance global. As duas asserções são fracas por razões diferentes e nenhuma é corrigível sem tocar cenário congelado. Esta classe lê o estado **em SQL** e é o que dá poder de falha aos três critérios. Origem: ACH-08 da revisão de TASK-01.8 |
+| `TransacaoUnicaDeCriacaoIT` | Critério 5 de TASK-01.8 (RN-037) | A verificação da pessoa nomeada precede o primeiro `save`, então o caminho da pessoa inexistente passaria idêntico com `@Transactional` removido — critério cumprido por teste sem poder de falha. Este força a falha da participação **depois** da gravação do projeto, que é a única ordem em que a pergunta faz sentido: o repositório do Spring Data é ele próprio transacional, e sem a transação externa o projeto órfão fica em disco. Origem: ACH-02 da revisão de TASK-01.8 |
 | `rnf-009-consultas.js` | RNF-009 | 12 meses, 5.000 tarefas. A massa é semeada por `massa-12-meses.sql`, com a contrapartida declarada no próprio arquivo |
 
 ---

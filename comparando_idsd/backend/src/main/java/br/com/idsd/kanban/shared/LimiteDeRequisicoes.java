@@ -20,26 +20,35 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Limite de requisicoes por minuto, por sujeito e por origem (RNF-010).
+ * Limite de requisicoes por minuto, <b>por sujeito autenticado</b> (RNF-010).
  *
  * <p>Pesa mais aqui do que num sistema comum, e por uma razao de desenho: cada
  * escrita aceita dispara difusao de evento para todas as instancias e todas as
  * sessoes (ADR-004), entao o custo de uma requisicao abusiva e amplificado, e os
- * envelopes de RNF-001 e RNF-002 nao tem outra protecao — nao ha gateway na
- * Secao 6 de onde herdar throttling.
+ * envelopes de RNF-001 e RNF-002 nao tem outra protecao.
  *
  * <p><b>Leitura e escrita contam separado.</b> Sao envelopes diferentes porque
  * sao custos diferentes: leitura consulta a projecao e para ali, escrita grava
  * evento e acorda todo mundo. Um contador unico deixaria a escrita se esconder
  * atras da folga da leitura, que e onde o custo esta.
  *
- * <p><b>Duas dimensoes, com forcas diferentes.</b> O sujeito e a dimensao firme:
- * sai do {@code sub} de um token ja verificado e nao pode ser forjado. A origem e
- * uma rede grossa e deliberadamente folgada — atras de proxy reverso, que e a
- * unica entrada do sistema na topologia do compose, um endereco costuma ser a
- * saida compartilhada de um time inteiro, e igualar os dois envelopes faria o
- * escritorio inteiro caber no orcamento de uma pessoa. Ela existe para conter
- * rajada de um host, nao para policiar egresso compartilhado.
+ * <p><b>Uma dimensao so, e ela e o sujeito.</b> Houve uma segunda, por endereco
+ * de origem, e ela foi removida (ACH-01 e ACH-05 da revisao de TASK-01.6). A
+ * justificativa que ela tinha — "atras do proxy reverso, que e a unica entrada do
+ * sistema" — era falsa contra o {@code docker/compose.yaml}, que publica o
+ * backend direto: o unico proxy do repositorio existe no arnes de broadcast de
+ * {@code compose.test.yaml}. Sem proxy que o escreva, {@code X-Forwarded-For} e
+ * escolhido pelo cliente, e disso saiam tres defeitos ao mesmo tempo — a dimensao
+ * nao continha nada (trocar o cabecalho zerava a contagem), permitia recusar
+ * servico a terceiros (queimar o envelope de uma origem alheia) e fazia o mapa
+ * crescer sem teto real. Mais decisivo que os tres: a condicao de medicao de
+ * RNF-010 exige provar <b>que o consumo de um sujeito nao afeta a resposta de
+ * outro</b>, e envelope compartilhado por origem afirma o contrario.
+ *
+ * <p>O sujeito e a dimensao que resiste: sai do {@code sub} de um token ja
+ * verificado e nao pode ser forjado. Com ela sozinha, a cardinalidade do mapa e
+ * limitada pelo numero de sujeitos que se autenticam no minuto — nao mais por
+ * valor que o cliente inventa.
  *
  * <p>Requisicao sem token nao chega aqui contada: o filtro roda depois da
  * autenticacao e quem nao se autenticou ja e recusado com {@code 401}. Conter
@@ -49,6 +58,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * <p>A janela e fixa de um minuto, e o {@code Retry-After} diz quantos segundos
  * faltam para ela virar. Recusar sem dizer quando repetir converte a protecao em
  * laco de tentativa, que custa mais do que o abuso que ela contem.
+ *
+ * <p><b>A contagem e por instancia</b>, e o desenho preve tres (RNF-002): o
+ * envelope efetivo e multiplicado pelo numero de replicas. Esta declarado na
+ * TechSpec Secao 8, e nao e defeito escondido — contador compartilhado exigiria
+ * armazenamento que ADR-002 recusa nesta fase.
  */
 public class LimiteDeRequisicoes extends OncePerRequestFilter {
 
@@ -60,11 +74,15 @@ public class LimiteDeRequisicoes extends OncePerRequestFilter {
     private static final long JANELA_SEGUNDOS = 60L;
 
     /**
-     * Teto de chaves vivas. Uma chave e um par (sujeito ou origem, tipo) do
-     * minuto corrente; o mapa e podado quando cresce, porque memoria que so cresce
-     * transforma a protecao contra abuso na propria forma de derrubar a instancia.
+     * A partir de quantas chaves vivas o mapa e varrido.
+     *
+     * <p>Uma chave e um par (sujeito, tipo) do minuto corrente, e todo sujeito
+     * saiu de um token verificado — nao ha como um cliente criar chaves a vontade.
+     * A varredura existe mesmo assim porque memoria que so cresce transforma a
+     * protecao contra abuso na propria forma de derrubar a instancia, e sujeito
+     * que entrou uma vez e nunca mais voltou nao deve ficar no mapa para sempre.
      */
-    private static final int TETO_DE_CHAVES = 20_000;
+    private static final int LIMIAR_DE_PODA = 20_000;
 
     private final Envelope envelope;
     private final ObjectMapper conversor;
@@ -77,15 +95,8 @@ public class LimiteDeRequisicoes extends OncePerRequestFilter {
         this.relogio = relogio;
     }
 
-    /**
-     * Os quatro tetos, por minuto. Os dois primeiros sao RNF-010; os dois ultimos
-     * sao a rede grossa da origem, ajustaveis por configuracao.
-     */
-    public record Envelope(
-            int leiturasPorSujeito,
-            int escritasPorSujeito,
-            int leiturasPorOrigem,
-            int escritasPorOrigem) {
+    /** Os dois tetos de RNF-010, por minuto e por sujeito. */
+    public record Envelope(int leiturasPorSujeito, int escritasPorSujeito) {
     }
 
     @Override
@@ -101,18 +112,9 @@ public class LimiteDeRequisicoes extends OncePerRequestFilter {
 
         boolean leitura = LEITURA.contains(requisicao.getMethod());
         long minuto = Math.floorDiv(relogio.instant().getEpochSecond(), JANELA_SEGUNDOS);
+        int teto = leitura ? envelope.leiturasPorSujeito() : envelope.escritasPorSujeito();
 
-        int tetoDoSujeito = leitura ? envelope.leiturasPorSujeito() : envelope.escritasPorSujeito();
-        int tetoDaOrigem = leitura ? envelope.leiturasPorOrigem() : envelope.escritasPorOrigem();
-
-        boolean excedeu =
-                excedeu("s|" + sujeito + "|" + leitura, minuto, tetoDoSujeito)
-                        // Sempre as duas: interromper na primeira deixaria a
-                        // segunda dimensao sem contagem no minuto em que a
-                        // primeira estourou, e ela voltaria zerada em seguida.
-                        | excedeu("o|" + origem(requisicao) + "|" + leitura, minuto, tetoDaOrigem);
-
-        if (excedeu) {
+        if (excedeu(sujeito + "|" + leitura, minuto, teto)) {
             recusar(requisicao, resposta, minuto);
             return;
         }
@@ -130,7 +132,7 @@ public class LimiteDeRequisicoes extends OncePerRequestFilter {
     }
 
     private void podarSeNecessario(long minuto) {
-        if (contagens.size() <= TETO_DE_CHAVES) {
+        if (contagens.size() <= LIMIAR_DE_PODA) {
             return;
         }
         contagens.values().removeIf(contagem -> contagem.minuto() < minuto);
@@ -140,7 +142,8 @@ public class LimiteDeRequisicoes extends OncePerRequestFilter {
      * O {@code sub} do token, ou {@code null} se ninguem se autenticou.
      *
      * <p>Sai do token verificado e nunca de cabecalho: chave de contagem que o
-     * cliente escolhe e contorno de um comando.
+     * cliente escolhe e contorno de um comando — foi exatamente o que derrubou a
+     * dimensao de origem.
      */
     private String sujeitoAutenticado() {
         var autenticacao = SecurityContextHolder.getContext().getAuthentication();
@@ -149,35 +152,13 @@ public class LimiteDeRequisicoes extends OncePerRequestFilter {
                 : null;
     }
 
-    /**
-     * O endereco de origem, olhando o primeiro salto de {@code X-Forwarded-For}.
-     *
-     * <p>O cabecalho e forjavel, e por isso a origem e a dimensao fraca das duas —
-     * ela e uma rede grossa, e o que nao pode ser forjado e o sujeito. Ignora-lo
-     * seria pior: atras do proxy reverso, que e a unica entrada do sistema, toda
-     * requisicao teria o mesmo endereco e a dimensao nao distinguiria nada.
-     */
-    private String origem(HttpServletRequest requisicao) {
-        String encaminhado = requisicao.getHeader("X-Forwarded-For");
-        if (encaminhado != null && !encaminhado.isBlank()) {
-            String primeiro = encaminhado.split(",")[0].trim();
-            if (!primeiro.isEmpty()) {
-                // Limitado no comprimento: e entrada do cliente e vira chave de
-                // mapa, entao valor livre ali e consumo de memoria por requisicao.
-                return primeiro.length() > 64 ? primeiro.substring(0, 64) : primeiro;
-            }
-        }
-        String remoto = requisicao.getRemoteAddr();
-        return remoto == null ? "desconhecida" : remoto;
-    }
-
     private void recusar(HttpServletRequest requisicao, HttpServletResponse resposta, long minuto)
             throws IOException {
         long faltam = (minuto + 1) * JANELA_SEGUNDOS - relogio.instant().getEpochSecond();
         String esperar = String.valueOf(Math.max(faltam, 1L));
 
-        LOG.warn("Limite de requisicoes excedido em {} {}; recusado com 429, traceId={}",
-                requisicao.getMethod(), requisicao.getRequestURI(), ProblemaDetalhado.traceId());
+        LOG.warn("Limite de requisicoes excedido em {} {}; recusado com 429",
+                requisicao.getMethod(), requisicao.getRequestURI());
 
         ProblemDetail corpo = ProblemaDetalhado.de(
                 HttpStatus.TOO_MANY_REQUESTS,

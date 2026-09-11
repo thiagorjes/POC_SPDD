@@ -4,13 +4,14 @@ import static br.com.idsd.kanban.suporte.Sujeitos.SUB_BRUNO;
 import static br.com.idsd.kanban.suporte.Sujeitos.adminGlobal;
 import static br.com.idsd.kanban.suporte.Sujeitos.bruno;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.idsd.kanban.suporte.TesteDeIntegracao;
 import java.util.List;
-import java.util.Map;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,12 +41,17 @@ class PrimeiraParticipacaoIT extends TesteDeIntegracao {
     @Test
     @DisplayName("uma participacao so, a da pessoa nomeada, com project_admin (criterio 1)")
     void gravaExatamenteUmaParticipacao() throws Exception {
-        var projetoId = criarProjetoNomeando(entrarComoBruno());
+        var brunoId = entrarComoBruno();
+        var projetoId = criarProjetoNomeando(brunoId);
 
         var jdbc = new JdbcTemplate(fonte);
-        List<Map<String, Object>> participacoes = jdbc.queryForList(
-                "select usuario_id from participacao where projeto_id = ?::uuid", projetoId);
-        assertThat(participacoes).hasSize(1);
+        // Uma participacao so, e a dela: afirmar apenas a quantidade deixaria
+        // passar a participacao de outra pessoa, que e o unico jeito de este
+        // criterio estar errado sem estar vazio.
+        List<String> participantes = jdbc.queryForList(
+                "select usuario_id::text from participacao where projeto_id = ?::uuid",
+                String.class, projetoId);
+        assertThat(participantes).containsExactly(brunoId);
 
         List<String> papeis = jdbc.queryForList("""
                 select pp.papel
@@ -96,6 +102,94 @@ class PrimeiraParticipacaoIT extends TesteDeIntegracao {
 
         var jdbc = new JdbcTemplate(fonte);
         assertThat(jdbc.queryForObject("select count(*) from projeto", Integer.class)).isZero();
+    }
+
+    @Test
+    @DisplayName("recusa de quem ja tem conta nao escreve nada, e nao promove ninguem")
+    void recusaDeQuemJaEntrouNaoEscreveNada() throws Exception {
+        entrarComoBruno();
+        var jdbc = new JdbcTemplate(fonte);
+        var contasAntes = jdbc.queryForObject("select count(*) from usuario", Integer.class);
+
+        mockMvc.perform(post("/v1/projetos")
+                        .with(bruno())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "nome": "Beta", "primeiroAdministradorId":
+                                    "00000000-0000-0000-0000-0000000000ff" }
+                                """))
+                .andExpect(status().isForbidden());
+
+        assertThat(jdbc.queryForObject("select count(*) from usuario", Integer.class))
+                .isEqualTo(contasAntes);
+        assertThat(jdbc.queryForObject("select count(*) from projeto", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from participacao", Integer.class))
+                .isZero();
+        assertThat(jdbc.queryForObject(
+                        "select count(*) from usuario where admin_global", Integer.class))
+                .isZero();
+    }
+
+    @Test
+    @DisplayName("recusa de quem nunca entrou garante a conta e nada alem dela")
+    void recusaDeQuemNuncaEntrouNaoConcedeNada() throws Exception {
+        // O unico caminho em que a escrita precede a decisao, e ele e declarado:
+        // sem registro gravado nao ha como saber se este token e o da administracao
+        // global designada. O que a recusa nao pode e deixar alcance atras de si.
+        mockMvc.perform(post("/v1/projetos")
+                        .with(bruno())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "nome": "Beta", "primeiroAdministradorId":
+                                    "00000000-0000-0000-0000-0000000000ff" }
+                                """))
+                .andExpect(status().isForbidden());
+
+        var jdbc = new JdbcTemplate(fonte);
+        assertThat(jdbc.queryForObject(
+                        "select admin_global from usuario where subject_id = ?",
+                        Boolean.class, SUB_BRUNO))
+                .isFalse();
+        assertThat(jdbc.queryForObject("select count(*) from projeto", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from participacao", Integer.class))
+                .isZero();
+    }
+
+    @Test
+    @DisplayName("entrada invalida sai em 422 com o campo nomeado, e corpo ilegivel em 400")
+    void fronteiraValidaPorAnotacao() throws Exception {
+        // Nome ausente: recusado na borda, pelo @Valid, e nao so no servico
+        // (ACH-03). O campo e nomeado porque a tela precisa saber onde por a
+        // mensagem.
+        mockMvc.perform(post("/v1/projetos")
+                        .with(adminGlobal())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "primeiroAdministradorId":
+                                    "00000000-0000-0000-0000-0000000000ff" }
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.errors[*].campo", hasItem("nome")));
+
+        // Identificador que nao converte: 422 e nao 400, porque e recusa de
+        // conteudo e nao corpo ilegivel (ACH-04). Antes, a mesma classe de erro
+        // saia com dois codigos conforme o desserializador conseguisse ou nao ler.
+        mockMvc.perform(post("/v1/projetos")
+                        .with(adminGlobal())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "nome": "Alfa", "primeiroAdministradorId": "nao-e-uuid" }
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.errors[*].campo", hasItem("primeiroAdministradorId")));
+
+        // Corpo que nem chega a ser JSON continua em 400: ele nao disse nada que
+        // pudesse ser recusado. E a linha que SCN-004.2 congela.
+        mockMvc.perform(post("/v1/projetos")
+                        .with(adminGlobal())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ \"nome\": "))
+                .andExpect(status().isBadRequest());
     }
 
     private String entrarComoBruno() throws Exception {

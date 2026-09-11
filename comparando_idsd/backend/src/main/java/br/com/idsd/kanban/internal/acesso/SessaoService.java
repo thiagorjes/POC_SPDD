@@ -54,9 +54,25 @@ public class SessaoService {
      */
     @Transactional
     public SessaoResposta entrar(String subjectId, String nome, String email) {
+        return entrar(subjectId, nome, email, "sessao");
+    }
+
+    /**
+     * A mesma entrada, dizendo por qual porta ela veio.
+     *
+     * <p>A promocao deixou de ser alcancavel so por {@code GET /v1/sessao} no dia
+     * em que a criacao de projeto passou a garantir a conta pela mesma via, e o
+     * registro auditado dizia quem foi promovido sem dizer por onde. Duas portas
+     * para a escrita mais poderosa do sistema e um log que nao as distingue e o
+     * tipo de lacuna que so aparece quando ja e tarde.
+     *
+     * @param via identificador curto da rota que provocou a entrada
+     */
+    @Transactional
+    public SessaoResposta entrar(String subjectId, String nome, String email, String via) {
         Usuario usuario = provisionar(subjectId, nome, email);
         usuario.espelharDoToken(nome, email);
-        promoverSeDesignado(usuario);
+        promoverSeDesignado(usuario, via);
         return SessaoResposta.de(usuario);
     }
 
@@ -81,7 +97,7 @@ public class SessaoService {
         }
     }
 
-    private void promoverSeDesignado(Usuario usuario) {
+    private void promoverSeDesignado(Usuario usuario, String via) {
         if (!StringUtils.hasText(subjectDesignado)
                 || !subjectDesignado.equals(usuario.getSubjectId())
                 || usuario.isAdminGlobal()) {
@@ -92,13 +108,13 @@ public class SessaoService {
             // Ja existe administracao global. A recusa e silenciosa de proposito:
             // dizer a quem pediu que a vaga esta ocupada e informacao sobre o
             // estado do bypass que nao serve a quem nao foi promovido.
-            LOG.info("Promocao a administracao global recusada: ja existe uma. sub={}",
-                    usuario.getSubjectId());
+            LOG.info("Promocao a administracao global recusada: ja existe uma. sub={} via={}",
+                    usuario.getSubjectId(), via);
             return;
         }
 
         usuario.refletirPromocaoGravada();
-        LOG.warn("Promocao a administracao global: usuarioId={} sub={} promovidoEm={}",
-                usuario.getId(), usuario.getSubjectId(), Instant.now());
+        LOG.warn("Promocao a administracao global: usuarioId={} sub={} via={} promovidoEm={}",
+                usuario.getId(), usuario.getSubjectId(), via, Instant.now());
     }
 }
