@@ -1,0 +1,15 @@
+.next
+out
+build
+node_modules
+playwright-report
+test-results
+package-lock.json
+next-env.d.ts
+
+# A suite congelada esta fora do alcance de quem implementa: reformata-la
+# alteraria arquivo de verificacao produzido pela etapa de testes, que a
+# restricao do /implement proibe. `e2e/verificacoes/` fica de fora desta
+# excecao de proposito — aquilo nasce aqui e e formatado como o resto.
+e2e/*.spec.ts
+e2e/suporte

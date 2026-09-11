@@ -53,8 +53,8 @@ export function FormularioDeNovoProjeto() {
           titulo={`${estado.criado.nome} criado · a administradora nomeada já pode configurá-lo`}
         >
           <p>
-            O projeto <strong>ainda não tem fluxo</strong> e por isso não aceita tarefa.
-            Configurar as etapas é o segundo passo, e ele é obrigatório.
+            O projeto <strong>ainda não tem fluxo</strong> e por isso não aceita tarefa. Configurar
+            as etapas é o segundo passo, e ele é obrigatório.
           </p>
         </Alerta>
 
@@ -73,10 +73,21 @@ export function FormularioDeNovoProjeto() {
           </Link>
         </div>
 
+        {/*
+          A frase que prometia a marca no cartão da lista saiu (ACH-07 da
+          revisão de TASK-01.7). Ela é a segunda sinalização que a emenda de
+          2026-09-10 instituiu junto com esta, e não chega: o campo que a
+          condiciona só é emitido pelo serviço a partir de TASK-02.2, e o
+          critério 9 desta task declara isso. Prometer o lembrete faz quem
+          escolhe “depois” confiar em algo que não existe — e o custo de RN-038
+          é justamente que nada no primeiro passo lembra do segundo. Enquanto a
+          marca não chegar, esta tela é o único aviso, e por isso ele diz o que
+          fazer em vez de apontar para onde a pendência apareceria.
+        */}
         <p className="text-sm text-texto-secundario">
-          Escolher “depois” deixa o projeto utilizável apenas para configuração: a criação de
-          tarefa é recusada com essa razão até haver etapa. A pendência fica marcada no cartão do
-          projeto na lista, porque nada mais no caminho lembraria dela.
+          Escolher “depois” deixa o projeto utilizável apenas para configuração: a criação de tarefa
+          é recusada com essa razão até haver etapa. Guarde a pendência — configurar o fluxo é o que
+          abre o projeto para uso.
         </p>
       </div>
     )
@@ -108,7 +119,13 @@ export function FormularioDeNovoProjeto() {
         <label className={rotulo} htmlFor="np-desc">
           Descrição
         </label>
-        <textarea className={campo} id="np-desc" name="descricao" rows={3} aria-describedby="np-desc-ajuda" />
+        <textarea
+          className={campo}
+          id="np-desc"
+          name="descricao"
+          rows={3}
+          aria-describedby="np-desc-ajuda"
+        />
         <p id="np-desc-ajuda" className="mt-1.5 text-xs text-texto-secundario">
           Opcional.
         </p>

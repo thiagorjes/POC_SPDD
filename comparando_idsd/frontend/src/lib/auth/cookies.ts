@@ -21,7 +21,7 @@ import type { Tokens } from '@/lib/auth/oidc'
  * desconhecido em `http` é tratado como produção mal configurada, e o cookie
  * sai seguro: pior é a sessão não se formar do que o token trafegar em claro.
  */
-export const ACESSO = 'idsd_acesso'
+const ACESSO = 'idsd_acesso'
 export const IDENTIDADE = 'idsd_identidade'
 export const VERIFICADOR = 'idsd_verificador'
 export const ESTADO = 'idsd_estado'

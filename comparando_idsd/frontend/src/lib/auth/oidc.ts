@@ -26,15 +26,12 @@ export function desafioDe(verificador: string) {
   return base64url(createHash('sha256').update(verificador).digest())
 }
 
-export const redirectUri = () => `${config.aplicacao}${ROTA_RETORNO}`
+const redirectUri = () => `${config.aplicacao}${ROTA_RETORNO}`
 
 const endpoint = (base: string, nome: string) =>
   `${base}/realms/${config.realm}/protocol/openid-connect/${nome}`
 
-export function urlDeAutorizacao(opcoes: {
-  desafio: string
-  estado: string
-}) {
+export function urlDeAutorizacao(opcoes: { desafio: string; estado: string }) {
   const parametros = new URLSearchParams({
     client_id: config.clientId,
     response_type: 'code',

@@ -4,14 +4,16 @@ import type { Config } from 'tailwindcss'
  * Os papéis semânticos vêm de `docs/design/kanban-tarefas/design-tokens.json`,
  * que por DDR-004 realiza o design system da coleção `frontend/nextjs`. Aqui
  * eles são apenas apontados para as variáveis CSS declaradas em
- * `globals.css` — os valores literais moram lá, num lugar só, para que o tema
- * escuro seja troca de variável e não segunda tabela de cores.
+ * `globals.css` — os valores literais moram lá, num lugar só.
+ *
+ * `darkMode` saiu junto com os tokens escuros (ACH-11 da revisão de
+ * TASK-01.7): a configuração declarava um modo que nenhum caminho do código
+ * alcançava.
  *
  * `impedimento` é papel próprio e não reuso de `destructive` (DDR-007, QD-01):
  * impedimento é condição legítima do trabalho, não falha de quem registra.
  */
 const config: Config = {
-  darkMode: ['class', '[data-tema="escuro"]'],
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {

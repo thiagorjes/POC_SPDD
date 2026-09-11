@@ -25,7 +25,5 @@ export async function GET(requisicao: NextRequest) {
 
   await gravarTransacao(verificador, estado, destino)
 
-  return NextResponse.redirect(
-    urlDeAutorizacao({ desafio: desafioDe(verificador), estado }),
-  )
+  return NextResponse.redirect(urlDeAutorizacao({ desafio: desafioDe(verificador), estado }))
 }

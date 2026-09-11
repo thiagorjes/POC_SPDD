@@ -55,6 +55,24 @@ export async function criarProjetoAcao(
     }
     if (Object.keys(porCampo).length > 0) return { erros: porCampo }
 
-    return { recusa: falha.problema.detail ?? 'A criação do projeto foi recusada.' }
+    // Recusa de conteúdo sem campo nomeado vai para o campo da conta
+    // (ACH-08 da revisão de TASK-01.7).
+    //
+    // Verificado no serviço: só identificador não conversível produz a relação
+    // `errors[]`. Conta inexistente sai apenas com o `detail` — e é a recusa
+    // que esta tela mais vai produzir, porque o campo é texto livre por não
+    // haver rota que liste contas. Ela caía no alerta genérico do topo, longe
+    // do controle que a pessoa precisa corrigir, contra o que o mapa de telas
+    // prescreve.
+    //
+    // A atribuição vale só para `422`: `403` e as demais recusas não são de
+    // conteúdo de campo nenhum, e pô-las ao lado do controle diria à pessoa
+    // para corrigir o que não está errado.
+    const detalhe = falha.problema.detail
+    if (falha.problema.status === 422 && detalhe) {
+      return { erros: { primeiroAdministradorId: detalhe } }
+    }
+
+    return { recusa: detalhe ?? 'A criação do projeto foi recusada.' }
   }
 }

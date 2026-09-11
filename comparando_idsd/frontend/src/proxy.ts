@@ -17,10 +17,7 @@ export const CABECALHO_CAMINHO = 'x-caminho'
  */
 export default function proxy(requisicao: NextRequest) {
   const cabecalhos = new Headers(requisicao.headers)
-  cabecalhos.set(
-    CABECALHO_CAMINHO,
-    requisicao.nextUrl.pathname + requisicao.nextUrl.search,
-  )
+  cabecalhos.set(CABECALHO_CAMINHO, requisicao.nextUrl.pathname + requisicao.nextUrl.search)
   return NextResponse.next({ request: { headers: cabecalhos } })
 }
 

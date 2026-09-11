@@ -47,6 +47,31 @@ async function destinoDeRetorno(): Promise<string> {
   return destinoInterno((await headers()).get(CABECALHO_CAMINHO))
 }
 
+/**
+ * Corpo interpretado com guarda (ACH-18 da revisão de TASK-01.7).
+ *
+ * Resposta que não é JSON — página de proxy, erro de gateway, recusa de
+ * infraestrutura — levantava `SyntaxError` cru, que não é a falha tipada que o
+ * restante do caminho trata: a ação de servidor a repassava adiante e ela
+ * terminava na página genérica do framework. Aqui ela vira `FalhaDaApi`, que é
+ * o que o chamador sabe reconhecer.
+ *
+ * O texto recebido **não** entra na mensagem: corpo de proxy costuma carregar
+ * endereço interno e cabeçalho, e o lugar de olhar isso é o log, não a tela.
+ */
+function interpretar(texto: string, status: number): unknown {
+  if (!texto) return {}
+  try {
+    return JSON.parse(texto) as unknown
+  } catch {
+    throw new FalhaDaApi({
+      status,
+      title: 'Resposta ilegível do serviço',
+      detail: 'O serviço respondeu em um formato que esta aplicação não sabe interpretar.',
+    })
+  }
+}
+
 export async function chamar<T>(caminho: string, opcoes: Opcoes = {}): Promise<T> {
   const token = await tokenDeAcesso()
   if (!token) redirect(`/entrar/iniciar?destino=${encodeURIComponent(await destinoDeRetorno())}`)
@@ -73,7 +98,7 @@ export async function chamar<T>(caminho: string, opcoes: Opcoes = {}): Promise<T
   if (resposta.status === 204) return undefined as T
 
   const texto = await resposta.text()
-  const corpo = texto ? (JSON.parse(texto) as unknown) : {}
+  const corpo = interpretar(texto, resposta.status)
 
   if (!resposta.ok) {
     throw new FalhaDaApi({ status: resposta.status, ...(corpo as object) })

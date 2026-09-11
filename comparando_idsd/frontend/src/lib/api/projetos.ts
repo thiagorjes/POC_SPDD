@@ -7,7 +7,7 @@ import { chamar } from '@/lib/api/cliente'
  * executar (RN-015, RNF-004). Esconder o botão não autoriza nada: a recusa real
  * é do serviço, e é ela que os cenários congelados verificam.
  */
-export type Permissao = string
+type Permissao = string
 
 export type ProjetoResumo = {
   id: string

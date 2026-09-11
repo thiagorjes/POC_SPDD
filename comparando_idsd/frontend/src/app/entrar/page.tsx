@@ -42,7 +42,11 @@ export default async function Entrar({
   searchParams: Promise<{ erro?: string }>
 }) {
   const { erro } = await searchParams
-  const recusa = erro ? (RAZAO[erro] ?? RAZAO.recusado) : null
+  // `Object.hasOwn` e não índice direto (ACH-19 da revisão de TASK-01.7):
+  // `?erro=constructor` nomeia membro herdado do protótipo, escapa do valor
+  // padrão e renderizaria um alerta sem título. O valor bruto nunca chega ao
+  // documento — o framework escapa —, então é robustez e não injeção.
+  const recusa = erro ? (Object.hasOwn(RAZAO, erro) ? RAZAO[erro] : RAZAO.recusado) : null
 
   return (
     <main id="principal" className="mx-auto flex min-h-screen max-w-xl flex-col justify-center p-8">

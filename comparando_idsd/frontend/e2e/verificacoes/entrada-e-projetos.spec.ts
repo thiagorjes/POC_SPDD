@@ -42,9 +42,9 @@ test('criterio 7 — sem administracao global a acao nao e oferecida, e o servic
   // Âncora positiva antes da negativa: `toHaveCount(0)` é verde em qualquer
   // página que não seja esta, inclusive na do provedor.
   await expect(page.getByRole('heading', { name: 'Meus projetos' })).toBeVisible()
-  await expect(page.getByRole('link', { name: /novo projeto|criar o primeiro projeto/i })).toHaveCount(
-    0,
-  )
+  await expect(
+    page.getByRole('link', { name: /novo projeto|criar o primeiro projeto/i }),
+  ).toHaveCount(0)
 
   // A metade que importa: esconder a ação não autoriza nem recusa nada. A
   // requisição direta ao serviço, com o token da própria pessoa, continua sendo

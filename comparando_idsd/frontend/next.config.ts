@@ -66,8 +66,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
   async headers() {
-    const lista =
-      process.env.NODE_ENV === 'production' ? [...cabecalhos, hsts] : cabecalhos
+    const lista = process.env.NODE_ENV === 'production' ? [...cabecalhos, hsts] : cabecalhos
     return [{ source: '/:path*', headers: lista }]
   },
 }

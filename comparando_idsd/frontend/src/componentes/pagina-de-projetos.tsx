@@ -54,8 +54,8 @@ export function PaginaDeProjetos({
             <>
               <p className="text-base font-medium">Ainda não existe projeto neste sistema</p>
               <p className="mt-2 max-w-2xl text-sm text-texto-secundario">
-                Quem tem administração global é quem cria o primeiro projeto. A criação nomeia,
-                na mesma operação, a conta que será a primeira administradora dele.
+                Quem tem administração global é quem cria o primeiro projeto. A criação nomeia, na
+                mesma operação, a conta que será a primeira administradora dele.
               </p>
               <div className="mt-6">
                 <BotaoLink href="/projetos/novo">Criar o primeiro projeto</BotaoLink>
@@ -66,8 +66,8 @@ export function PaginaDeProjetos({
               <p className="text-base font-medium">Você ainda não participa de nenhum projeto</p>
               <p className="mt-2 max-w-2xl text-sm text-texto-secundario">
                 A participação é concedida por quem configura cada projeto. Enquanto ela não
-                existir, não há board a abrir nem fila a receber. Peça acesso a quem responde
-                pela configuração do projeto.
+                existir, não há board a abrir nem fila a receber. Peça acesso a quem responde pela
+                configuração do projeto.
               </p>
             </>
           )}

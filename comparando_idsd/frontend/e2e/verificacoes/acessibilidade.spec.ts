@@ -22,12 +22,7 @@ import { entrarComo } from '../suporte/cenario'
  * é medir a acessibilidade de outro produto.
  */
 function auditoria(pagina: Parameters<typeof AxeBuilder>[0]['page']) {
-  return new AxeBuilder({ page: pagina }).withTags([
-    'wcag2a',
-    'wcag2aa',
-    'wcag21a',
-    'wcag21aa',
-  ])
+  return new AxeBuilder({ page: pagina }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
 }
 
 test('TL-01 — a tela de entrada nao tem violacao de nivel AA', async ({ page }) => {
