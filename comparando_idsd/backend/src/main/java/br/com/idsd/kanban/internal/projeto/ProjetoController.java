@@ -1,5 +1,7 @@
 package br.com.idsd.kanban.internal.projeto;
 
+import br.com.idsd.kanban.internal.acesso.SessaoResposta;
+import br.com.idsd.kanban.internal.acesso.SessaoService;
 import br.com.idsd.kanban.internal.acesso.UsuarioRepository;
 import java.net.URI;
 import java.util.ArrayList;
@@ -12,16 +14,23 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Leitura de projetos — {@code GET /v1/projetos} e {@code GET /v1/projetos/{id}}
- * (RF-002, RF-021).
+ * Projetos — {@code GET /v1/projetos}, {@code GET /v1/projetos/{id}} (RF-002,
+ * RF-021) e {@code POST /v1/projetos} (RF-022).
+ *
+ * <p>A rota de escrita e a excecao declarada de tudo o que se segue: ela nao
+ * consulta participacao, porque nao ha participacao antes de o projeto existir.
+ * As duas de leitura seguem a regra abaixo.
  *
  * <p><b>A relacao lista por participacao, nao por permissao.</b> Quem participa
  * sem papel algum ve o projeto na lista e recebe {@code 403} ao abri-lo; quem nao
@@ -56,14 +65,54 @@ public class ProjetoController {
     private final ProjetoRepository projetos;
     private final UsuarioRepository usuarios;
     private final ResolvedorDePermissao resolvedor;
+    private final ProjetoServico servico;
+    private final SessaoService sessoes;
 
     public ProjetoController(
             ProjetoRepository projetos,
             UsuarioRepository usuarios,
-            ResolvedorDePermissao resolvedor) {
+            ResolvedorDePermissao resolvedor,
+            ProjetoServico servico,
+            SessaoService sessoes) {
         this.projetos = projetos;
         this.usuarios = usuarios;
         this.resolvedor = resolvedor;
+        this.servico = servico;
+        this.sessoes = sessoes;
+    }
+
+    /**
+     * Criacao de projeto (RF-022) — a unica rota cuja autorizacao nao consulta
+     * participacao, porque nao ha participacao a consultar antes de o projeto
+     * existir.
+     *
+     * <p>Recusa com {@code 403} e nao com {@code 404}: aqui a colecao e conhecida
+     * do chamador e nao ha existencia a ocultar. O {@code 404} do detalhe protege
+     * outro caso — la o que se esconde e <i>qual</i> projeto existe.
+     *
+     * <p>A gravacao nao acontece aqui, e a transacao tambem nao: o {@code 403} e
+     * decidido antes de qualquer escrita, e o que grava e
+     * {@link ProjetoServico#criar}, numa transacao so.
+     *
+     * <p><b>A conta e garantida aqui, e pela mesma via da sessao.</b> Num sistema
+     * recem-instalado esta e a primeira rota de escrita que alguem alcanca, e exigir
+     * uma passagem previa por {@code GET /v1/sessao} faria o alcance global depender
+     * da ordem em que as telas foram abertas. Quem provisiona e promove continua
+     * sendo {@link SessaoService}: reimplementar a promocao aqui criaria a segunda
+     * fonte da regra que ADR-010 existe para ter uma so.
+     */
+    @PostMapping
+    public ResponseEntity<Object> criar(
+            JwtAuthenticationToken autenticacao, @RequestBody CriacaoDeProjeto pedido) {
+        if (!entrar(autenticacao).adminGlobal()) {
+            // Alcance global e a unica via desta rota (RN-036), e nenhum papel de
+            // projeto a concede.
+            return criacaoRecusada();
+        }
+        Projeto criado = servico.criar(pedido);
+        return ResponseEntity.created(URI.create("/v1/projetos/" + criado.getId()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(CriacaoDeProjeto.Criado.de(criado));
     }
 
     @GetMapping
@@ -114,6 +163,15 @@ public class ProjetoController {
             return semPermissao(projetoId);
         }
         return ResponseEntity.ok(alcance.comoDetalhe());
+    }
+
+    /** A conta por tras do token, criada agora se esta e a primeira entrada. */
+    private SessaoResposta entrar(JwtAuthenticationToken autenticacao) {
+        Jwt token = autenticacao.getToken();
+        return sessoes.entrar(
+                token.getSubject(),
+                token.getClaimAsString("name"),
+                token.getClaimAsString("email"));
     }
 
     /**
@@ -184,12 +242,28 @@ public class ProjetoController {
                 projetoId);
     }
 
+    /** Recusa da criacao a quem nao tem alcance de administracao global (RN-036). */
+    private ResponseEntity<Object> criacaoRecusada() {
+        return problema(
+                HttpStatus.FORBIDDEN,
+                "https://errors.idsd/sem-alcance-global",
+                "Sem alcance para criar projeto",
+                "Criar projeto é capacidade exclusiva da administração global, "
+                        + "e nenhum papel de projeto a concede.",
+                "/v1/projetos");
+    }
+
     private ResponseEntity<Object> problema(
             HttpStatus status, String tipo, String titulo, String detalhe, UUID projetoId) {
+        return problema(status, tipo, titulo, detalhe, "/v1/projetos/" + projetoId);
+    }
+
+    private ResponseEntity<Object> problema(
+            HttpStatus status, String tipo, String titulo, String detalhe, String instancia) {
         ProblemDetail corpo = ProblemDetail.forStatusAndDetail(status, detalhe);
         corpo.setType(URI.create(tipo));
         corpo.setTitle(titulo);
-        corpo.setInstance(URI.create("/v1/projetos/" + projetoId));
+        corpo.setInstance(URI.create(instancia));
         return ResponseEntity.status(status)
                 .contentType(MediaType.APPLICATION_PROBLEM_JSON)
                 .body(corpo);

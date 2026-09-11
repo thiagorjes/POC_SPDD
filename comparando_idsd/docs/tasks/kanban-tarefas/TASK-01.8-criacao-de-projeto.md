@@ -1,6 +1,6 @@
 # TASK-01.8 — Criação de projeto pelo administrador global
 
-- **Status:** pendente
+- **Status:** concluída
 - **Sistema:** idsd
 - **Executor:** agente
 - **Tentativas:** 3
@@ -18,12 +18,12 @@ antes de o projeto existir.
 
 #### O que deve ser feito
 
-- [ ] Implementar `POST /v1/projetos`, exigindo alcance de administração global.
-- [ ] Gravar `projeto` (com `seq_atual = 0`) e a primeira `participacao` com
+- [x] Implementar `POST /v1/projetos`, exigindo alcance de administração global.
+- [x] Gravar `projeto` (com `seq_atual = 0`) e a primeira `participacao` com
       papel `project_admin` **na mesma transação**.
-- [ ] **Não** inserir participação para quem cria.
-- [ ] Devolver `201` com `Location` e corpo com `etapas: []`.
-- [ ] Recusar com `403` quem não é administrador global, e com `422` nome em
+- [x] **Não** inserir participação para quem cria.
+- [x] Devolver `201` com `Location` e corpo com `etapas: []`.
+- [x] Recusar com `403` quem não é administrador global, e com `422` nome em
       branco ou `primeiroAdministradorId` sem `usuario` correspondente.
 
 #### Guia técnico — estrutura de arquivos
@@ -77,15 +77,20 @@ Saída `201`, com `Location: /v1/projetos/{id}`:
 
 | # | Critério | Verificação |
 | --- | --- | --- |
-| 1 | Administrador global cria o projeto e a pessoa nomeada consta como `project_admin` | consulta de participações do projeto criado traz exatamente uma linha |
-| 2 | Quem criou não consta como participante | a mesma consulta não traz o criador |
-| 3 | Projeto nasce sem etapa | corpo da resposta com `etapas: []` |
-| 4 | `project_admin` de outro projeto recebe `403` ao tentar criar | nenhum projeto novo no banco após a tentativa |
-| 5 | Falha na gravação da participação não deixa projeto órfão | forçar erro após o insert do projeto e verificar que nada foi persistido |
-| 6 | `422` com razão explícita para nome em branco e para pessoa inexistente | corpo em `application/problem+json` com `detail` |
+| 1 | Administrador global cria o projeto e a pessoa nomeada consta como `project_admin` | **cumprido, por outra via** — `PrimeiraParticipacaoIT.gravaExatamenteUmaParticipacao` verde. A consulta prevista é `GET /v1/projetos/{id}/participacoes`, que é rota de TASK-06.2 e não existe ainda; ver o achado no histórico |
+| 2 | Quem criou não consta como participante | **cumprido** — `PrimeiraParticipacaoIT.criadorNaoViraParticipante` verde |
+| 3 | Projeto nasce sem etapa | **cumprido** — `CriacaoDeProjetoIT.criaEnomeiaAPrimeiraAdministradora` verifica `etapas: []` e passa nessa asserção |
+| 4 | `project_admin` de outro projeto recebe `403` ao tentar criar | **cumprido** — SCN-022.2 verde, incluindo a relação de projetos inalterada depois da tentativa |
+| 5 | Falha na gravação da participação não deixa projeto órfão | **cumprido** — `PrimeiraParticipacaoIT.recusaNaoDeixaProjetoOrfao` verde: `select count(*) from projeto` zera após o `422` |
+| 6 | `422` com razão explícita para nome em branco e para pessoa inexistente | **cumprido** — `CriacaoDeProjetoIT.entradaInvalidaERecusadaComRazao` verde |
 
 #### Histórico
 
 | Data | Evento | Detalhe |
 | --- | --- | --- |
 | 2026-09-10 | criação | Task derivada da emenda do PRD v1.3 (RF-022), que fechou a lacuna encontrada pela `/tests` |
+| 2026-09-11 | tentativa 1 | **Red medido:** `CriacaoDeProjetoIT` 3/3 vermelhos, todos `expected:<201\|403\|422> but was:<405>` — a rota não existe. Implementados os três arquivos declarados |
+| 2026-09-11 | tentativa 2 | Os dois testes que usam `adminGlobal()` continuavam em `403`: nenhum deles passa por `GET /v1/sessao` antes, e sem conta gravada não há alcance global. A rota passou a **garantir a conta pela mesma via da sessão**, chamando `SessaoService.entrar` — reimplementar a promoção aqui criaria a segunda fonte da regra que ADR-010 existe para ter uma só |
+| 2026-09-11 | tentativa 3 | Verde no que é alcançável. `CriacaoDeProjetoIT` 2/3; a falha restante é o achado abaixo. Escrita `PrimeiraParticipacaoIT` (3/3) para medir os critérios 1, 2 e 5. Suíte inteira: **154 testes, 55 verdes / 99 vermelhos**, contra a linha de base de 151 (50/101) — 3 testes novos verdes e 2 que viraram, nenhuma regressão |
+| 2026-09-11 | achado | **SCN-022.1 não pode ficar verde nesta task.** A última asserção lê `GET /v1/projetos/{id}/participacoes`, que é rota de TASK-06.2 (EPIC-06), e o cenário falha em `404` depois de já ter verificado o `201`, o `Location` e `etapas: []`. Mesma classe de assimetria registrada em TASK-01.3 e TASK-01.5 — cenário congelado alocado em épico que não pode executá-lo por inteiro. Dono `/tasks`. Os critérios que dependiam dessa leitura foram medidos por `PrimeiraParticipacaoIT`, em SQL, porque o que eles afirmam é o estado gravado e não o contrato de outra rota |
+| 2026-09-11 | achado | **Um arquivo de teste fora da tabela declarada, e uma correção em outro.** `alem/PrimeiraParticipacaoIT.java` é verificação além dos cenários, pelo motivo acima. E `alem/ErrosELimitesIT.metodoNaoSuportadoSaiEmProblemJson` escolhera `POST /v1/projetos` como método não suportado — verbo que passou a existir hoje, fazendo o teste medir corpo ausente (`400`) em vez de método; trocado por `DELETE`, que rota nenhuma do produto prevê. Nenhum `.feature` nem step definition tocado |
