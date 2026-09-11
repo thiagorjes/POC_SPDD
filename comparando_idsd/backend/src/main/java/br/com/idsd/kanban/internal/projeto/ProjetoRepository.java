@@ -40,12 +40,21 @@ public interface ProjetoRepository extends JpaRepository<Projeto, UUID> {
             @Param("usuarioId") UUID usuarioId, @Param("adminGlobal") boolean adminGlobal);
 
     /**
-     * O mesmo alcance, para um projeto so.
+     * O vinculo do sujeito com <b>um</b> projeto, existindo ele ou nao.
      *
-     * <p>Lista vazia significa <b>duas</b> coisas indistinguiveis aqui — projeto
-     * inexistente ou projeto que o sujeito nao alcanca — e essa indistincao e
-     * deliberada: as duas produzem {@code 404}, e uma consulta que as separasse
-     * criaria a chance de a borda vazar a diferenca (SCN-002.3).
+     * <p>Esta consulta <b>nao</b> filtra por alcance, e a diferenca em relacao a
+     * {@link #visiveisPara} e deliberada. A relacao precisa filtrar, porque o que
+     * ela devolve <i>e</i> o alcance. O detalhe nao: quem decide se o sujeito
+     * alcanca o projeto e o {@link ResolvedorDePermissao}, e reproduzir a regra
+     * tambem aqui criaria a segunda fonte da decisao — foi assim que a garantia
+     * de {@code 404} migrou para uma clausula {@code where} que nao menciona
+     * regra nenhuma.
+     *
+     * <p>Lista vazia significa portanto uma coisa so: <b>o projeto nao existe</b>.
+     * Projeto que existe e que o sujeito nao alcanca volta com
+     * {@code participacaoId} nulo, e e o resolvedor que o transforma em
+     * {@code 404} — o mesmo codigo dos dois casos, por SCN-002.3, mas por
+     * decisao declarada e nao por coincidencia de consulta.
      */
     @Query("""
             select new br.com.idsd.kanban.internal.projeto.ProjetoConsulta(
@@ -55,10 +64,7 @@ public interface ProjetoRepository extends JpaRepository<Projeto, UUID> {
                      on part.projeto = p and part.usuario.id = :usuarioId
               left join part.papeis pp
              where p.id = :projetoId
-               and (:adminGlobal = true or part.id is not null)
             """)
     List<ProjetoConsulta> alcancadoPor(
-            @Param("usuarioId") UUID usuarioId,
-            @Param("projetoId") UUID projetoId,
-            @Param("adminGlobal") boolean adminGlobal);
+            @Param("usuarioId") UUID usuarioId, @Param("projetoId") UUID projetoId);
 }

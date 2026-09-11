@@ -69,12 +69,24 @@ class SessaoEProjetosIT extends TesteDeIntegracao {
                 .andExpect(jsonPath("$.conteudo[?(@.nome=='Gama')].papeis[0]").value("gestor"))
                 // `permissoes` e derivado no servidor: o cliente usa para nao
                 // apresentar acao que nao pode executar (RNF-004).
-                .andExpect(jsonPath("$.conteudo[?(@.nome=='Alfa')].permissoes",
+                //
+                // O `[*]` no fim nao e enfeite. Caminho com filtro devolve uma
+                // colecao cujo elemento e o proprio array de permissoes, e
+                // `hasItem` compararia contra o array e nunca contra seus itens:
+                // a forma positiva reprovava com a permissao presente, e a
+                // negativa passava para qualquer resposta. O `[*]` achata a
+                // colecao, e e sobre o item que a assercao passa a falar.
+                .andExpect(jsonPath("$.conteudo[?(@.nome=='Alfa')].permissoes[*]",
                         Matchers.hasItem("ESCREVER_TAREFA")))
-                .andExpect(jsonPath("$.conteudo[?(@.nome=='Beta')].permissoes",
+                .andExpect(jsonPath("$.conteudo[?(@.nome=='Beta')].permissoes[*]",
                         Matchers.hasItem("REABRIR")))
-                // `gestor` e somente-leitura (RN-015). A ausencia e o ponto.
-                .andExpect(jsonPath("$.conteudo[?(@.nome=='Gama')].permissoes",
+                // `gestor` e somente-leitura (RN-015). A ausencia e o ponto — e
+                // por isso o caminho e afirmado nao vazio antes: assercao
+                // negativa sobre colecao vazia passa sem verificar nada, que era
+                // exatamente o defeito daqui.
+                .andExpect(jsonPath("$.conteudo[?(@.nome=='Gama')].permissoes[*]",
+                        Matchers.hasItem("LER")))
+                .andExpect(jsonPath("$.conteudo[?(@.nome=='Gama')].permissoes[*]",
                         Matchers.not(Matchers.hasItem("ESCREVER_TAREFA"))));
     }
 

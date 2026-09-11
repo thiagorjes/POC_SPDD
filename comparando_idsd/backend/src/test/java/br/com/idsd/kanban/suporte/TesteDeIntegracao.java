@@ -84,7 +84,7 @@ public abstract class TesteDeIntegracao {
      * tabelas escrita a mao: lista a mao envelhece calada na proxima migration, e
      * o sintoma reaparece como contaminacao de estado meses depois.
      */
-    private void esvaziarBanco() throws java.sql.SQLException {
+    protected void esvaziarBanco() throws java.sql.SQLException {
         try (var conexao = fonteDeDados.getConnection();
                 var comando = conexao.createStatement()) {
             var tabelas = new java.util.ArrayList<String>();

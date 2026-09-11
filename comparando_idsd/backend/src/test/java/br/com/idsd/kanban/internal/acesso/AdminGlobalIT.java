@@ -106,17 +106,28 @@ class AdminGlobalIT extends TesteDeIntegracao {
     void adminGlobalAtravessaOProjeto() throws Exception {
         var projeto = cenario.projeto("Projeto alheio");
         cenario.participante(projeto, SUB_BRUNO, "Bruno", "bruno@empresa.example", "project_admin");
-        var etapas = cenario.fluxoPadrao(projeto, bruno());
-        var tarefa = cenario.criarTarefa(projeto, "Tarefa qualquer", bruno());
-
         mockMvc.perform(get("/v1/sessao").with(adminGlobal()));
 
+        // A relacao vem <b>antes</b> da semeadura de etapas, e a ordem e o
+        // ponto: `fluxoPadrao` chama rota de epico posterior e derruba o teste
+        // onde estiver. Com ela na frente, a unica assercao que prova a marca de
+        // alcance global nunca chegava a executar, e o criterio de aceite ficava
+        // cumprido por inspecao. A relacao nao depende de etapa alguma.
         mockMvc.perform(get("/v1/projetos").with(adminGlobal()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.conteudo[?(@.nome=='Projeto alheio')]").exists())
                 // O alcance e visivel na resposta, e nao implicito.
                 .andExpect(jsonPath("$.conteudo[?(@.nome=='Projeto alheio')].acessoPorAdministracaoGlobal")
                         .value(true));
+
+        // A mesma marca no detalhe, pela mesma razao e tambem sem etapa: sem
+        // isto o "na lista e no detalhe" do criterio ficaria metade medido.
+        mockMvc.perform(get("/v1/projetos/{id}", projeto).with(adminGlobal()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.acessoPorAdministracaoGlobal").value(true));
+
+        var etapas = cenario.fluxoPadrao(projeto, bruno());
+        var tarefa = cenario.criarTarefa(projeto, "Tarefa qualquer", bruno());
 
         mockMvc.perform(get("/v1/projetos/{id}/board", projeto).with(adminGlobal()))
                 .andExpect(status().isOk())

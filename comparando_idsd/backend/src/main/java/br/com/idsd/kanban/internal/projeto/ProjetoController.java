@@ -31,9 +31,18 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code 200} que ele acabou de receber uma rota antes, e tiraria dele a unica
  * informacao acionavel que tem — pedir o papel a quem administra.
  *
- * <p>A distincao vem de {@link ResolvedorDePermissao.Acesso#participa()} e nunca
+ * <p>A distincao vem de {@link ResolvedorDePermissao.Acesso#semAlcance()} e nunca
  * de conjunto de permissoes vazio: os dois casos produzem conjunto vazio, e
- * deriva-la dai e exatamente o erro que a marca existe para evitar.
+ * deriva-la dai e exatamente o erro que a marca existe para evitar. O detalhe
+ * consulta o projeto <b>sem</b> filtrar por alcance justamente para que essa
+ * decisao seja do resolvedor; filtrar na consulta faria o {@code 404} sair de
+ * lista vazia, que e a mesma coisa dita com outro nome.
+ *
+ * <p>O corolario disso governa <b>o que</b> cada rota devolve: a relacao carrega
+ * apenas metadado da participacao — {@code nome}, papeis, permissoes, marcas —, e
+ * {@code descricao} fica no detalhe, atras de {@code LER}. Se a relacao e visivel
+ * a quem o detalhe recusa, entao tudo o que ela carrega e, por definicao, o que
+ * quem nao tem {@code LER} pode ver.
  *
  * <p>Nenhuma decisao de acesso e tomada aqui. O resolvedor continua sendo o ponto
  * unico; este controlador escolhe apenas o codigo de resposta.
@@ -85,14 +94,23 @@ public class ProjetoController {
             return naoEncontrado(projetoId);
         }
 
-        List<Alcance> alcances = agrupar(
-                projetos.alcancadoPor(sujeito.id(), projetoId, sujeito.adminGlobal()), sujeito);
+        List<Alcance> alcances = agrupar(projetos.alcancadoPor(sujeito.id(), projetoId), sujeito);
         if (alcances.isEmpty()) {
+            // O projeto nao existe. O sujeito nao precisa saber a diferenca entre
+            // isto e o caso seguinte, e por isso os dois respondem igual.
             return naoEncontrado(projetoId);
         }
 
         Alcance alcance = alcances.get(0);
+        if (alcance.acesso().semAlcance()) {
+            // Existe, e nao e dele: nem participa nem alcanca. A decisao e do
+            // resolvedor e nao de conjunto de permissoes vazio — os dois casos
+            // produzem vazio e exigem respostas opostas (TechSpec v1.8).
+            return naoEncontrado(projetoId);
+        }
         if (!alcance.acesso().tem(Permissao.LER)) {
+            // Participa, e nenhum papel seu le. O 403 so e alcancavel depois de
+            // participa() ter sido verdadeiro.
             return semPermissao(projetoId);
         }
         return ResponseEntity.ok(alcance.comoDetalhe());
@@ -187,10 +205,11 @@ public class ProjetoController {
             ResolvedorDePermissao.Acesso acesso) {
 
         ProjetoResumo comoResumo() {
+            // Sem `descricao`: ela e dado protegido por LER e nao acompanha a
+            // relacao, que e visivel a participante sem papel algum.
             return new ProjetoResumo(
                     projeto.projetoId(),
                     projeto.nome(),
-                    projeto.descricao(),
                     papeis,
                     acesso.permissoes(),
                     acesso.porAdministracaoGlobal());

@@ -26,6 +26,33 @@ pessoa a única informação acionável que ela tem: peça o papel a quem admini
 projeto. Do outro lado, `403` para quem não participa revelaria a existência de um
 projeto que SCN-002.3 exige manter oculto.
 
+### O corolário: `nome` é metadado da participação, o resto é dado protegido
+
+Decidido em 2026-09-11 (ACH-08 da revisão de TASK-01.5). A regra acima só se
+sustenta se o participante sem papel **vir o nome** do projeto na relação: é ele
+que identifica o vínculo e é ele que torna o `403` acionável — sem o nome, a
+recusa fala de um identificador opaco e a pessoa não tem o que pedir a quem
+administra.
+
+Isso obriga a separação, e ela vale para toda a superfície de leitura:
+
+| Campo | Natureza | Quem vê |
+| --- | --- | --- |
+| `id`, `nome`, `papeis`, `permissoes`, `acessoPorAdministracaoGlobal`, `fluxoConfigurado` | metadado da participação | todo participante, com papel ou sem |
+| `descricao` e todo o conteúdo do projeto | dado protegido por `LER` | somente quem tem a permissão |
+
+`descricao` sai portanto do corpo de `GET /v1/projetos` e permanece apenas em
+`GET /v1/projetos/{id}`, que é a rota governada por `LER`. Ela não identifica
+nem é necessária para pedir papel: é o primeiro campo que carrega informação de
+negócio, e mantê-la na relação entregaria a quem o detalhe recusa exatamente o
+conteúdo que a recusa protege — o vazamento de SCN-002.3 na versão pequena.
+
+A leitura alternativa, em que `nome` também seria protegido por `LER`, foi
+considerada e **desmonta a regra da seção anterior**: obrigaria a relação a
+exibir um item sem identificação, o que é inútil, ou a omitir o item — e um
+projeto que não aparece na relação torna `404` a resposta coerente no detalhe,
+que é o oposto do que esta seção decide.
+
 A distinção depende do sinalizador `participa` que o resolvedor de permissão
 devolve junto do conjunto de permissões. Derivá-la de conjunto vazio é o que a
 regra proíbe: os dois casos produzem conjunto vazio e exigem respostas opostas.
@@ -68,7 +95,9 @@ Serve RF-001. Autoprovisiona o `usuario` na primeira entrada, a partir do `sub`,
 Serve RF-002. Retorna **somente** projetos com participação; ausência de
 participação devolve lista vazia, nunca a relação completa do sistema.
 
-- **Saída `200`:** `{ conteudo: [ { id, nome, descricao, papeis: [], permissoes: [], fluxoConfigurado } ], totalElements, totalPages }`.
+- **Saída `200`:** `{ conteudo: [ { id, nome, papeis: [], permissoes: [], acessoPorAdministracaoGlobal, fluxoConfigurado } ], totalElements, totalPages }`.
+- **`descricao` não vem aqui.** Ela é dado protegido por `LER` e vive só no
+  detalhe — ver o corolário da regra `403`/`404` acima.
 - `fluxoConfigurado` é `false` enquanto o projeto não tiver etapa alguma, e é o
   que sustenta a marca de fluxo não configurado que RN-038 obriga (SCN-002.4).
   Deriva de `EXISTS (SELECT 1 FROM etapa WHERE projeto_id = ...)`, calculado no
@@ -94,9 +123,13 @@ participação devolve lista vazia, nunca a relação completa do sistema.
 
 ## `GET /v1/projetos/{projetoId}` — detalhe do projeto
 
+- **Saída `200`:** `{ id, nome, descricao, papeis: [], permissoes: [], acessoPorAdministracaoGlobal }`.
+  É aqui — e só aqui — que `descricao` aparece.
 - **Erros:** `404` quando não há participação. **Não** `403` — SCN-002.3 exige que
   nenhum dado do projeto seja revelado, e `403` já revelaria sua existência.
-  `api-standards.md` §2 prevê exatamente esse uso de `404`.
+  `api-standards.md` §2 prevê exatamente esse uso de `404`. `403` quando há
+  participação e nenhum papel concede `LER`, pela regra única acima; o corpo da
+  recusa é genérico e não repete nome nem descrição.
 
 ## `POST /v1/projetos` — criar projeto (RF-022)
 

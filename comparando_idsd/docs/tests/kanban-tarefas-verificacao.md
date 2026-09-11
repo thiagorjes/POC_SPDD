@@ -1,6 +1,6 @@
 # Plano de Verificação — kanban-tarefas
 
-_Versão 1.2 — 2026-09-10_
+_Versão 1.3 — 2026-09-10_
 
 Feature: `kanban-tarefas`
 Origem: PRD v1.5 (70 cenários congelados), TechSpec v1.7, Tasks (8 épicos, 43 tasks)
@@ -37,7 +37,34 @@ aplicação para verificar o broadcast entre instâncias. Ele vive no fonte de
 teste, a aplicação não o importa, e o que ele conhece do sistema é apenas o que
 o contrato congelado já expõe.
 
-### Correção de 2026-09-10 — e o que ela custa à independência
+### Correção de 2026-09-10 (v1.3) — achados da revisão de TASK-01.5
+
+Também **não independente**, e pela mesma razão: foi executada depois de
+TASK-01.5 estar em disco e por quem havia lido o código de produção. O
+GATE-VERIFICACAO-INDEPENDENTE da v1.0 **não cobre** o que se tocou aqui.
+
+Nenhum `.feature`, ID, redação ou tipo de cenário foi alterado.
+
+- **SCN-002.1 tinha uma asserção insatisfazível por qualquer resposta**
+  (ACH-05). Caminho JsonPath com filtro devolve uma coleção cujo único elemento
+  é o próprio array de `permissoes`, e `hasItem` comparava contra o array, nunca
+  contra os itens: a forma positiva reprovava com a permissão presente. O `[*]`
+  achata a coleção. A asserção negativa de `gestor` sofria do defeito espelhado
+  — sobre coleção vazia ela passa sem verificar nada —, e por isso passou a ser
+  precedida de uma positiva (ACH-04).
+- **A única asserção da marca de alcance global nunca executava** (ACH-01, lado
+  de integração). Em `AdminGlobalIT` ela estava depois de `Cenario.fluxoPadrao`,
+  que chama rota de EPIC-02 e derruba o teste antes da requisição — o critério
+  de aceite ficava cumprido por inspeção. A relação e o detalhe foram movidos
+  para antes da semeadura, que é onde não dependem de etapa alguma, e o detalhe
+  ganhou a asserção que faltava.
+- **SCN-002.4 perdeu a marca de coberto** (ACH-06). A emenda v1.5 propagou para
+  a tabela de cobertura sem que o teste existisse, e ele não é escrevível antes
+  da tabela `etapa`.
+- **`ExistenciaECapacidadeIT` acrescentado** (ACH-07), fora da contagem de
+  cenários, na seção própria.
+
+### Correção de 2026-09-10 (v1.1) — e o que ela custa à independência
 
 A v1.0 acima descreve a escrita original, e continua valendo para ela. Esta
 seção registra uma correção posterior, feita **depois** de TASK-01.1 a TASK-01.4
@@ -125,8 +152,13 @@ tabela de congelamento em vez de silenciosamente reescrever a prova.
 
 ## Cenários congelados
 
-70 cenários, cobertos um a um. A distribuição por tipo é a do PRD: 9 `e2e`,
-56 `integração`, 5 `unitário`.
+70 cenários. A distribuição por tipo é a do PRD: 9 `e2e`,
+56 `integração`, 5 `unitário`. **69 cobertos** — SCN-002.4 ficou sem
+verificador, e a razão está na tabela de cobertura e na revisão de TASK-01.5
+(ACH-06): ele exige `fluxoConfigurado`, que é derivado por existência sobre a
+tabela `etapa`, criada no EPIC-02. A marca de coberto foi retirada em vez de
+mantida com um teste que não exercita o cenário: cobertura afirmada e não
+executada é o modo mais discreto de um gate virar formulário.
 
 - **Alterados desde o gate de spec:** nenhuma — os IDs e a redação são os do
   PRD v1.5, reconfirmado pelo aprovador em 2026-09-10. A emenda v1.3
@@ -141,7 +173,7 @@ tabela de congelamento em vez de silenciosamente reescrever a prova.
 | SCN-002.1 | RF-002 | EPIC-01 | integração | `internal/acesso/SessaoEProjetosIT.java` | coberto |
 | SCN-002.2 | RF-002 | EPIC-01 | integração | `internal/acesso/SessaoEProjetosIT.java` | coberto |
 | SCN-002.3 | RF-002 | EPIC-01 | integração | `internal/acesso/SessaoEProjetosIT.java` | coberto |
-| SCN-002.4 | RF-002 | EPIC-01 | integração | `internal/acesso/SessaoEProjetosIT.java` | coberto |
+| SCN-002.4 | RF-002 | EPIC-01 | integração | — | **não coberto** — depende de `fluxoConfigurado`, que exige a tabela `etapa` (EPIC-02). ACH-06 da revisão de TASK-01.5 |
 | SCN-003.1 | RF-003 | EPIC-02 | e2e | `frontend/e2e/board.spec.ts` | coberto |
 | SCN-003.2 | RF-003 | EPIC-02 | integração | `internal/tarefa/BoardIT.java` + `CartaoDeTarefa.test.tsx` | coberto |
 | SCN-003.3 | RF-003 | EPIC-02 | integração | `internal/tarefa/BoardIT.java` + `CartaoDeTarefa.test.tsx` | coberto |
@@ -206,7 +238,7 @@ tabela de congelamento em vez de silenciosamente reescrever a prova.
 | SCN-022.2 | RF-022 | EPIC-01 | integração | `internal/projeto/CriacaoDeProjetoIT.java` | coberto |
 | SCN-022.3 | RF-022 | EPIC-02 | integração | `internal/tarefa/CriacaoDeTarefaIT.java` | coberto |
 
-Cobertura: 70/70. Cenário sem teste: zero. Teste de cenário sem cenário de
+Cobertura: 69/70. Cenário sem teste: SCN-002.4, e um só. Teste de cenário sem cenário de
 origem: zero — o que a especificação obriga sem cenário está na seção própria,
 em pacote separado.
 
@@ -265,7 +297,7 @@ o que ele prova.
 
 ## Testes além dos cenários
 
-Oito verificações que a especificação obriga e que cenário algum descreve.
+Nove verificações que a especificação obriga e que cenário algum descreve.
 Vivem em `br.com.idsd.kanban.alem` e em `backend/src/test/carga`, separadas de
 propósito: elas não são cobertura de cenário, e misturá-las faria a contagem
 de 70 parecer maior do que é.
@@ -279,6 +311,7 @@ de 70 parecer maior do que é.
 | `OrtogonalidadeDasDimensoesIT` | RN-002 | Os cenários verificam a ortogonalidade um par por vez. Este verifica a propriedade no esquema, que é onde ela se sustenta |
 | `BroadcastMultiInstanciaIT` | RNF-002 | 3 instâncias, 300 sessões. Suíte de uma instância só passa em verde sobre o desenho que ADR-004 existe para resolver |
 | `rnf-001-tempo-real.js` | RNF-001 | 100 tarefas, 50 sessões; mede do aceite da escrita até a chegada à sessão que observa, e não a latência do próprio clique |
+| `ExistenciaECapacidadeIT` | TechSpec v1.8 (regra única `403`/`404`) | Os cenários cobrem as duas pontas — quem participa e lê, quem não participa e recebe `404` — e deixam de fora o meio: o participante sem papel. Trocar o `403` dele por `404`, ou removê-lo deixando `200`, não deixava teste algum vermelho. Origem: ACH-07 da revisão de TASK-01.5 |
 | `rnf-009-consultas.js` | RNF-009 | 12 meses, 5.000 tarefas. A massa é semeada por `massa-12-meses.sql`, com a contrapartida declarada no próprio arquivo |
 
 ---
@@ -331,6 +364,7 @@ defeito que este congelamento existe para impedir.
 | --- | --- | --- | --- | --- |
 | 2026-09-10 | Suíte congelada na v1.0 — 66 cenários, 8 verificações além dos cenários | congelamento inicial | fecho da etapa `/tests`; a partir daqui a suíte só muda por emenda de cenário ou desvio aprovado | agente `/tests` (congelamento inicial não é alteração e não exige aprovação humana) |
 | 2026-09-10 | Correção de SCN-021.1 (verificava rota inexistente; passa a verificar o log auditável) e de SCN-001.3 (era inalcançável; passa a exercitar o decodificador), mais o suporte comum: `jwk-set-uri` do provedor simulado, isolamento entre testes e troca do artefato do WireMock | correção de defeito da suíte | os dois cenários verificavam outra coisa que não o que o Gherkin congelado afirma. Nenhum `.feature` tocado, nenhum ID alterado, nenhuma asserção afrouxada — SCN-021.1 continua exigindo "quem e quando", agora onde o registro de fato vive. **Não independente**: ver a declaração de independência | Thiago Goncalves Cavalcante (autorizou a correção; a natureza não independente foi declarada antes da execução) |
+| 2026-09-10 | Correção das asserções de SCN-002.1 (`[*]` no caminho com filtro, positiva antes da negativa) e da ordem de `AdminGlobalIT` em SCN-021.2; SCN-002.4 deixa de ser declarado coberto; `ExistenciaECapacidadeIT` acrescentado além dos cenários | correção de defeito da suíte | achados ACH-01, ACH-04, ACH-05, ACH-06 e ACH-07 da revisão de TASK-01.5: duas asserções não verificavam o que afirmavam e uma cobertura era declarada sem teste. Nenhum `.feature` tocado, nenhum ID alterado, nenhuma asserção afrouxada. **Não independente**: ver a declaração de independência | Thiago Goncalves Cavalcante (autorizou a correção dos achados; a natureza não independente foi declarada antes da execução) |
 | 2026-09-10 | Acréscimo de SCN-022.1, SCN-022.2 e SCN-022.3 — `CriacaoDeProjetoIT` criado, um teste novo em `CriacaoDeTarefaIT`, suporte E2E migrado para a rota real | emenda de cenário no PRD | emenda v1.3 do PRD, que criou RF-022 e fechou a lacuna de especificação registrada nesta etapa. Nenhum cenário preexistente teve ID, redação ou teste alterados | Thiago Goncalves Cavalcante (aprovador do gate de spec na reconfirmação da emenda v1.3) |
 
 ---

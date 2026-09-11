@@ -180,6 +180,96 @@ class ResolvedorDePermissaoTest {
                 .isTrue();
     }
 
+    // --- ACH-01 da revisao de TASK-01.5: `acessoDerivado` e o caminho que as
+    // duas rotas de leitura percorrem de fato, e ele nao tinha teste algum. Os
+    // casos acima exercitam `acessoAoProjeto` e `pode`, que nenhuma rota chama —
+    // o metodo medido e o metodo em producao eram distintos, e nada garantia que
+    // continuassem concordando quando um dos dois mudasse. Os dois blocos ficam
+    // lado a lado de proposito: e a concordancia entre eles que precisa ser
+    // visivel.
+
+    @Test
+    @DisplayName("derivado: quem nao participa nao alcanca — o 404 sai daqui")
+    void derivadoNaoParticipante() {
+        var acesso = resolvedor.acessoDerivado(List.of(), false, false);
+
+        assertThat(acesso.permissoes()).isEmpty();
+        assertThat(acesso.participa()).isFalse();
+        assertThat(acesso.porAdministracaoGlobal()).isFalse();
+        assertThat(acesso.semAlcance()).isTrue();
+    }
+
+    @Test
+    @DisplayName("derivado: participar sem papel nao e o mesmo que nao participar")
+    void derivadoParticipanteSemPapel() {
+        var semPapelAlgum = resolvedor.acessoDerivado(List.of(), true, false);
+        var soComUser = resolvedor.acessoDerivado(List.of(Papel.USER), true, false);
+
+        // Os tres casos — este, o anterior e o `user` legado — produzem permissao
+        // vazia. So `semAlcance()` os separa, e e essa separacao que decide entre
+        // 403 e 404 (TechSpec v1.8, SCN-002.3).
+        for (var acesso : List.of(semPapelAlgum, soComUser)) {
+            assertThat(acesso.permissoes()).isEmpty();
+            assertThat(acesso.tem(Permissao.LER)).isFalse();
+            assertThat(acesso.participa()).isTrue();
+            assertThat(acesso.semAlcance()).isFalse();
+        }
+    }
+
+    @Test
+    @DisplayName("derivado: a permissao sai dos papeis do vinculo, e acumula")
+    void derivadoParticipanteComPapel() {
+        var acesso = resolvedor.acessoDerivado(List.of(Papel.GESTOR, Papel.DEV), true, false);
+
+        assertThat(acesso.permissoes())
+                .containsExactlyInAnyOrder(Permissao.LER, Permissao.ESCREVER_TAREFA);
+        assertThat(acesso.tem(Permissao.CONFIGURAR)).isFalse();
+        assertThat(acesso.porAdministracaoGlobal()).isFalse();
+    }
+
+    @Test
+    @DisplayName("derivado: SCN-021.2 — alcance global sem participacao, com a marca")
+    void derivadoAdminGlobalSemParticipacao() {
+        var acesso = resolvedor.acessoDerivado(List.of(), false, true);
+
+        assertThat(acesso.permissoes()).containsExactlyInAnyOrder(Permissao.values());
+        assertThat(acesso.porAdministracaoGlobal()).isTrue();
+        assertThat(acesso.participa()).isFalse();
+        // Sem alcance seria negar justamente o sujeito que RN-035 existe para
+        // cobrir, e e por construcao o caso normal (RN-037).
+        assertThat(acesso.semAlcance()).isFalse();
+    }
+
+    @Test
+    @DisplayName("derivado: a marca acompanha o acesso mesmo se a pessoa participa")
+    void derivadoAdminGlobalQueTambemParticipa() {
+        var acesso = resolvedor.acessoDerivado(List.of(Papel.GESTOR), true, true);
+
+        // O alcance nao se soma ao papel: ele ja e o conjunto todo. E a marca
+        // continua valendo, porque e ela que dispensa a checagem de participacao.
+        assertThat(acesso.permissoes()).containsExactlyInAnyOrder(Permissao.values());
+        assertThat(acesso.porAdministracaoGlobal()).isTrue();
+        assertThat(acesso.participa()).isTrue();
+    }
+
+    @Test
+    @DisplayName("derivado concorda com acessoAoProjeto nos casos que as duas rotas cruzam")
+    void derivadoConcordaComOQueLeDoBanco() {
+        // A razao de ACH-01 existir: sao dois metodos com a mesma regra, e o
+        // unico jeito de a divergencia aparecer cedo e afirmar a concordancia.
+        var doBanco = resolverPara(participacaoCom(Papel.DEV), usuarioComum());
+        var derivado = resolvedor.acessoDerivado(List.of(Papel.DEV), true, false);
+        assertThat(derivado).isEqualTo(doBanco);
+
+        var globalDoBanco = resolverPara(participacaoAusente(), usuarioAdminGlobal());
+        var globalDerivado = resolvedor.acessoDerivado(List.of(), false, true);
+        assertThat(globalDerivado).isEqualTo(globalDoBanco);
+
+        var forasteiroDoBanco = resolverPara(participacaoAusente(), usuarioComum());
+        var forasteiroDerivado = resolvedor.acessoDerivado(List.of(), false, false);
+        assertThat(forasteiroDerivado).isEqualTo(forasteiroDoBanco);
+    }
+
     private Set<Permissao> permissoesDe(Papel papel) {
         return resolvedor.permissoesDe(List.of(papel));
     }
