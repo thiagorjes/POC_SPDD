@@ -42,12 +42,17 @@ public class EtapaController {
     private final EtapaService etapas;
     private final ResolvedorDePermissao resolvedor;
     private final UsuarioRepository usuarios;
+    private final ProjetoRepository projetos;
 
     public EtapaController(
-            EtapaService etapas, ResolvedorDePermissao resolvedor, UsuarioRepository usuarios) {
+            EtapaService etapas,
+            ResolvedorDePermissao resolvedor,
+            UsuarioRepository usuarios,
+            ProjetoRepository projetos) {
         this.etapas = etapas;
         this.resolvedor = resolvedor;
         this.usuarios = usuarios;
+        this.projetos = projetos;
     }
 
     /**
@@ -106,6 +111,14 @@ public class EtapaController {
 
         ResolvedorDePermissao.Acesso acesso = resolvedor.acessoAoProjeto(usuarioId, projetoId);
         if (acesso.semAlcance()) {
+            return naoEncontrado(projetoId);
+        }
+        // O alcance global nao prova que o projeto existe (ACH-06): o resolvedor o
+        // concede a partir da marca no usuario, sem consultar `projeto`. Sem esta
+        // linha, o GET respondia 200 com fluxo vazio para identificador inexistente
+        // e o PUT seguia para o servico, tentava escrever e estourava na chave
+        // estrangeira — 500, e escrita tentada numa rota que devia recusar na borda.
+        if (!projetos.existsById(projetoId)) {
             return naoEncontrado(projetoId);
         }
         if (!acesso.tem(Permissao.CONFIGURAR)) {

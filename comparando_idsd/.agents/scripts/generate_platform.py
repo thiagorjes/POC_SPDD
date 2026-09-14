@@ -114,6 +114,19 @@ def discover_agents(source: Path) -> list[dict]:
     return agents
 
 
+def escrever(destino: Path, conteudo: str) -> None:
+    """Grava com fim de linha LF, em qualquer plataforma.
+
+    `Path.write_text` usa a traducao de fim de linha do sistema: o mesmo
+    gerador produz CRLF no Windows e LF no Linux. Como `check_drift.py` compara
+    byte a byte contra uma regeneracao, um derivado gerado em uma plataforma e
+    conferido em outra aparece como "conteudo divergente" sem que ninguem tenha
+    editado nada — foi o que aconteceu com `.github/instructions/` (pendencia
+    19). O derivado precisa ser funcao apenas da fonte.
+    """
+    destino.write_text(conteudo, encoding="utf-8", newline="\n")
+
+
 def limpar(diretorio: Path) -> None:
     """Remove saída anterior para que renomear/remover uma skill se propague."""
     if diretorio.exists():
@@ -126,10 +139,10 @@ def gerar_claude(skills, agents, path: Path, src: str) -> None:
     for s in skills:
         d = skills_dir / s["dir"]
         d.mkdir(parents=True, exist_ok=True)
-        (d / "SKILL.md").write_text(
+        escrever(
+            d / "SKILL.md",
             f"---\nname: {s['name']}\ndescription: {yaml_str(s['description'])}\n---\n\n"
             f"{AVISO}\n\n@{src}/skills/{s['dir']}/SKILL.md\n",
-            encoding="utf-8",
         )
     print(f"  claude: {len(skills)} skills -> {skills_dir}")
 
@@ -138,10 +151,10 @@ def gerar_claude(skills, agents, path: Path, src: str) -> None:
     if agents:
         agents_dir.mkdir(parents=True, exist_ok=True)
         for a in agents:
-            (agents_dir / f"{a['name']}.md").write_text(
+            escrever(
+                agents_dir / f"{a['name']}.md",
                 f"---\nname: {a['name']}\ndescription: {yaml_str(a['description'])}\n"
                 f"tools: {a['tools']}\n---\n\n{AVISO}\n\n@{src}/agents/{a['file']}.md\n",
-                encoding="utf-8",
             )
         print(f"  claude: {len(agents)} agents -> {agents_dir}")
 
@@ -151,9 +164,8 @@ def gerar_opencode(skills, path: Path, src: str) -> None:
     limpar(d)
     d.mkdir(parents=True, exist_ok=True)
     for s in skills:
-        (d / f"{s['dir']}.md").write_text(
-            f"{AVISO}\n\n@{src}/skills/{s['dir']}/SKILL.md\n", encoding="utf-8"
-        )
+        escrever(d / f"{s['dir']}.md",
+                 f"{AVISO}\n\n@{src}/skills/{s['dir']}/SKILL.md\n")
     print(f"  opencode: {len(skills)} commands -> {d}")
 
 
@@ -162,10 +174,10 @@ def gerar_cursor(skills, path: Path, src: str) -> None:
     limpar(d)
     d.mkdir(parents=True, exist_ok=True)
     for s in skills:
-        (d / f"idsd-{s['dir']}.mdc").write_text(
+        escrever(
+            d / f"idsd-{s['dir']}.mdc",
             f"---\ndescription: {yaml_str(s['description'])}\nalwaysApply: false\n---\n\n"
             f"{AVISO}\n\n@{src}/skills/{s['dir']}/SKILL.md\n",
-            encoding="utf-8",
         )
     print(f"  cursor: {len(skills)} regras -> {d} (por referencia)")
 
@@ -176,11 +188,11 @@ def gerar_copilot(skills, path: Path, src: str) -> None:
     limpar(d)
     d.mkdir(parents=True, exist_ok=True)
     for s in skills:
-        (d / f"{s['dir']}.instructions.md").write_text(
+        escrever(
+            d / f"{s['dir']}.instructions.md",
             f"---\ndescription: {yaml_str(s['description'])}\napplyTo: \"**\"\n---\n\n"
             f"{AVISO}\n<!-- Fonte: {src}/skills/{s['dir']}/SKILL.md -->\n\n"
             f"# /{s['name']}\n{s['body']}",
-            encoding="utf-8",
         )
     print(f"  copilot: {len(skills)} instructions -> {d} (corpo embutido)")
 

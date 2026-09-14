@@ -12,6 +12,38 @@ spring:
     # configtree importado no documento de perfil "!test".
     password: ${banco-senha}
 
+    # ACH-01 da reexecucao de TASK-02.2. SDR-005 poe `SELECT ... FOR UPDATE` na
+    # linha de `projeto`, e bloqueio sem teto de espera nao e serializacao: e
+    # contencao convertida em indisponibilidade. Cada requisicao que espera
+    # retem uma conexao do pool, o pool acaba, e `db` esta no grupo de
+    # readiness — de modo que a probe passa a reprovar e a instancia sai do
+    # trafego. O caminho inteiro estava ao alcance de **um** sujeito autenticado
+    # com `CONFIGURAR`.
+    #
+    # O teto fica na sessao, e nao no hint `jakarta.persistence.lock.timeout`,
+    # porque o dialeto PostgreSQL do Hibernate so traduz espera **zero**
+    # (`FOR UPDATE NOWAIT`); valor positivo nao tem traducao garantida e seria
+    # um teto que o codigo afirma ter e o banco nao aplica — a forma exata de
+    # defeito que esta revisao inventariou.
+    #
+    # `lock_timeout` so dispara em quem **espera** por bloqueio, e o unico
+    # bloqueio explicito do sistema e este. `idle_in_transaction_session_timeout`
+    # fecha o modo de falha que sustenta o anterior: transacao aberta e parada
+    # segurando a linha indefinidamente.
+    #
+    # Deliberadamente **sem** `statement_timeout`: ele alcanca toda consulta do
+    # sistema, e nao ha medicao para escolher o numero. Teto global escolhido no
+    # escuro troca uma indisponibilidade por outra. Fica declarado como pendente
+    # de medicao, nao como esquecido.
+    hikari:
+      data-source-properties:
+        options: "-c lock_timeout=5000 -c idle_in_transaction_session_timeout=30000"
+      # Esperar por conexao tambem precisa de fim. Sem isto, o pool esgotado faz
+      # a requisicao pendurar em vez de falhar, que e o sintoma que ACH-01
+      # descreve um nivel acima.
+      connection-timeout: 5000
+      maximum-pool-size: 10
+
   jpa:
     hibernate:
       # Vale em todo perfil, inclusive teste. A aplicacao valida o schema e

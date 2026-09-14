@@ -26,6 +26,9 @@ contando dois intervalos.
 - [ ] Recusar com `422` projeto sem fluxo configurado, orientando configurar as
       etapas antes.
 - [ ] Exigir participação no projeto; sem ela, `404`.
+- [ ] **Publicar a implementação de `TarefasAtivasPorEtapa`**, a porta que
+      TASK-02.2 deixou sem implementação. Enquanto o bean não existir, a recusa
+      de RF-017 conta zero e nunca dispara.
 
 #### Guia técnico — estrutura de arquivos
 
@@ -35,6 +38,7 @@ contando dois intervalos.
 | `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/CriacaoDeTarefaService.java` | criar | usa o registrador de evento |
 | `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/NovaTarefaRequisicao.java` | criar | registro de entrada |
 | `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/CartaoResposta.java` | criar | forma do cartão, reusada pelo board |
+| `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/ContagemDeTarefasAtivas.java` | criar | implementa `internal/projeto/TarefasAtivasPorEtapa`; é o adaptador que liga a recusa de RF-017 |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
 `docs/techspec/`, migrations já aplicadas, e todo arquivo de verificação já
@@ -69,6 +73,19 @@ título em `dados`.
 - **Projeto sem fluxo é recusa de negócio, não erro interno.** A mensagem precisa
   dizer o que fazer, porque o caminho de quem cria projeto e cria tarefa em
   seguida passa exatamente por aqui.
+- **A porta que esta task fecha não é opcional.** `EtapaService` recebe
+  `Optional<TarefasAtivasPorEtapa>` e, sem bean publicado, **conta zero** — o
+  caminho de recusa de RN-020 existe, está escrito e fica inerte por falta de
+  massa. Publicar o bean é o que o liga. Assinatura literal a implementar:
+  `long contarEm(UUID etapaId)`, em `br.com.idsd.kanban.internal.projeto`. A
+  direção da dependência é obrigatória — o domínio de tarefa implementa a porta
+  do domínio de projeto, e nunca o contrário: importar repositório de tarefa
+  dentro de `internal/projeto` faria configuração depender de operação.
+- **"Tarefa ativa" exclui as terminais.** `CONCLUIDA` e
+  `ENCERRADA_SEM_CONCLUSAO` não contam. Contá-las tornaria toda etapa terminal
+  inarquivável para sempre. Quem implementa a porta responde por essa exclusão —
+  a contagem é sobre a projeção `tarefa`, filtrando `etapa_id` e condição não
+  terminal.
 - **Título em branco inclui apenas espaços.** A validação de formato precisa
   aparar antes de decidir.
 
@@ -83,9 +100,12 @@ título em `dados`.
 | 4b | Projeto recém-criado por `POST /v1/projetos` aceita a tarefa depois que o fluxo é configurado | SCN-022.3: criar, tentar e receber `422`; configurar as etapas e criar de novo, com aceite |
 | 5 | Um evento de criação foi gravado, com sequência atribuída | leitura do log |
 | 6 | Quem não participa do projeto recebe `404` | requisição com sujeito sem participação |
+| 7 | Com uma tarefa ativa na etapa, `PUT /v1/projetos/{id}/etapas` que a omite é recusado com `422` e as tarefas permanecem onde estavam | SCN-017.3, que só passa a ter poder de falha depois desta task |
+| 8 | Com apenas tarefas terminais na etapa, o mesmo `PUT` arquiva a etapa normalmente | contagem que exclui `CONCLUIDA` e `ENCERRADA_SEM_CONCLUSAO` |
 
 #### Histórico
 
 | Data | Evento | Detalhe |
 | --- | --- | --- |
 | 2026-09-09 | criação | Task derivada do plano de execução do épico |
+| 2026-09-14 | emenda — ACH-10 da revisão de TASK-02.2 | A obrigação de publicar `TarefasAtivasPorEtapa` existia só no histórico da task que criou a porta, e histórico de outra task não é instrução desta. Se esta esquecesse, a recusa de RN-020 contaria zero para sempre e **nenhum teste acusaria** — SCN-017.3 não tem massa de tarefa antes daqui. Passa a ser item de execução, arquivo declarado, ponto de atenção com a assinatura literal e dois critérios de aceite, um deles o caso negativo das terminais. A direção da dependência ficou escrita junto, porque o atalho — importar o repositório de tarefa dentro de `internal/projeto` — é mais curto que o correto |

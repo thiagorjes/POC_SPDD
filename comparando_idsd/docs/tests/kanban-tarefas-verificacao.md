@@ -1,6 +1,6 @@
 # Plano de Verificação — kanban-tarefas
 
-_Versão 1.4 — 2026-09-11_
+_Versão 1.8 — 2026-09-14_
 
 Feature: `kanban-tarefas`
 Origem: PRD v1.5 (70 cenários congelados), TechSpec v1.7, Tasks (8 épicos, 43 tasks)
@@ -10,8 +10,9 @@ Gates: GATE-VERIFICACAO-INDEPENDENTE, GATE-GHERKIN-CONGELADO
 
 ## Declaração de independência
 
-- **Implementação existente no momento da escrita:** não
-- **Arquivos de produção lidos:** nenhuma
+- **Implementação existente no momento da escrita:** não — exceto
+  `SubstituicaoDeFluxoConcorrenteIT`, acrescentada em modo `audit` na v1.6
+- **Arquivos de produção lidos:** nenhuma até a v1.5; três na v1.6, listados lá
 - **Arquivos de produção alterados nesse commit:** nenhuma
 - **Commit da suíte:** `pendente-de-registro` — a suíte é commitada ao fim desta
   etapa e o SHA é selado pelo `/evidence`
@@ -36,6 +37,141 @@ A única exceção declarada, e ela não é de produção: o arnês de topologia
 aplicação para verificar o broadcast entre instâncias. Ele vive no fonte de
 teste, a aplicação não o importa, e o que ele conhece do sistema é apenas o que
 o contrato congelado já expõe.
+
+### Acréscimo de 2026-09-14 (v1.6) — SDR-005, em modo `audit`
+
+**A independência desta verificação não existe, e a exceção é declarada aqui.**
+`SubstituicaoDeFluxoConcorrenteIT` foi escrita **depois** da implementação da
+rota e por uma sessão que leu `EtapaService`, `SubstituicaoDeFluxo` e
+`EtapaRepositorioImpl` — é o modo `audit` da skill, cabível porque o código já
+existe: a decisão que a obriga nasceu de um achado de revisão, e achado de
+revisão é, por construção, posterior ao código.
+
+O que isso custa está nomeado, e não diluído: uma suíte escrita por quem viu a
+implementação tende a descrever o que o código faz. A contramedida foi asserir
+**propriedades do desfecho** e nunca o caminho — que o fluxo final seja o corpo
+de uma das requisições inteiro, que as posições sejam contíguas e sem
+repetição, que nenhuma resposta seja `5xx`. Nenhuma asserção menciona bloqueio,
+ordem de statements ou faixa de trabalho: trocar o mecanismo de SDR-005 por
+outro que cumpra a mesma promessa mantém os dois testes verdes, e remover o
+mecanismo os deixa vermelhos. É esse o poder de falha que a revisão deve
+conferir.
+
+### Acréscimo de 2026-09-14 (v1.8) — o conserto que entrou sem verificação
+
+Os 19 achados não bloqueantes da reexecução de TASK-02.2 foram fechados, e onze
+deles eram do `/tests`. Doze tinham a mesma forma: **mecanismo escrito para
+fechar um bloqueante da primeira revisão, sem nenhum teste que o alcançasse**.
+Apagar qualquer um deles deixava a suíte verde.
+
+Três classes novas, 16 testes:
+
+- **`LimitesDaConfiguracaoDoFluxoIT`** (11) — os tetos de `Etapa`
+  (`MAXIMO_DE_ETAPAS`, `TAMANHO_MAXIMO_DO_NOME`, `ORDEM_MAXIMA`, e a faixa de
+  trabalho comprovadamente inalcançável), as três recusas de forma do conjunto
+  (`etapa-repetida`, `ordem-repetida`, item vazio), os dois lados de
+  `haDisputaDeOrdem`, o `fluxoConfigurado` de um projeto com **todas** as etapas
+  arquivadas — estado que a rota não alcança, e por isso produzido por SQL —, e
+  as duas guardas de estado de `EtapaRepositorioImpl`.
+- **`TradutorDeIntegridadeTest`** (3) — o tradutor nominal de `409`, nas duas
+  metades: a restrição do catálogo sai `409`, e qualquer outra sai `500`. É
+  unitário de propósito: o caminho é inalcançável por HTTP justamente porque a
+  borda recusa antes, e uma integração precisaria de um defeito para chegar lá.
+- **`TetoDeCorpoIT`** (2) — o `413 corpo-grande-demais` do filtro de ACH-05. O
+  predicado é o **código**, não a recusa: a mesma requisição sairia `422` pela
+  validação por anotação, depois de Jackson materializar o corpo inteiro.
+
+Em `SubstituicaoDeFluxoConcorrenteIT`, mais dois testes e quatro correções de
+método: repetição de 5 rodadas contra a variância da largada (ACH-09), tetos em
+barreira, `Future.get` e `@Timeout` (ACH-19), relação entre `PERMUTACOES` e o
+pool declarada no arquivo (ACH-20), leitura do fluxo por caminho definido e com
+`200` exigido antes da extração (ACH-21). Em `Cenario`, a semeadura passa a
+falhar rápido em qualquer não-2xx (ACH-13).
+
+**A premissa de ACH-11 estava errada, e a correção está no arquivo.** O achado
+supunha que dois corpos carregando os mesmos `id` produziriam `422` para o
+segundo. Não produzem: corpo que preserva todos os `id` vigentes é válido quantas
+vezes for enviado, porque nada foi arquivado. O `422 etapa-fora-do-fluxo` exige
+que a primeira requisição **reduza** o fluxo, e é assim que o teste o alcança.
+Sob concorrência o par de status não é fixado — qual chega primeiro não é
+propriedade do sistema —, e o que se assere é que `409` e `5xx` são impossíveis.
+
+**Assimetria medida em 2026-09-14, quatro mutações em cópia descartável, todas
+vermelhas:** sem `liberarOrdens`, sem `and e.arquivadaEm is null`, com o tradutor
+`409` tornado global, e com o teto de corpo elevado acima do corpo de teste.
+
+Suíte em **189 testes, 91 verdes / 98 vermelhos** — os 18 novos entraram verdes e
+a lista de vermelhos é idêntica à linha de base. Nenhum `.feature`, ID ou redação
+de cenário mudou. O bloco "Além dos cenários" passa de 13 para **16 classes**.
+
+### Correção de 2026-09-14 (v1.7) — o poder de falha não existia, e agora está medido
+
+A revisão conferiu, e a v1.6 **não passou**: ACH-02, ACH-03 e ACH-04 da
+reexecução de TASK-02.2, confirmados por execução. A classe ficava **2/2 verde
+com o bloqueio de SDR-005 removido**.
+
+A causa está no parágrafo acima, na frase "que nenhuma resposta seja `5xx`". Ela
+parecia a asserção mais conservadora possível e era a única sem poder de
+discriminação: a falta de serialização não sai como `5xx`, sai como o **`409`**
+que o tradutor nominal criado na mesma task produz a partir da violação de
+`etapa_projeto_ordem_unico` — e `409` passa por baixo de `isLessThan(500)`.
+Asserir propriedade do desfecho estava certo; asserir uma **faixa** de status
+não. Serializadas, todas as requisições destas duas verificações são válidas, e
+o predicado correto é `200` **exato**.
+
+"Que o fluxo final seja o corpo de uma das requisições inteiro" também não tinha
+poder de falha, por outra razão: os dois corpos ocupam faixas de ordem
+sobrepostas, de modo que toda intercalação colide antes no índice único parcial e
+reverte inteira. A mistura é inalcançável com ou sem bloqueio. A asserção
+permanece, declarada no próprio arquivo como rede e não como prova.
+
+**Medido em 2026-09-14, três execuções em cópia descartável dentro do contêiner
+de ADR-012:** com o código como está, 2/2 verde; com `bloquearProjeto` removido,
+2/2 vermelho; com `bloquearProjeto` movido para depois da leitura do fluxo
+vigente — a cláusula de ordem de SDR-005, que era ACH-04 —, 2/2 vermelho. A
+suíte inteira segue em 171 testes, 73 verdes / 98 vermelhos: zero regressão.
+
+Nenhum `.feature`, ID ou redação de cenário mudou; o bloco "Além dos cenários"
+segue com 13 classes.
+
+Nenhum `.feature`, ID ou redação mudou. O bloco "Além dos cenários (backend)"
+passa de 12 para 13 classes.
+
+**SCN-002.4 ganhou verificador, e a cobertura fecha em 70/70.** É a pendência 14
+do `state.md`, aberta desde a v1.1: o cenário exige `fluxoConfigurado`, derivado
+por existência sobre a tabela `etapa`, e a tabela nasceu em TASK-02.1 e o campo
+passou a ser emitido em TASK-02.2. Com a dependência fechada, o teste entrou em
+`internal/acesso/SessaoEProjetosIT.java`, junto dos outros três cenários de
+RF-002.
+
+Os dois projetos são afirmados **na mesma resposta**, e não um por vez: a marca
+só tem valor se distinguir um projeto do outro dentro da mesma relação, e um
+campo constante — sempre falso ou sempre verdadeiro — passaria em qualquer
+verificação que olhasse um projeto de cada vez. Foi exatamente essa a forma do
+defeito que o critério 9 de TASK-02.2 corrigiu na criação de projeto.
+
+Este teste também é `audit` pela mesma razão do anterior, e com a mesma
+contramedida: ele afirma o corpo da resposta que o contrato descreve, nunca a
+subconsulta que o produz.
+
+### Correção de 2026-09-14 (v1.5) — atribuição de épico realinhada ao plano de tasks
+
+Correção de **metadado apenas**. Nenhum `.feature`, ID, redação, tipo de cenário
+ou arquivo de teste foi tocado, e nenhum teste foi acrescentado ou removido. A
+independência da suíte não é afetada porque nada da suíte mudou.
+
+ACH-11 da revisão de TASK-02.2 apontou que SCN-017.1, .2 e .3 constavam aqui
+como EPIC-07 e no plano de tasks como EPIC-02. Ao conferir a coluna inteira, a
+divergência eram **19 cenários** e não 3: além de RF-017, os blocos de RF-014,
+RF-015 e RF-016 (EPIC-07 nas tasks) e os de RF-018 e RF-019 (EPIC-06 nas tasks)
+estavam **trocados entre si**, e SCN-002.4 e SCN-003.3 também divergiam.
+
+O plano de tasks é a fonte da atribuição — é ele que satisfaz o
+GATE-RASTREABILIDADE e é sobre ele que `check_cobertura.py` roda. A coluna aqui
+é cópia, e cópia que envelhece em silêncio é pior que ausência: quem programasse
+a execução da suíte por épico rodaria a configuração de fluxo no fechamento do
+EPIC-07, quando ela fecha no EPIC-02 — três cenários verificados tarde demais
+para servirem de sinal. As 19 linhas foram alinhadas ao plano de tasks.
 
 ### Correção de 2026-09-11 (v1.4) — achados de custo e de contrato
 
@@ -172,12 +308,14 @@ tabela de congelamento em vez de silenciosamente reescrever a prova.
 ## Cenários congelados
 
 70 cenários. A distribuição por tipo é a do PRD: 9 `e2e`,
-56 `integração`, 5 `unitário`. **69 cobertos** — SCN-002.4 ficou sem
-verificador, e a razão está na tabela de cobertura e na revisão de TASK-01.5
-(ACH-06): ele exige `fluxoConfigurado`, que é derivado por existência sobre a
-tabela `etapa`, criada no EPIC-02. A marca de coberto foi retirada em vez de
-mantida com um teste que não exercita o cenário: cobertura afirmada e não
-executada é o modo mais discreto de um gate virar formulário.
+56 `integração`, 5 `unitário`. **70 cobertos** desde a v1.6.
+
+SCN-002.4 passou da v1.1 à v1.5 sem verificador, e a razão está na revisão de
+TASK-01.5 (ACH-06): ele exige `fluxoConfigurado`, derivado por existência sobre
+a tabela `etapa`, criada no EPIC-02. A marca de coberto foi retirada em vez de
+mantida com um teste que não exercitasse o cenário — cobertura afirmada e não
+executada é o modo mais discreto de um gate virar formulário. A dependência
+fechou em TASK-02.2, e o teste entrou na v1.6.
 
 - **Alterados desde o gate de spec:** nenhuma — os IDs e a redação são os do
   PRD v1.5, reconfirmado pelo aprovador em 2026-09-10. A emenda v1.3
@@ -192,10 +330,10 @@ executada é o modo mais discreto de um gate virar formulário.
 | SCN-002.1 | RF-002 | EPIC-01 | integração | `internal/acesso/SessaoEProjetosIT.java` | coberto |
 | SCN-002.2 | RF-002 | EPIC-01 | integração | `internal/acesso/SessaoEProjetosIT.java` | coberto |
 | SCN-002.3 | RF-002 | EPIC-01 | integração | `internal/acesso/SessaoEProjetosIT.java` | coberto |
-| SCN-002.4 | RF-002 | EPIC-01 | integração | — | **não coberto** — depende de `fluxoConfigurado`, que exige a tabela `etapa` (EPIC-02). ACH-06 da revisão de TASK-01.5 |
+| SCN-002.4 | RF-002 | EPIC-02 | integração | `internal/acesso/SessaoEProjetosIT.java` | coberto desde a v1.6 — a dependência que o impedia (tabela `etapa`, `fluxoConfigurado` emitido) fechou em TASK-02.2 |
 | SCN-003.1 | RF-003 | EPIC-02 | e2e | `frontend/e2e/board.spec.ts` | coberto |
 | SCN-003.2 | RF-003 | EPIC-02 | integração | `internal/tarefa/BoardIT.java` + `CartaoDeTarefa.test.tsx` | coberto |
-| SCN-003.3 | RF-003 | EPIC-02 | integração | `internal/tarefa/BoardIT.java` + `CartaoDeTarefa.test.tsx` | coberto |
+| SCN-003.3 | RF-003 | EPIC-04 | integração | `internal/tarefa/BoardIT.java` + `CartaoDeTarefa.test.tsx` | coberto |
 | SCN-004.1 | RF-004 | EPIC-02 | integração | `internal/tarefa/CriacaoDeTarefaIT.java` | coberto |
 | SCN-004.2 | RF-004 | EPIC-02 | unitário | `internal/tarefa/CriacaoDeTarefaServiceTest.java` + `CriacaoDeTarefaIT.java` | coberto |
 | SCN-004.3 | RF-004 | EPIC-02 | integração | `internal/tarefa/CriacaoDeTarefaIT.java` | coberto |
@@ -228,24 +366,24 @@ executada é o modo mais discreto de um gate virar formulário.
 | SCN-013.1 | RF-013 | EPIC-05 | integração | `internal/tarefa/ReaberturaIT.java` | coberto |
 | SCN-013.2 | RF-013 | EPIC-05 | integração | `internal/tarefa/ReaberturaIT.java` | coberto |
 | SCN-013.3 | RF-013 | EPIC-05 | integração | `internal/tarefa/ReaberturaIT.java` | coberto |
-| SCN-014.1 | RF-014 | EPIC-06 | integração | `internal/tempo/FilaPessoalIT.java` | coberto |
-| SCN-014.2 | RF-014 | EPIC-06 | e2e | `frontend/e2e/fila.spec.ts` | coberto |
-| SCN-014.3 | RF-014 | EPIC-06 | integração | `internal/tempo/FilaPessoalIT.java` | coberto |
-| SCN-015.1 | RF-015 | EPIC-06 | integração | `internal/tempo/AndamentoIT.java` | coberto |
-| SCN-015.2 | RF-015 | EPIC-06 | e2e | `frontend/e2e/somente-leitura.spec.ts` | coberto |
-| SCN-015.3 | RF-015 | EPIC-06 | integração | `internal/tempo/AndamentoIT.java` | coberto |
-| SCN-016.1 | RF-016 | EPIC-06 | integração | `internal/tempo/TempoPorEtapaIT.java` | coberto |
-| SCN-016.2 | RF-016 | EPIC-06 | integração | `internal/tempo/TempoPorEtapaIT.java` + `TempoPorEtapa.test.tsx` | coberto |
-| SCN-016.3 | RF-016 | EPIC-06 | integração | `internal/tempo/TempoPorEtapaIT.java` | coberto |
-| SCN-017.1 | RF-017 | EPIC-07 | integração | `internal/projeto/ConfiguracaoDoFluxoIT.java` | coberto |
-| SCN-017.2 | RF-017 | EPIC-07 | unitário | `internal/projeto/EtapaServiceTest.java` + `ConfiguracaoDoFluxoIT.java` | coberto |
-| SCN-017.3 | RF-017 | EPIC-07 | integração | `internal/projeto/ConfiguracaoDoFluxoIT.java` | coberto |
-| SCN-018.1 | RF-018 | EPIC-07 | integração | `internal/projeto/RaiasIT.java` | coberto |
-| SCN-018.2 | RF-018 | EPIC-07 | integração | `internal/projeto/RaiasIT.java` | coberto |
+| SCN-014.1 | RF-014 | EPIC-07 | integração | `internal/tempo/FilaPessoalIT.java` | coberto |
+| SCN-014.2 | RF-014 | EPIC-07 | e2e | `frontend/e2e/fila.spec.ts` | coberto |
+| SCN-014.3 | RF-014 | EPIC-07 | integração | `internal/tempo/FilaPessoalIT.java` | coberto |
+| SCN-015.1 | RF-015 | EPIC-07 | integração | `internal/tempo/AndamentoIT.java` | coberto |
+| SCN-015.2 | RF-015 | EPIC-07 | e2e | `frontend/e2e/somente-leitura.spec.ts` | coberto |
+| SCN-015.3 | RF-015 | EPIC-07 | integração | `internal/tempo/AndamentoIT.java` | coberto |
+| SCN-016.1 | RF-016 | EPIC-07 | integração | `internal/tempo/TempoPorEtapaIT.java` | coberto |
+| SCN-016.2 | RF-016 | EPIC-07 | integração | `internal/tempo/TempoPorEtapaIT.java` + `TempoPorEtapa.test.tsx` | coberto |
+| SCN-016.3 | RF-016 | EPIC-07 | integração | `internal/tempo/TempoPorEtapaIT.java` | coberto |
+| SCN-017.1 | RF-017 | EPIC-02 | integração | `internal/projeto/ConfiguracaoDoFluxoIT.java` | coberto |
+| SCN-017.2 | RF-017 | EPIC-02 | unitário | `internal/projeto/EtapaServiceTest.java` + `ConfiguracaoDoFluxoIT.java` | coberto |
+| SCN-017.3 | RF-017 | EPIC-02 | integração | `internal/projeto/ConfiguracaoDoFluxoIT.java` | coberto |
+| SCN-018.1 | RF-018 | EPIC-06 | integração | `internal/projeto/RaiasIT.java` | coberto |
+| SCN-018.2 | RF-018 | EPIC-06 | integração | `internal/projeto/RaiasIT.java` | coberto |
 | SCN-018.3 | RF-018 | EPIC-07 | integração | `internal/tempo/TempoPorEtapaIT.java` | coberto |
-| SCN-019.1 | RF-019 | EPIC-07 | integração | `internal/projeto/ParticipacaoIT.java` | coberto |
-| SCN-019.2 | RF-019 | EPIC-07 | integração | `internal/projeto/ParticipacaoIT.java` | coberto |
-| SCN-019.3 | RF-019 | EPIC-07 | integração | `internal/projeto/ParticipacaoIT.java` | coberto |
+| SCN-019.1 | RF-019 | EPIC-06 | integração | `internal/projeto/ParticipacaoIT.java` | coberto |
+| SCN-019.2 | RF-019 | EPIC-06 | integração | `internal/projeto/ParticipacaoIT.java` | coberto |
+| SCN-019.3 | RF-019 | EPIC-06 | integração | `internal/projeto/ParticipacaoIT.java` | coberto |
 | SCN-019.4 | RF-019 | EPIC-08 | e2e | `frontend/e2e/tempo-real.spec.ts` | coberto |
 | SCN-020.1 | RF-020 | EPIC-08 | e2e | `frontend/e2e/tempo-real.spec.ts` | coberto |
 | SCN-020.2 | RF-020 | EPIC-08 | e2e | `frontend/e2e/tempo-real.spec.ts` | coberto |
@@ -257,7 +395,7 @@ executada é o modo mais discreto de um gate virar formulário.
 | SCN-022.2 | RF-022 | EPIC-01 | integração | `internal/projeto/CriacaoDeProjetoIT.java` | coberto |
 | SCN-022.3 | RF-022 | EPIC-02 | integração | `internal/tarefa/CriacaoDeTarefaIT.java` | coberto |
 
-Cobertura: 69/70. Cenário sem teste: SCN-002.4, e um só. Teste de cenário sem cenário de
+Cobertura: 70/70 desde a v1.6. Cenário sem teste: nenhum. Teste de cenário sem cenário de
 origem: zero — o que a especificação obriga sem cenário está na seção própria,
 em pacote separado.
 
@@ -316,7 +454,7 @@ o que ele prova.
 
 ## Testes além dos cenários
 
-Catorze verificações que a especificação obriga e que cenário algum descreve.
+Dezoito verificações que a especificação obriga e que cenário algum descreve.
 Vivem em `br.com.idsd.kanban.alem`, em `backend/src/test/carga` e em
 `frontend/e2e/verificacoes`, separadas de propósito: elas não são cobertura de
 cenário, e misturá-las faria a contagem de 70 parecer maior do que é.
@@ -337,6 +475,7 @@ em TASK-07.6. TASK-04.4 e TASK-08.4 não entram porque não estreiam tela.
 | `ImutabilidadeDoLogIT` | RNF-008 | Ausência de rota não é imutabilidade. A garantia é verificada na role que a aplicação usa, com a contraparte de que a projeção continua gravável — sem ela, uma role somente-leitura passaria |
 | `AusenciaDeRecortePorPessoaIT` | RN-014 | Superfície se conserta com um commit. Verifica que a projeção não tem coluna de pessoa e que visão alguma cruza projeção com usuário — a visão é a porta dos fundos |
 | `SeqSobConcorrenciaIT` | SDR-004 | Duplicata destrói a detecção de lacuna no cliente; buraco faz o cliente concluir perda que não houve. Cenário algum descreve escrita simultânea |
+| `SubstituicaoDeFluxoConcorrenteIT` | SDR-005 | O dano concorrente na substituição de conjunto tem forma de **ausência**, e não de conflito: a etapa que a outra requisição criou não está no corpo de quem perdeu, logo não é arquivada nem reordenada, e some sem que nada falhe. Quando as duas disputam a mesma posição, o desfecho é o oposto e igualmente ruim — colisão no índice único parcial e `500` intermitente. Cenário congelado algum descreve configuração simultânea do mesmo projeto; sem esta classe, remover o bloqueio pessimista deixa a suíte inteira verde. Origem: ACH-05 da revisão de TASK-02.2, decidido em SDR-005 |
 | `OrtogonalidadeDasDimensoesIT` | RN-002 | Os cenários verificam a ortogonalidade um par por vez. Este verifica a propriedade no esquema, que é onde ela se sustenta |
 | `BroadcastMultiInstanciaIT` | RNF-002 | 3 instâncias, 300 sessões. Suíte de uma instância só passa em verde sobre o desenho que ADR-004 existe para resolver |
 | `rnf-001-tempo-real.js` | RNF-001 | 100 tarefas, 50 sessões; mede do aceite da escrita até a chegada à sessão que observa, e não a latência do próprio clique |
@@ -344,6 +483,9 @@ em TASK-07.6. TASK-04.4 e TASK-08.4 não entram porque não estreiam tela.
 | `AusenciaDeNMaisUmIT` | Critério 6 de TASK-01.5 (ausência de N+1) | O critério era marcado por inspeção do JPQL, e critério que não pode falhar não é critério. Montar cada item navegando a associação devolve o mesmo corpo, deixa todo cenário verde e emite uma consulta por projeto. Afirma invariância à massa, nunca contagem absoluta. Origem: ACH-09 da revisão de TASK-01.5 |
 | `PrimeiraParticipacaoIT` | Critérios 1, 2 e 5 de TASK-01.8 (RN-036, RN-037) | SCN-022.1 afirma a primeira participação lendo `GET /v1/projetos/{id}/participacoes`, que é rota de TASK-06.2 e ainda não existe, e SCN-022.2 afirma que "nada foi criado" lendo a relação **do próprio sujeito recusado** — que estaria vazia mesmo se o projeto tivesse sido gravado, porque quem cria não vira participante (RN-037) e o sujeito recusado não tem alcance global. As duas asserções são fracas por razões diferentes e nenhuma é corrigível sem tocar cenário congelado. Esta classe lê o estado **em SQL** e é o que dá poder de falha aos três critérios. Origem: ACH-08 da revisão de TASK-01.8 |
 | `TransacaoUnicaDeCriacaoIT` | Critério 5 de TASK-01.8 (RN-037) | A verificação da pessoa nomeada precede o primeiro `save`, então o caminho da pessoa inexistente passaria idêntico com `@Transactional` removido — critério cumprido por teste sem poder de falha. Este força a falha da participação **depois** da gravação do projeto, que é a única ordem em que a pergunta faz sentido: o repositório do Spring Data é ele próprio transacional, e sem a transação externa o projeto órfão fica em disco. Origem: ACH-02 da revisão de TASK-01.8 |
+| `LimitesDaConfiguracaoDoFluxoIT` | Achados de código da 1ª revisão de TASK-02.2, fechados sem teste | Os tetos de `Etapa`, as três recusas de forma do conjunto, os dois lados de `haDisputaDeOrdem`, o filtro de arquivadas em `fluxoConfigurado` e as duas guardas de estado do repositório nasceram todos para fechar bloqueantes e nenhum aparecia na suíte: apagar qualquer um deixava tudo verde. Dois estados aqui são inalcançáveis pela rota de propósito — projeto com todas as etapas arquivadas, etapa de outro projeto na descarga — e por isso são produzidos por SQL e por chamada direta ao repositório. Origem: ACH-14, ACH-15, ACH-22 e ACH-23 da reexecução |
+| `TradutorDeIntegridadeTest` | ACH-02 da 1ª revisão de TASK-02.2 | O `409` nominal é rede por baixo da recusa de borda, e rede sem teste é o mesmo que rede ausente. Unitário porque o caminho é inalcançável por HTTP justamente quando o sistema está correto. As duas metades importam igualmente: tornar o tradutor global faz toda violação imprevista sair como `409`, que convida a retentar o que nunca vai funcionar. Origem: ACH-12 da reexecução |
+| `TetoDeCorpoIT` | ACH-05 da reexecução de TASK-02.2 | `@Size` na lista só é avaliado depois que Jackson materializou o array inteiro: o teto de cem etapas protege o banco e não a heap. O predicado é o `413` **exato**, porque a mesma requisição sairia `422` pela validação por anotação — é o código, e não a recusa, que separa o filtro do bean |
 | `rnf-009-consultas.js` | RNF-009 | 12 meses, 5.000 tarefas. A massa é semeada por `massa-12-meses.sql`, com a contrapartida declarada no próprio arquivo |
 | `verificacoes/largura.spec.ts` | RNF-005 | O envelope não era nomeado em task nenhuma, em critério nenhum e em nenhuma linha deste plano — varredura devolvia zero nas três fontes. Cada tela é percorrida a 1280 px e a 1024 px, e a asserção é sobre ausência de rolagem horizontal não indicada e sobre as ações continuarem alcançáveis; medir só a 1280 deixaria passar exatamente a largura que o requisito existe para proteger. Origem: ACH-16 da revisão de TASK-01.7 |
 | `verificacoes/acessibilidade.spec.ts` | RNF-006 | Mesma ausência de RNF-005 pela metade: o nível AA já era critério de aceite em toda task de tela, mas não havia linha aqui, de modo que o plano de verificação não dizia quem mede o envelope. Cada tela é auditada com âncora de página declarada antes da análise — sem a âncora, sessão que não se forma deixa a auditoria verde medindo a tela do provedor (ACH-04 da mesma revisão) |
@@ -400,6 +542,7 @@ defeito que este congelamento existe para impedir.
 | 2026-09-10 | Correção de SCN-021.1 (verificava rota inexistente; passa a verificar o log auditável) e de SCN-001.3 (era inalcançável; passa a exercitar o decodificador), mais o suporte comum: `jwk-set-uri` do provedor simulado, isolamento entre testes e troca do artefato do WireMock | correção de defeito da suíte | os dois cenários verificavam outra coisa que não o que o Gherkin congelado afirma. Nenhum `.feature` tocado, nenhum ID alterado, nenhuma asserção afrouxada — SCN-021.1 continua exigindo "quem e quando", agora onde o registro de fato vive. **Não independente**: ver a declaração de independência | Thiago Goncalves Cavalcante (autorizou a correção; a natureza não independente foi declarada antes da execução) |
 | 2026-09-10 | Correção das asserções de SCN-002.1 (`[*]` no caminho com filtro, positiva antes da negativa) e da ordem de `AdminGlobalIT` em SCN-021.2; SCN-002.4 deixa de ser declarado coberto; `ExistenciaECapacidadeIT` acrescentado além dos cenários | correção de defeito da suíte | achados ACH-01, ACH-04, ACH-05, ACH-06 e ACH-07 da revisão de TASK-01.5: duas asserções não verificavam o que afirmavam e uma cobertura era declarada sem teste. Nenhum `.feature` tocado, nenhum ID alterado, nenhuma asserção afrouxada. **Não independente**: ver a declaração de independência | Thiago Goncalves Cavalcante (autorizou a correção dos achados; a natureza não independente foi declarada antes da execução) |
 | 2026-09-11 | `AusenciaDeNMaisUmIT` e o arnês `ContagemDeConsultas` acrescentados além dos cenários; `ExistenciaECapacidadeIT` ganha a asserção de que a relação não carrega `descricao` | acréscimo além dos cenários | achados ACH-08 e ACH-09 da revisão de TASK-01.5: o critério de ausência de N+1 era marcado por inspeção, e o corolário de contrato instituído na emenda da TechSpec precisava de verificador. Nenhum `.feature` tocado, nenhum cenário alterado. **Não independente**: ver a declaração de independência | Thiago Goncalves Cavalcante (autorizou a correção dos achados) |
+| 2026-09-14 | `LimitesDaConfiguracaoDoFluxoIT`, `TradutorDeIntegridadeTest` e `TetoDeCorpoIT` acrescentados além dos cenários (16 testes); `SubstituicaoDeFluxoConcorrenteIT` ganha 2 testes e correções de método; `Cenario.executarHttp` passa a falhar rápido em não-2xx | acréscimo além dos cenários e correção de defeito da suíte | os 11 achados do `/tests` na reexecução de TASK-02.2. Doze mecanismos criados para fechar bloqueantes da 1ª revisão não tinham verificação alguma. Nenhum `.feature` tocado, nenhum cenário alterado, nenhuma asserção afrouxada. Assimetria medida em 4 mutações, todas vermelhas. **Não independente**: ver a declaração de independência | Thiago Goncalves Cavalcante (autorizou a correção dos achados) |
 | 2026-09-10 | Acréscimo de SCN-022.1, SCN-022.2 e SCN-022.3 — `CriacaoDeProjetoIT` criado, um teste novo em `CriacaoDeTarefaIT`, suporte E2E migrado para a rota real | emenda de cenário no PRD | emenda v1.3 do PRD, que criou RF-022 e fechou a lacuna de especificação registrada nesta etapa. Nenhum cenário preexistente teve ID, redação ou teste alterados | Thiago Goncalves Cavalcante (aprovador do gate de spec na reconfirmação da emenda v1.3) |
 
 ---

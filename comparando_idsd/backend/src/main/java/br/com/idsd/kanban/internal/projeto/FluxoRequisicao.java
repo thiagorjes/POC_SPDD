@@ -1,9 +1,11 @@
 package br.com.idsd.kanban.internal.projeto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,12 +26,26 @@ import java.util.UUID;
  * que valem para toda escrita, inclusive a que nao vem da borda — a duplicacao
  * segue a mesma decisao tomada em {@link CriacaoDeProjeto}.
  *
+ * <p><b>Ha teto de tamanho, e ele e de seguranca</b> (ACH-09 da revisao de
+ * TASK-02.2). A coluna {@code nome} e {@code text} sem limite e a substituicao
+ * grava tudo numa transacao so: sem {@code @Size} na lista e no nome, um
+ * {@code PUT} de um sujeito autenticado consome armazenamento sem limite dentro
+ * do envelope de escritas por minuto de RNF-010.
+ *
+ * <p><b>{@code @NotNull} no elemento nao e redundante.</b> {@code @Valid} sobre
+ * a lista cascateia nos elementos nao-nulos e ignora os nulos, e Jackson aceita
+ * {@code null} como item de array — o elemento nulo chegava ao servico e
+ * derrubava a rota (ACH-03).
+ *
  * @param etapas o fluxo desejado <b>por inteiro</b>; nunca um delta
  */
 public record FluxoRequisicao(
         @NotNull(message = "É preciso informar as etapas do fluxo.")
+        @Size(max = Etapa.MAXIMO_DE_ETAPAS,
+                message = "O fluxo não pode passar de " + Etapa.MAXIMO_DE_ETAPAS + " etapas.")
         @Valid
-        List<EtapaDesejada> etapas) {
+        List<@NotNull(message = "A lista de etapas não pode conter item vazio.")
+                EtapaDesejada> etapas) {
 
     /**
      * Uma etapa no fluxo desejado.
@@ -46,8 +62,13 @@ public record FluxoRequisicao(
     public record EtapaDesejada(
             UUID id,
             @NotBlank(message = "O nome da etapa não pode ficar em branco.")
+            @Size(max = Etapa.TAMANHO_MAXIMO_DO_NOME,
+                    message = "O nome da etapa não pode passar de "
+                            + Etapa.TAMANHO_MAXIMO_DO_NOME + " caracteres.")
             String nome,
             @PositiveOrZero(message = "A ordem da etapa não pode ser negativa.")
+            @Max(value = Etapa.ORDEM_MAXIMA,
+                    message = "A ordem da etapa não pode passar de " + Etapa.ORDEM_MAXIMA + ".")
             int ordem,
             boolean terminal) {
     }

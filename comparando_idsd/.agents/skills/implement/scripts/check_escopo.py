@@ -26,22 +26,57 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 from md_tables import celula, corpo_util, preenchido, secao, tabela_da_secao  # noqa: E402
 
+# .agents/skills/<skill>/scripts/check_escopo.py -> raiz do sistema.
+SISTEMA_RAIZ = Path(__file__).resolve().parents[4]
+
 PROTEGIDO = re.compile(
     r"\.feature$|(^|/)(features|steps|step_definitions|step_defs)(/|$)",
     re.IGNORECASE,
 )
 
 
+def git(*argv: str) -> str:
+    """Roda git com o cwd fixado na raiz do sistema.
+
+    O cwd de invocacao nao serve: o validador e chamado de onde for, e a saida
+    de `git diff --name-only` e sempre relativa a raiz do repositorio, nunca ao
+    cwd.
+    """
+    return subprocess.run(
+        ["git", *argv], capture_output=True, text=True, check=True,
+        cwd=str(SISTEMA_RAIZ),
+    ).stdout
+
+
 def alterados(base: str) -> list[str] | None:
+    """Arquivos alterados, em caminhos relativos a raiz do **sistema**.
+
+    O repositorio nao comeca aqui: a raiz git e o workspace, e o sistema e um
+    subdiretorio dele. `git diff --name-only` devolve tudo prefixado por esse
+    subdiretorio, e a tabela "estrutura de arquivos" da task escreve caminhos a
+    partir da raiz do sistema — de modo que, sem a conversao, **todo** arquivo
+    alterado aparece fora do escopo declarado (pendencia 12).
+
+    Arquivos de fora do sistema — outras stacks no mesmo repositorio — nao sao
+    escopo desta task nem desta verificacao, e saem da lista.
+    """
     try:
-        saida = subprocess.run(
-            ["git", "diff", "--name-only", base],
-            capture_output=True, text=True, check=True,
-        ).stdout
+        prefixo = git("rev-parse", "--show-prefix").strip()
+        saida = git("diff", "--name-only", base)
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
         print(f"ERRO: nao foi possivel consultar o git: {exc}", file=sys.stderr)
         return None
-    return [l.strip() for l in saida.splitlines() if l.strip()]
+
+    caminhos = []
+    for linha in saida.splitlines():
+        arquivo = linha.strip()
+        if not arquivo:
+            continue
+        if not prefixo:
+            caminhos.append(arquivo)
+        elif arquivo.startswith(prefixo):
+            caminhos.append(arquivo[len(prefixo):])
+    return caminhos
 
 
 def caminhos_da_task(texto: str) -> tuple[set[str], set[str]]:

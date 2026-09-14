@@ -207,6 +207,18 @@ editar etapa a etapa permitiria estados intermediários sem etapa terminal.
     identificando qual.
 - Renomear preserva o `id` e não afeta o histórico (RN-021). Alteração vale dali
   em diante (RN-022).
+- **Concorrência (SDR-005).** A entrada **não** carrega bloco `origem` — este
+  contrato é a exceção nomeada ao envelope de escrita da Seção 4 da TechSpec, e a
+  exceção existe porque a unidade de escrita é o conjunto e não uma linha que o
+  cliente versionou. A serialização é do servidor: a transação bloqueia a linha de
+  `projeto` antes de ler o fluxo vigente. Consequência visível ao cliente: duas
+  configurações simultâneas não produzem `409` — a última vence inteira.
+  - `503` com `Retry-After` quando a espera pelo bloqueio se esgota, e o
+    `type` é `espera-por-bloqueio-esgotada`. Não é recusa do pedido e não pede
+    recarregar a tela: outra configuração do mesmo projeto está em curso, e
+    repetir a requisição em alguns segundos resolve. **O fluxo atual não foi
+    alterado.** O teto existe porque bloqueio sem teto converte contenção em
+    indisponibilidade — ver a emenda de SDR-005.
 
 ## Configuração de raias — RF-018
 

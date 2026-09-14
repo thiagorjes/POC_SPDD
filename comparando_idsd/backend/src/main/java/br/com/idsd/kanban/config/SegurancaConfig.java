@@ -1,6 +1,7 @@
 package br.com.idsd.kanban.config;
 
 import br.com.idsd.kanban.shared.FiltroDeCorrelacao;
+import br.com.idsd.kanban.shared.LimiteDeCorpo;
 import br.com.idsd.kanban.shared.LimiteDeRequisicoes;
 import br.com.idsd.kanban.shared.ProblemaDetalhado;
 import jakarta.servlet.DispatcherType;
@@ -97,6 +98,36 @@ public class SegurancaConfig {
         registro.setOrder(Ordered.HIGHEST_PRECEDENCE);
         registro.setDispatcherTypes(
                 DispatcherType.REQUEST, DispatcherType.ERROR, DispatcherType.ASYNC);
+        return registro;
+    }
+
+    /**
+     * O teto de corpo de requisicao, em bytes.
+     *
+     * <p>256 KiB e folgado para o maior corpo que algum contrato deste sistema
+     * admite — cem etapas com nome de ate oitenta caracteres nao passam de poucas
+     * dezenas de KiB — e apertado o bastante para que nada que caiba nele ameace a
+     * heap. Configuravel pela mesma razao do limite de requisicoes: a verificacao
+     * precisa apertar o numero para provar o mecanismo.
+     */
+    @Value("${idsd.limite.corpo-em-bytes:262144}")
+    private long corpoEmBytes;
+
+    /**
+     * O teto de corpo, registrado <b>fora</b> da cadeia de seguranca e logo depois
+     * da correlacao (ACH-05 da reexecucao de TASK-02.2).
+     *
+     * <p>Antes da cadeia de seguranca de proposito: corpo grande demais e recusado
+     * sem que o token chegue a ser validado, porque a alocacao que ele provoca
+     * acontece na leitura e nao depende de autenticacao alguma. Depois da
+     * correlacao, para que a recusa tenha {@code traceId} como qualquer outra.
+     */
+    @Bean
+    FilterRegistrationBean<LimiteDeCorpo> registroDoLimiteDeCorpo(
+            MappingJackson2HttpMessageConverter conversor) {
+        var registro = new FilterRegistrationBean<>(
+                new LimiteDeCorpo(corpoEmBytes, conversor.getObjectMapper()));
+        registro.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
         return registro;
     }
 

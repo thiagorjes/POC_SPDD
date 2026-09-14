@@ -1,6 +1,6 @@
 # TASK-02.3 — Migrations 3 a 6 do anel de verdade e da projeção
 
-- **Status:** pendente
+- **Status:** implementada sem medição — ver histórico
 - **Sistema:** idsd
 - **Executor:** agente
 - **Tentativas:** 3
@@ -19,16 +19,16 @@ a peça mais sensível do sistema.
 
 #### O que deve ser feito
 
-- [ ] Criar a migration de ordem 3: `tarefa`, restrição de verificação sobre
+- [x] Criar a migration de ordem 3: `tarefa`, restrição de verificação sobre
       `condicao`, índices do board e da fila.
-- [ ] Criar a migration de ordem 4: `evento_tarefa` e a concessão restrita de
+- [x] Criar a migration de ordem 4: `evento_tarefa` e a concessão restrita de
       `SELECT, INSERT` à role de aplicação.
-- [ ] Criar a migration de ordem 5: `intervalo_tarefa`, `impedimento` e os
+- [x] Criar a migration de ordem 5: `intervalo_tarefa`, `impedimento` e os
       índices únicos parciais.
-- [ ] Criar a migration de ordem 6: unicidade de `(projeto_id, seq)` e a coluna
+- [x] Criar a migration de ordem 6: unicidade de `(projeto_id, seq)` e a coluna
       gerada `duracao` com seu índice.
-- [ ] Criar as entidades JPA e os repositórios correspondentes.
-- [ ] Não expor em repositório nenhum método de atualização ou remoção sobre
+- [x] Criar as entidades JPA e os repositórios correspondentes.
+- [x] Não expor em repositório nenhum método de atualização ou remoção sobre
       `evento_tarefa`.
 
 #### Guia técnico — estrutura de arquivos
@@ -174,3 +174,11 @@ DEFAULT `[]`), `aberto_por` (`uuid` FK NOT NULL), `desfecho` (`text` NULL),
 | Data | Evento | Detalhe |
 | --- | --- | --- |
 | 2026-09-09 | criação | Task derivada do plano de execução do épico |
+| 2026-09-14 | tentativa 1 — implementação | As quatro migrations (`V2026091413` a `V2026091416`), as quatro entidades e quatro repositórios. Nenhuma medição: ver a linha de ambiente abaixo |
+| 2026-09-14 | divergência — `impedimento.resolvido_em` | A coluna **não** consta da tabela de campos desta task nem de `data-model.md` §5, e entrou porque a suíte congelada a exige: `ImpedimentoServiceTest` chama `setResolvidoEm`/`getResolvidoEm` para verificar que a resolução repetida de SCN-010.3 não reescreve o instante já registrado. Sem ela a suíte não compila; com ela, `ddl-auto=validate` exige a coluna no esquema. Dono da correção da spec: `/techspec` |
+| 2026-09-14 | costura fixada pela suíte | `Tarefa` e `Impedimento` nascem **JavaBean** — construtor público sem argumentos e acessores de escrita —, e não pelo padrão de `Etapa`/`Raia`, que constroem por construtor e só mudam por método de domínio. `TomadaServiceTest` e `ImpedimentoServiceTest` montam as duas com `new` e atribuem campo a campo. O plano de verificação declara a costura de `TomadaService` e `ImpedimentoService` como restrição de TASK-03.5 e TASK-04.2; a forma das **entidades** que esses testes manipulam não está naquela tabela, e é restrição desta task. `Condicao` também é fixada ali (`Condicao.EM_CURSO`, `Condicao.AGUARDANDO_TOMADA`) |
+| 2026-09-14 | **ACH — critérios 4 e 10 não são satisfeitos, e não podem ser daqui** | A concessão restrita está escrita na migration de ordem 4 — grupo `aplicacao_kanban` sem login, `GRANT SELECT, INSERT` no log, `REVOKE UPDATE, DELETE, TRUNCATE` dele e `REVOKE DELETE, TRUNCATE` de `etapa` e `raia` —, mas **ela é inerte hoje**. A aplicação conecta com `BANCO_USUARIO`, que no compose e no Testcontainers é o `POSTGRES_USER` da imagem, isto é, o superusuário de bootstrap e dono do schema: superusuário ignora privilégio, e dono reconcede a si mesmo. É exatamente o que ACH-09 da revisão de TASK-02.1 antecipou ao recusar fazer o `REVOKE` lá — o que a task supunha resolvido "junto da role de aplicação distinta" é que **essa role continua não existindo**. Criá-la, montar seu segredo e apontar `BANCO_USUARIO` para ela é mudança de `docker/compose.yaml` e do arranjo de segredos, fora do escopo de arquivo declarado. Dono: `/tasks` (infra) |
+| 2026-09-14 | **ACH — a suíte congelada contradiz a si mesma neste ponto** | `ImutabilidadeDoLogIT` exige que `TRUNCATE evento_tarefa` **falhe** para a credencial da aplicação; `TesteDeIntegracao.esvaziarBanco` — suporte comum, também congelado — faz `truncate table <todas as tabelas públicas>` com **a mesma credencial** antes de cada teste. Não há configuração de privilégio que satisfaça as duas: negar o truncate deixa toda a suíte de integração vermelha na primeira linha do `@BeforeEach`. Enquanto a aplicação for superusuário, as duas convivem porque nenhuma das duas é exercida de verdade — e é isso que torna a contradição invisível. Resolvê-la exige role de aplicação distinta **e** uma decisão sobre por qual credencial o suporte limpa o banco. Dono: `/tests`, com o anterior |
+| 2026-09-14 | decisão — `duracao` fora do mapeamento JPA | A coluna gerada existe no banco e **não** é mapeada em `IntervaloTarefa`. Não há consumidor antes de RF-016, que a lê por consulta agregada; e mapear `interval` exigiria escolher uma conversão para tipo Java que `ddl-auto=validate` aceitasse, decisão sem medição e sem leitor. Coluna presente no banco e ausente do mapeamento não reprova a validação |
+| 2026-09-14 | decisão — `tipo` como texto em `evento_tarefa` e `intervalo_tarefa` | Sem enumeração em código e sem restrição de verificação na coluna, pela mesma razão: o catálogo de eventos cresce a cada épico, nenhum caminho grava evento ou intervalo ainda, e antecipar o tipo fechado criaria valores sem escritor — mais uma migration sobre a tabela mais sensível do sistema a cada tipo novo. O enum nasce com a primeira escrita, em EPIC-03. `condicao` é o caso oposto e ganhou as duas travas: o domínio é fechado por RN-003 e a suíte congelada já o lê do catálogo do banco |
+| 2026-09-14 | **ambiente — nada foi executado** | Não há `mvn`, `mvnw`, `docker` nem JDK nesta máquina, e o git recusa o repositório por *dubious ownership* (`D:/DEV/Projects/SPDD_puro` pertence a outro usuário do Windows), de modo que `check_escopo.py` não roda e não há commit. **Nenhum dos dez critérios de aceite foi medido** — em particular 1 (as migrations aplicam), 2 (`ddl-auto=validate` sem divergência) e 3, 5, 6, 7 (as restrições recusam o que devem). Os pontos de maior risco à validação são os dois `jsonb` mapeados por `@JdbcTypeCode(SqlTypes.JSON)` e o `bigserial` como `GenerationType.IDENTITY`. Medir é pré-condição do `/code-review` |

@@ -1,5 +1,7 @@
 package br.com.idsd.kanban.internal.projeto;
 
+import java.util.Collection;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -21,9 +23,24 @@ import java.util.UUID;
  * de novo, e exigir esvaziar a etapa por causa dela tornaria toda etapa terminal
  * inarquivavel para sempre. Quem implementar esta porta responde por essa
  * exclusao.
+ *
+ * <p><b>A contagem e em lote, e a assinatura e a garantia</b> (ACH-07 da
+ * reexecucao de TASK-02.2). Ela e chamada dentro da transacao que ja segura o
+ * bloqueio pessimista da linha de {@code projeto} (SDR-005), e uma pergunta por
+ * etapa seriam ate cem idas ao banco com todo o projeto serializado atras — o
+ * custo do lock passaria a ser proporcional a um {@code N+1} evitavel. Receber a
+ * colecao inteira nao <i>pede</i> uma consulta so: ela torna a consulta unica
+ * possivel, e a assinatura por etapa a tornava impossivel.
  */
 public interface TarefasAtivasPorEtapa {
 
-    /** Quantas tarefas nao terminais ainda estao na etapa. */
-    long contarEm(UUID etapaId);
+    /**
+     * Quantas tarefas nao terminais ainda estao em cada etapa pedida.
+     *
+     * <p>Etapa sem tarefa ativa pode vir ausente do mapa ou com zero — quem chama
+     * trata os dois como o mesmo desfecho, porque exigir a chave obrigaria toda
+     * implementacao a completar o mapa depois de agrupar, sem que a diferenca
+     * signifique nada.
+     */
+    Map<UUID, Long> contarEm(Collection<UUID> etapaIds);
 }

@@ -398,6 +398,9 @@ A ordem dentro do épico é serial — as tasks compartilham o mesmo PR.
 - **Cenários cobertos:** SCN-004.1, SCN-004.2, SCN-004.3, SCN-022.3
 - **Origem:** RF-004, RF-022, RN-004, RN-006, RN-038
 - **Detalhe:** `docs/tasks/kanban-tarefas/TASK-02.5-criacao-de-tarefa.md`
+- **Obrigação herdada (ACH-10, 2026-09-14):** publica a implementação de
+  `TarefasAtivasPorEtapa`, porta deixada aberta por TASK-02.2. Sem ela a recusa
+  de RN-020 conta zero e SCN-017.3 nunca dispara.
 
 ### TASK-02.6 — Leitura do board
 

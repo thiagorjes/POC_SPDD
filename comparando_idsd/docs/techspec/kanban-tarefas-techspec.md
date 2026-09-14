@@ -1,5 +1,5 @@
 # TechSpec — kanban-tarefas
-_Versão: 1.11 | Status: Draft | Data: 2026-09-14 | Autor: agente `/techspec`_
+_Versão: 1.14 | Status: Draft | Data: 2026-09-14 | Autor: agente `/techspec`_
 _PRD: docs/prd/kanban-tarefas-prd.md v1.5 — cenários congelados desde a reconfirmação da emenda v1.5_
 
 ---
@@ -42,9 +42,11 @@ sistema, com duas ressalvas registradas:
 
 ## 2. Decisões Arquiteturais
 
-> Decisões: ADR-001 a ADR-013, BDR-001, BDR-002, SDR-001 a SDR-004.
+> Decisões: ADR-001 a ADR-013, BDR-001, BDR-002, SDR-001 a SDR-005.
 > As sete criadas nesta etapa estão em negrito. ADR-004 é superado em um ponto por
 > SDR-004, e ADR-007 é superado por ADR-010.
+> SDR-005 também não é desta etapa: nasceu na emenda de 2026-09-14, que fechou
+> ACH-05 da revisão da fatia de configuração do fluxo.
 > ADR-011, ADR-012 e ADR-013 **não são desta etapa**: nasceram no `/guidelines` ao
 > elaborar `infra/docker`, e entram aqui porque governam esta feature. É a direção
 > correta — norma que vale além da feature pertence à biblioteca, e mantê-la aqui a
@@ -59,6 +61,7 @@ sistema, com duas ressalvas registradas:
 | **BDR-002** | Desbloqueio como permissão de `product_owner` e `project_admin` | Nenhuma entidade nova de autorização; o fallback de RN-024 fica raro, mas alcançável |
 | **SDR-004** | `seq` gerado no banco na transação de escrita; publicador único do `NOTIFY` | Supera ADR-004 no contador por pod; serializa escrita por projeto; fecha a janela de perda do `afterCommit` |
 | **ADR-010** | Bootstrap do admin global por `sub` verificado, promoção única e auditada | Supera ADR-007; fecha a escalada por claim `email` e especifica o que o bypass contorna |
+| **SDR-005** | Substituição de fluxo serializada por bloqueio pessimista da linha de `projeto` | Fecha a perda silenciosa de RF-017 sem tocar no contrato nem na suíte congelada; declara por que SDR-002 não alcança escrita de conjunto |
 | ADR-001 | Java + Spring Boot, JPA, WebSocket/STOMP, OIDC | Base de toda a Seção 5 |
 | ADR-002 | PostgreSQL único, sem cache nem broker nesta fase | Fecha a saída fácil de RNF-009 e força a projeção de SDR-001 |
 | ADR-003 / ADR-006 | Keycloak autentica, permissões na aplicação; sem fallback local | RF-001, RF-002 e toda a Seção 8 |
@@ -216,6 +219,27 @@ a razão de ela ser derivada em vez de coluna: a preservação virou propriedade
 esquema. Enquanto era valor de `condicao`, o passo 4 tinha de lembrar de não
 sobrescrevê-la — e não lembrava, o que o achado INC-01 mostrou.
 
+**A escrita que não é sobre tarefa tem outro mecanismo.** A substituição do fluxo
+de etapas (RF-017) não passa pelo envelope de origem declarada: a unidade de
+escrita é o **conjunto**, e o dano concorrente ali se manifesta por ausência — a
+etapa criada pelo outro não está no corpo de quem perdeu, logo não há linha sobre
+a qual conflitar e versão otimista não detecta nada. Por isso a transação toma
+bloqueio pessimista da linha de `projeto` antes de ler o fluxo vigente, e as duas
+requisições ficam serializadas (SDR-005). É a mesma linha que SDR-004 incrementa
+para gerar o `seq`, de modo que o ponto de contenção é um só. A última
+substituição vence inteira; avisar quem perdeu exigiria campo de origem no
+contrato, que é escopo e volta ao `/prd`.
+
+**E o bloqueio vem com teto, porque bloqueio sem teto não é serialização.** A
+espera é limitada em três camadas — `lock_timeout` de 5 s na sessão,
+`@Transactional(timeout = 10)` na rota e `connection-timeout` de 5 s no pool —, e
+a espera esgotada responde `503` com `Retry-After`, nunca `500`. Sem teto, cada
+requisição em espera retém conexão do pool até o pool acabar, e como `db` está no
+grupo de readiness a instância sai do tráfego: um único sujeito autenticado com
+`CONFIGURAR` derruba a aplicação. A emenda de SDR-005 registra que a redação
+original do DR atribuía esse limite a um `timeout` de transação que não existia
+em lugar nenhum da configuração (ACH-01 da reexecução de TASK-02.2).
+
 **A conclusão tem dois caminhos e uma só transição.** Chegar a etapa terminal por
 `POST /movimentos` conclui a tarefa (SCN-011.1). A rota
 `POST /v1/tarefas/{tarefaId}/conclusao` existe para dar superfície à recusa que
@@ -311,6 +335,12 @@ sob verificação, e diria com aparência de prova.
   GATE-NFR sem verificação.
 - **Envelope de RNF-009** — carga sintética com 12 meses e 5.000 tarefas, medindo
   RF-015 e RF-016.
+- **Substituição de fluxo sob concorrência** (SDR-005) — dois `PUT
+  /v1/projetos/{projetoId}/etapas` simultâneos sobre o mesmo projeto: o fluxo
+  final é o do segundo, íntegro, sem etapa órfã do primeiro e sem `500` por
+  violação de `etapa_projeto_ordem_unico`. Sem este teste a serialização é
+  afirmação sem poder de falha — o defeito que ACH-05 encontrou passava verde em
+  toda a suíte.
 - **`seq` sob concorrência** (SDR-004) — escritas simultâneas em tarefas
   diferentes do mesmo projeto, verificando ausência de duplicata e de buraco após
   rollback.
@@ -530,6 +560,9 @@ fazer.
 | 1.10 | 2026-09-11 | agente `/techspec` | Correção estreita de ACH-11 da revisão de TASK-01.6, na Seção 8 e no contrato de `sessao-e-projetos`. Nenhum requisito novo, nenhum cenário tocado. Duas propriedades do limite de requisições que estavam operando sem estar escritas. (1) **A dimensão de origem deixa de existir.** Ela era prescrita aqui — "throttling por sujeito e por origem" — e a premissa que a sustentava é falsa contra o `docker/compose.yaml`: não há proxy reverso em produção, o único nginx do repositório existe no arnês de broadcast, e sem proxy que o escreva `X-Forwarded-For` é escolhido pelo cliente. Disso saíam três defeitos simultâneos — a dimensão não continha nada, permitia recusar serviço a terceiros e fazia o mapa de contagem crescer sem teto real. O que decidiu, porém, não foi nenhum dos três: a condição de medição de RNF-010, escrita no PRD, exige provar que **o consumo de um sujeito não afeta a resposta de outro**, e envelope compartilhado por origem afirma exatamente o contrário — o requisito e o mecanismo eram incompatíveis por construção. Removida a dimensão, RNF-010 volta a ser satisfazível sem emenda ao PRD. (2) **A contagem é por instância**, e o desenho prevê três (RNF-002), de modo que o envelope efetivo é o número de RNF-010 multiplicado pelo número de réplicas. Isso já era verdade na implementação e não estava em lugar nenhum: contador em memória por processo é a única forma disponível, porque contador compartilhado exigiria Redis ou tabela de contagem e ADR-002 recusa armazenamento adicional nesta fase. Fica declarado com o gatilho de reabertura — quando houver medição de uso real que confronte o envelope, que é o mesmo gatilho que RNF-010 já carrega |
 | 1.11 | 2026-09-14 | agente `/techspec` | Correção estreita de ACH-04 da revisão de TASK-02.1, em `data-model.md` §3 e §5. Nenhum requisito novo, nenhum cenário tocado, nenhuma devolução ao `/prd`. O §3 afirmava, como consequência de RN-023, que **nenhuma** tabela do anel de projeção referencia `raia`, e o §5 do mesmo documento declara `tarefa.raia_id` — duas afirmações opostas sobre a mesma coisa, a poucas dezenas de linhas uma da outra. A que fica é `:250`, e ela não foi escolhida por ser a mais recente: é a única sustentada pelo resto da cadeia — o diagrama ER deste próprio arquivo já liga `tarefa` a `raia (opcional)`, `board-e-tarefas.md` põe `raiaId` no cartão, e a suíte congelada `RaiasIT` monta tarefa com raia, de modo que a generalização contradizia também material fora deste documento, um deles congelado. A garantia verdadeira é **estreita e suficiente**: `raia_id` vive só no estado corrente, a série de tempo (`evento_tarefa`, `intervalo_tarefa`) não a carrega, e nenhuma rota agregada aceita `raiaId`. É essa ausência estreita que torna RN-023 propriedade do esquema, e a razão está agora escrita junto — agregar por raia exigiria juntar a série ao estado corrente, e o estado corrente não sabe em que raia a tarefa estava quando o intervalo correu. A correção precede ACH-02: era a generalização daqui que a migration de TASK-02.1 copiou para o comentário, e ela seria desmentida pela primeira tabela nascida depois dela, que é `tarefa`, em TASK-02.3 |
 | 1.2 | 2026-09-09 | agente `/techspec` | Absorção da emenda do PRD v1.1. INC-07 fechado: `POST /v1/tarefas/{tarefaId}/conclusao` passa a existir como superfície da recusa que SCN-011.2 congela, sem ser um segundo caminho de conclusão. `IMPEDIDA` sai do domínio de `condicao` e o impedimento vira dimensão derivada de `impedimento` com `desfecho IS NULL` (RN-002, RN-032) — a preservação da marca deixa de ser disciplina do serviço e vira propriedade do esquema. Tomada aceita com impedimento aberto (RN-033), reabertura na primeira etapa (RN-034), RF-021 e RN-035 na Seção 8 e na matriz, RNF-010 na matriz. Contagem atualizada para 65 cenários — 9 `e2e`, 51 `integração`, 5 `unitário` — e universo de medição de RNF-005/RNF-006 para 10 telas. Q-008 e Q-011 resolvidas; Q-005 reatribuída ao `/design` |
+| 1.12 | 2026-09-14 | agente `/techspec` | Emenda estreita fechando ACH-05 da revisão de TASK-02.2, nas Seções 2, 5 e 7 e no contrato de `sessao-e-projetos`. Nenhum requisito novo, nenhum cenário tocado, nenhuma devolução ao `/prd` consumida. Um DR novo — **SDR-005**: a substituição do fluxo de etapas serializa por bloqueio pessimista da linha de `projeto`, tomado antes da leitura do fluxo vigente. A revisão perguntava por que SDR-002 não fora aplicada, e a resposta é que ela não alcança este caso: o mecanismo de origem declarada pressupõe uma linha que já existe e cuja versão o cliente carrega, e aqui a unidade é o conjunto — o dano concorrente aparece como **ausência**, a etapa que o outro criou e que não está no corpo de quem perdeu. `@Version` em `Etapa` não tem sobre o que conflitar e cobriria só a renomeação simultânea da mesma etapa, o caso menos grave. A Alternativa 2 de SDR-002 — lock pessimista — foi recusada lá por transação longa em board colaborativo, e é aceita aqui pelo perfil oposto: operação rara, administrativa, um projeto, conjunto com teto de 100. A linha bloqueada é a mesma que SDR-004 incrementa, então o ponto de contenção continua único e não há ordem de aquisição nova. O que fica **decidido e não acidental** é que a última configuração vence inteira, sem aviso a quem perdeu: avisar exige campo de origem no corpo, que quebraria a suíte congelada e seria escopo do `/prd` — registrado como gatilho de reabertura no DR. Entra uma verificação além dos cenários na Seção 7, porque sem ela a serialização é afirmação sem poder de falha |
+| 1.14 | 2026-09-14 | agente `/techspec` | Duas emendas em SDR-005, fechando **ACH-08 e ACH-11 da reexecução** de TASK-02.2. Nenhum requisito novo, nenhum cenário tocado. **ACH-11:** o DR descrevia só o caso concorrente em que os corpos criam etapas novas, e faltava o outro — duas requisições que carregam os `id` do fluxo que ambas leram. Serializadas, a segunda encontra as etapas já arquivadas pela primeira e é recusada com `422 etapa-fora-do-fluxo`. Fica **decidido** que esse é o desfecho pretendido e não efeito colateral: é a mesma escolha que o DR já fez — a última configuração vence inteira —, e preservar os `id` da perdedora significaria desarquivar o que a vencedora removeu de propósito. Não é `409` porque nada colide: o pedido se refere a coisas que deixaram de existir, e `409` convidaria a retentar o mesmo corpo. **ACH-08:** a permissão de `CONFIGURAR` é resolvida fora da transação que escreve, e a janela TOCTOU fica **mantida e declarada**. Mover a resolução para dentro apenas desloca a janela; o único desenho que a fecha é reavaliar a permissão no commit contra a linha de participação travada, o que põe a tabela de participação na seção crítica de toda escrita do sistema. Os quatro fatos que tornam a janela aceitável **nesta** rota ficam nomeados — janela de milissegundos, operação administrativa e rara, permissão tida há instantes, dano desfeito por outra substituição — e servem de critério para reabrir a decisão em qualquer rota onde não valham |
+| 1.13 | 2026-09-14 | agente `/techspec` | Emenda estreita fechando **ACH-01 da reexecução** de TASK-02.2, na Seção 2 e em SDR-005. Nenhum requisito novo, nenhum cenário tocado. A v1.12 decidiu o bloqueio e escreveu que a espera era limitada pelo `timeout` de transação já vigente — **e não havia timeout vigente algum**: nem `lock_timeout`, nem `statement_timeout`, nem `idle_in_transaction_session_timeout`, nem configuração de pool. Era a garantia inexistente que tornava aceitável o trade-off, e sem ela o bloqueio não serializa: converte contenção em indisponibilidade, porque cada requisição em espera retém conexão do pool até o pool acabar, e `db` está no grupo de readiness — um único sujeito autenticado com `CONFIGURAR` tira a instância do tráfego. O teto passa a ser decidido e declarado em três camadas: `lock_timeout` de 5 s na sessão, `@Transactional(timeout = 10)` na rota e `connection-timeout` de 5 s no pool. Espera esgotada responde `503` com `Retry-After` e não `500`, porque nada no pedido está errado e o teto recém-nascido não pode aparecer como defeito; continua `5xx`, o que preserva a exigência da suíte congelada `TransacaoUnicaDeCriacaoIT`. O teto **não** vai no hint `jakarta.persistence.lock.timeout`, cujo dialeto PostgreSQL só traduz espera zero — hint positivo seria outro teto afirmado e não aplicado. `statement_timeout` fica **fora, declaradamente**: alcança toda consulta e não há medição para escolher o número |
 
 ---
 

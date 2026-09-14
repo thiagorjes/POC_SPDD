@@ -151,8 +151,12 @@ public class Cenario {
                         .with(quem)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(corpo));
-        List<String> ids = JsonPath.read(resposta, "$..id");
-        List<String> nomes = JsonPath.read(resposta, "$..nome");
+        // Caminho definido, e nao varredura profunda (ACH-13): `$..id` casa com
+        // qualquer `id` em qualquer profundidade, inclusive nenhum, e a lista vazia
+        // que ele devolve sobre um corpo inesperado nao se distingue de um fluxo
+        // vazio legitimo.
+        List<String> ids = JsonPath.read(resposta, "$.etapas[*].id");
+        List<String> nomes = JsonPath.read(resposta, "$.etapas[*].nome");
         return java.util.stream.IntStream.range(0, ids.size())
                 .mapToObj(i -> new Etapa(UUID.fromString(ids.get(i)), nomes.get(i), i + 1))
                 .toList();
@@ -216,9 +220,31 @@ public class Cenario {
     public record Etapa(UUID id, String nome, int ordem) {
     }
 
+    /**
+     * Executa um passo de semeadura e <b>exige que ele tenha dado certo</b>.
+     *
+     * <p>ACH-13 da reexecução de TASK-02.2. Sem a conferência de status, semeadura
+     * que falha devolve um {@code problem+json}, e os helpers que extraem por
+     * varredura profunda — {@code $..id}, {@code $..nome} — não encontram nada e
+     * devolvem lista vazia sem levantar. O teste segue sobre um projeto que não
+     * tem o estado que ele supõe, e passa verde por não haver o que contradizer.
+     *
+     * <p>Nenhuma chamada daqui é caminho de erro: quem verifica recusa a exercita
+     * pela borda, no próprio teste. Toda semeadura que não sai em {@code 2xx} é
+     * defeito do cenário, e é isso que esta guarda transforma em falha imediata,
+     * com o corpo do problema à vista em vez de um efeito três passos adiante.
+     */
     private String executarHttp(org.springframework.test.web.servlet.RequestBuilder pedido) {
         try {
-            return mockMvc.perform(pedido).andReturn().getResponse().getContentAsString();
+            var resposta = mockMvc.perform(pedido).andReturn().getResponse();
+            String corpo = resposta.getContentAsString();
+            if (resposta.getStatus() < 200 || resposta.getStatus() >= 300) {
+                throw new IllegalStateException(
+                        "passo de cenario recusado com " + resposta.getStatus() + ": " + corpo);
+            }
+            return corpo;
+        } catch (IllegalStateException recusado) {
+            throw recusado;
         } catch (Exception e) {
             throw new IllegalStateException("falha ao montar o cenario", e);
         }

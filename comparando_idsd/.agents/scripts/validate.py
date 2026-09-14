@@ -162,13 +162,26 @@ def run_custom_steps(steps: list[dict], artifact: str, cwd: Path) -> list[str]:
             text=True,
             cwd=str(cwd),
         )
-        if result.returncode != 0:
-            prefix = "ERRO" if on_failure == "error" else "AVISO"
-            for line in result.stderr.strip().splitlines():
-                messages.append(f"{prefix}: [{step.get('name', script)}] {line}")
-        elif result.stderr.strip():
-            for line in result.stderr.strip().splitlines():
-                messages.append(f"AVISO: [{step.get('name', script)}] {line}")
+        nome = step.get("name", script)
+        # O codigo de saida e a fonte primaria, mas nao a unica: um custom step
+        # que imprime `ERRO:` e sai em 0 esta reprovando o artefato, e rebaixar
+        # isso a AVISO faz o validador sair verde sobre defeito declarado — o
+        # pior sinal possivel, porque quem automatiza o gate pelo exit code
+        # nunca ve o achado (pendencia 18). Linha que se declara erro em step
+        # que saiu em 0 e promovida a ERRO; `on_failure: warn` continua sendo
+        # respeitado, porque ali a natureza consultiva foi declarada de
+        # proposito.
+        falhou = result.returncode != 0
+        prefix_padrao = "ERRO" if (falhou and on_failure == "error") else "AVISO"
+        promover = not falhou and on_failure == "error"
+        for line in result.stderr.strip().splitlines():
+            prefix = "ERRO" if (promover and line.lstrip().upper().startswith("ERRO")) else prefix_padrao
+            messages.append(f"{prefix}: [{nome}] {line}")
+        if falhou and not result.stderr.strip():
+            messages.append(
+                f"{prefix_padrao}: [{nome}] saiu em codigo {result.returncode} "
+                f"sem nenhuma mensagem."
+            )
     return messages
 
 

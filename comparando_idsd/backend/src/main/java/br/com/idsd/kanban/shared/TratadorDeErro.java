@@ -7,9 +7,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.MethodParameter;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -22,6 +26,7 @@ import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.transaction.TransactionTimedOutException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -67,6 +72,14 @@ public class TratadorDeErro extends ResponseEntityExceptionHandler
 
     private static final Logger LOG = LoggerFactory.getLogger(TratadorDeErro.class);
 
+    /**
+     * Segundos sugeridos no {@code Retry-After} da espera esgotada.
+     *
+     * <p>Mais curto que o {@code lock_timeout} de proposito: quem recebeu esta
+     * resposta esperou o teto inteiro e a disputa ja deve ter terminado.
+     */
+    private static final int SEGUNDOS_ATE_NOVA_TENTATIVA = 2;
+
     /** Falha de negocio declarada, com o corpo que quem a levantou montou. */
     @ExceptionHandler(ProblemaDetalhado.Falha.class)
     ResponseEntity<ProblemDetail> falhaDeNegocio(
@@ -82,18 +95,118 @@ public class TratadorDeErro extends ResponseEntityExceptionHandler
      *
      * <p>Fica em {@code 400} e nao em {@code 500}: e defeito da requisicao, e
      * responder erro interno faria o cliente retentar o que nunca vai funcionar.
+     *
+     * <p><b>A pilha nao vai para {@code INFO}</b> (ACH-16 da reexecucao de
+     * TASK-02.2). Este caminho e alcancavel por qualquer cliente, e pilha em nivel
+     * que a producao mantem ligado e um custo que o cliente escolhe: basta repetir
+     * a requisicao malformada para encher o log. Em {@code INFO} fica a mensagem,
+     * que e o que serve para contar ocorrencia; a pilha fica em {@code DEBUG}, que
+     * e onde se liga quando ha um caso concreto a diagnosticar.
      */
     @ExceptionHandler(IllegalArgumentException.class)
     ResponseEntity<ProblemDetail> requisicaoInvalida(
             IllegalArgumentException invalida, HttpServletRequest requisicao) {
-        LOG.info("Requisicao invalida em {} {}",
+        LOG.info("Requisicao invalida em {} {}: {}",
+                requisicao.getMethod(), requisicao.getRequestURI(), invalida.getMessage());
+        LOG.debug("Requisicao invalida em {} {}",
                 requisicao.getMethod(), requisicao.getRequestURI(), invalida);
         return resposta(ProblemaDetalhado.de(
                 HttpStatus.BAD_REQUEST,
                 "requisicao-invalida",
-                "Requisicao invalida",
-                "Os dados enviados nao puderam ser lidos. Confira o conteudo da requisicao.",
+                "Requisição inválida",
+                "Os dados enviados não puderam ser lidos. Confira o conteúdo da requisição.",
                 requisicao.getRequestURI()));
+    }
+
+    /**
+     * Restricoes de banco que o produto pode violar <b>por entrada</b>, traduzidas
+     * uma a uma.
+     *
+     * <p>Cada restricao dessas ja tem recusa de borda propria — a unicidade de ordem
+     * de etapa, por exemplo, sai em {@code 422} antes de qualquer escrita. Este
+     * tratador e a rede por baixo daquilo (ACH-02 da revisao de TASK-02.2):
+     * restricao sem tradutor e um {@code 500} esperando acontecer, e {@code 500}
+     * convida o cliente a retentar o que nunca vai funcionar.
+     *
+     * <p><b>O catalogo e nominal de proposito.</b> Traduzir toda
+     * {@link DataIntegrityViolationException} em {@code 409} apagaria a diferenca
+     * entre "o pedido conflita com o estado" e "o banco recusou algo que ninguem
+     * previu" — e o segundo caso e defeito, tem de sair em {@code 5xx} e e o que
+     * {@code TransacaoUnicaDeCriacaoIT} fixa. Restricao nova entra nesta lista junto
+     * com a rota que pode viola-la.
+     *
+     * <p>A mensagem do driver fica no log e nao no corpo: ela traz nome de indice,
+     * de coluna e o proprio valor recusado.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ProblemDetail> integridadeViolada(
+            DataIntegrityViolationException conflito, HttpServletRequest requisicao)
+            throws Exception {
+        if (!"etapa_projeto_ordem_unico".equals(restricaoViolada(conflito))) {
+            return naoPrevisto(conflito, requisicao);
+        }
+        LOG.warn("Restricao de integridade violada em {} {}",
+                requisicao.getMethod(), requisicao.getRequestURI(), conflito);
+        return resposta(ProblemaDetalhado.de(
+                HttpStatus.CONFLICT,
+                "conflito-de-ordem-de-etapa",
+                "Conflito na posição das etapas",
+                "A configuração conflita com o fluxo que o projeto tem agora. Recarregue "
+                        + "a tela e tente de novo.",
+                requisicao.getRequestURI()));
+    }
+
+    /**
+     * A espera pelo bloqueio acabou antes de o bloqueio vir.
+     *
+     * <p>ACH-01 da reexecucao de TASK-02.2. Com o teto de espera configurado
+     * (`lock_timeout` na sessao, `@Transactional(timeout)` na rota), a espera longa
+     * deixa de pendurar a requisicao e passa a **terminar**. O que ela termina
+     * precisa ter codigo proprio: sem este tratador, o teto que acabou de nascer
+     * apareceria como {@code 500}, e trocar indisponibilidade por defeito aparente
+     * nao e conserto.
+     *
+     * <p>{@code 503} e nao {@code 409}: nada no pedido esta errado e nada precisa
+     * ser recarregado — outra configuracao do mesmo projeto esta em curso, e daqui
+     * a instantes nao estara. {@code Retry-After} diz isso em numero, do mesmo
+     * modo que o limite de requisicoes e a indisponibilidade do provedor de
+     * identidade ja dizem.
+     *
+     * <p>Continua sendo {@code 5xx}, o que preserva a exigencia de
+     * {@code TransacaoUnicaDeCriacaoIT} — a suite congelada que recusa ver falha
+     * imprevista de banco disfarcada de conflito.
+     */
+    @ExceptionHandler({
+        PessimisticLockingFailureException.class,
+        QueryTimeoutException.class,
+        TransactionTimedOutException.class
+    })
+    ResponseEntity<ProblemDetail> esperaEsgotada(
+            Exception espera, HttpServletRequest requisicao) {
+        LOG.warn("Espera por bloqueio esgotada em {} {}",
+                requisicao.getMethod(), requisicao.getRequestURI(), espera);
+        ProblemDetail problema = ProblemaDetalhado.de(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "espera-por-bloqueio-esgotada",
+                "Configuração em curso",
+                "Outra alteração deste projeto está sendo gravada agora. "
+                        + "Aguarde alguns segundos e tente de novo. O fluxo atual "
+                        + "do projeto não foi alterado.",
+                requisicao.getRequestURI());
+        return ResponseEntity.status(problema.getStatus())
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(SEGUNDOS_ATE_NOVA_TENTATIVA))
+                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(problema);
+    }
+
+    /** O nome da restricao violada, quando o driver o informa. */
+    private String restricaoViolada(DataIntegrityViolationException conflito) {
+        for (Throwable causa = conflito; causa != null; causa = causa.getCause()) {
+            if (causa instanceof ConstraintViolationException violacao) {
+                return violacao.getConstraintName();
+            }
+        }
+        return null;
     }
 
     /**
@@ -125,7 +238,7 @@ public class TratadorDeErro extends ResponseEntityExceptionHandler
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "erro-interno",
                 "Erro interno",
-                "Nao foi possivel concluir a operacao. Tente novamente em instantes.",
+                "Não foi possível concluir a operação. Tente novamente em instantes.",
                 requisicao.getRequestURI()));
     }
 
@@ -174,20 +287,20 @@ public class TratadorDeErro extends ResponseEntityExceptionHandler
             ProblemDetail problema = ProblemaDetalhado.de(
                     HttpStatus.UNPROCESSABLE_ENTITY,
                     "entrada-invalida",
-                    "Entrada invalida",
-                    "Os dados enviados nao atendem ao contrato. Confira os campos indicados.",
+                    "Entrada inválida",
+                    "Os dados enviados não atendem ao contrato. Confira os campos indicados.",
                     caminho(requisicao));
             problema.setProperty("errors", List.of(Map.of(
                     "campo", campo,
-                    "mensagem", "O valor informado nao e valido para este campo.")));
+                    "mensagem", "O valor informado não é válido para este campo.")));
             return corpo(problema);
         }
         LOG.info("Corpo ilegivel em {}", caminho(requisicao));
         return corpo(ProblemaDetalhado.de(
                 HttpStatus.BAD_REQUEST,
                 "requisicao-invalida",
-                "Requisicao invalida",
-                "Os dados enviados nao puderam ser lidos. Confira o conteudo da requisicao.",
+                "Requisição inválida",
+                "Os dados enviados não puderam ser lidos. Confira o conteúdo da requisição.",
                 caminho(requisicao)));
     }
 
@@ -212,15 +325,15 @@ public class TratadorDeErro extends ResponseEntityExceptionHandler
         ProblemDetail problema = ProblemaDetalhado.de(
                 HttpStatus.UNPROCESSABLE_ENTITY,
                 "entrada-invalida",
-                "Entrada invalida",
-                "Os dados enviados nao atendem ao contrato. Confira os campos indicados.",
+                "Entrada inválida",
+                "Os dados enviados não atendem ao contrato. Confira os campos indicados.",
                 caminho(requisicao));
         List<Map<String, String>> campos = new ArrayList<>();
         for (FieldError erro : invalido.getBindingResult().getFieldErrors()) {
             campos.add(Map.of(
                     "campo", erro.getField(),
                     "mensagem", erro.getDefaultMessage() == null
-                            ? "Valor invalido." : erro.getDefaultMessage()));
+                            ? "Valor inválido." : erro.getDefaultMessage()));
         }
         problema.setProperty("errors", campos);
         return corpo(problema);
@@ -272,8 +385,8 @@ public class TratadorDeErro extends ResponseEntityExceptionHandler
         return corpo(ProblemaDetalhado.de(
                 HttpStatus.NOT_FOUND,
                 "recurso-nao-encontrado",
-                "Recurso nao encontrado",
-                "O recurso pedido nao existe ou nao esta disponivel para voce.",
+                "Recurso não encontrado",
+                "O recurso pedido não existe ou não está disponível para você.",
                 caminho(requisicao)));
     }
 

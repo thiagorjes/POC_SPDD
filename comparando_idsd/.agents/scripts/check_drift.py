@@ -24,6 +24,12 @@ from pathlib import Path
 
 GERADOS = [".claude", ".cursor", ".opencode", ".github"]
 
+# Arquivos que vivem dentro de um diretorio gerado sem serem gerados: config
+# local da ferramenta, escrita pela propria IDE e nao versionada. O gerador nao
+# os conhece, de modo que a regeneracao nunca os produz — acusa-los como drift
+# transforma o check em ruido e treina todo mundo a ignora-lo.
+NAO_GERADOS = {"settings.local.json", "settings.json"}
+
 
 def rodar(script: Path, *args: str) -> tuple[int, str]:
     r = subprocess.run(
@@ -62,7 +68,8 @@ def diferencas(a: Path, b: Path, prefixo: str = "") -> list[str]:
         return [f"{prefixo or a.name}: ausente no repositorio"]
 
     cmp = filecmp.dircmp(str(a), str(b))
-    saida = [f"{prefixo}{n}: so no repositorio" for n in cmp.left_only]
+    saida = [f"{prefixo}{n}: so no repositorio" for n in cmp.left_only
+             if n not in NAO_GERADOS]
     saida += [f"{prefixo}{n}: faltando no repositorio" for n in cmp.right_only]
     iguais, diferentes, erros = filecmp.cmpfiles(
         str(a), str(b), cmp.common_files, shallow=False)

@@ -1,5 +1,6 @@
 package br.com.idsd.kanban.internal.projeto;
 
+import br.com.idsd.kanban.shared.RegraDeNegocioViolada;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -28,6 +29,32 @@ import java.util.UUID;
 @Entity
 @Table(name = "etapa")
 public class Etapa {
+
+    /**
+     * Teto da ordem de uma etapa real, e a fronteira inferior da faixa de trabalho.
+     *
+     * <p>Ele existe porque {@link #FAIXA_DE_TRABALHO} precisa ser <b>inalcancavel
+     * por validacao</b>, e nao por suposicao sobre o uso (ACH-04 da revisao de
+     * TASK-02.2). Antes, a unica restricao sobre {@code ordem} era nao ser
+     * negativa: uma requisicao pedindo {@code ordem} 1.000.000 colidia, dentro do
+     * mesmo flush, com a vigente de ordem 0 ja deslocada — o passo que existe para
+     * evitar a colisao a reintroduzia pelo outro lado. O teto tambem impede que a
+     * soma do deslocamento estoure para negativo.
+     */
+    public static final int ORDEM_MAXIMA = 9_999;
+
+    /** Teto do nome, contra a coluna {@code text} sem limite (ACH-09). */
+    public static final int TAMANHO_MAXIMO_DO_NOME = 120;
+
+    /** Teto de etapas por fluxo. Fluxo real nao chega perto; abuso chega (ACH-09). */
+    public static final int MAXIMO_DE_ETAPAS = 100;
+
+    /**
+     * Distancia entre a faixa de trabalho do passo intermediario e qualquer ordem
+     * real. Somar preserva a unicidade entre as deslocadas — a soma e injetora — e
+     * {@link #ORDEM_MAXIMA} garante que nenhuma ordem pedida caia dentro dela.
+     */
+    public static final int FAIXA_DE_TRABALHO = 1_000_000;
 
     @Id
     @Column(name = "id", nullable = false)
@@ -86,28 +113,58 @@ public class Etapa {
     }
 
     /**
+     * Desloca a ordem para a faixa de trabalho do passo intermediario.
+     *
+     * <p>E o <b>unico</b> caminho que grava ordem fora da faixa real, e por isso
+     * nao passa por {@link #ordemValida}: as duas faixas sao disjuntas por
+     * construcao, e misturar as validacoes apagaria a fronteira que
+     * {@link #ORDEM_MAXIMA} existe para manter. Restrito ao pacote — quem o chama
+     * e {@code EtapaRepositorioImpl}, e nao ha uso legitimo fora dele.
+     */
+    void deslocarOrdem(int ordem) {
+        if (ordem < FAIXA_DE_TRABALHO) {
+            throw new IllegalStateException("deslocamento fora da faixa de trabalho");
+        }
+        this.ordem = ordem;
+    }
+
+    /**
      * Nome em branco nao e recusado pelo {@code NOT NULL} da coluna, e nome
-     * ausente so seria recusado tarde e com mensagem de driver. A recusa de
-     * borda, com {@code 422} e campo nomeado, chega com as rotas em TASK-02.2 —
-     * esta aqui e a invariante de quem grava, e nao substitui aquela (ACH-12).
+     * ausente so seria recusado tarde e com mensagem de driver.
+     *
+     * <p>A recusa sai em {@code 422} e nao em {@code 400} (ACH-12 da revisao de
+     * TASK-02.2): {@code IllegalArgumentException} e mapeada para {@code 400} pelo
+     * tratador global, enquanto toda recusa de conteudo bem formado do sistema e
+     * {@code 422}. Hoje as anotacoes de {@link FluxoRequisicao} cobrem o caso e
+     * este caminho fica encoberto; no dia em que uma escrita nao vier da borda —
+     * papel que esta entidade reivindica — a resposta precisa continuar a mesma.
      */
     private static String nomeValido(String nome) {
         if (nome == null || nome.isBlank()) {
-            throw new IllegalArgumentException("nome da etapa e obrigatorio");
+            throw new RegraDeNegocioViolada(
+                    "etapa-invalida",
+                    "Etapa inválida",
+                    "O nome da etapa não pode ficar em branco.");
+        }
+        if (nome.length() > TAMANHO_MAXIMO_DO_NOME) {
+            throw new RegraDeNegocioViolada(
+                    "etapa-invalida",
+                    "Etapa inválida",
+                    "O nome da etapa não pode passar de " + TAMANHO_MAXIMO_DO_NOME
+                            + " caracteres.");
         }
         return nome;
     }
 
     /** A ordem posiciona a etapa no fluxo; posicao negativa nao e posicao. */
     private static int ordemValida(int ordem) {
-        if (ordem < 0) {
-            throw new IllegalArgumentException("ordem da etapa nao pode ser negativa");
+        if (ordem < 0 || ordem > ORDEM_MAXIMA) {
+            throw new RegraDeNegocioViolada(
+                    "etapa-invalida",
+                    "Etapa inválida",
+                    "A ordem da etapa precisa estar entre 0 e " + ORDEM_MAXIMA + ".");
         }
         return ordem;
-    }
-
-    public boolean estaArquivada() {
-        return arquivadaEm != null;
     }
 
     public UUID getId() {

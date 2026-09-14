@@ -138,6 +138,30 @@ class SessaoEProjetosIT extends TesteDeIntegracao {
     }
 
     @Test
+    @DisplayName("SCN-002.4 — o projeto sem etapa alguma vem marcado, e o configurado nao")
+    void projetoSemFluxoVemMarcadoNaRelacao() throws Exception {
+        var configurado = cenario.projeto("Com fluxo");
+        var semFluxo = cenario.projeto("Sem fluxo");
+        cenario.participante(
+                configurado, SUB_ANA, "Ana", "ana@empresa.example", "dev", "project_admin");
+        cenario.participante(semFluxo, SUB_ANA, "Ana", "ana@empresa.example", "dev", "project_admin");
+        cenario.fluxoPadrao(configurado, ana());
+
+        // Os dois na mesma resposta, de proposito. A marca so tem valor se
+        // distinguir um projeto do outro dentro da mesma relacao: um campo que
+        // viesse constante — sempre falso, ou sempre verdadeiro — passaria em
+        // qualquer verificacao que olhasse um projeto de cada vez, e foi assim que
+        // `fluxoConfigurado` ficou fixo em `List.of()` na criacao ate TASK-02.2.
+        mockMvc.perform(get("/v1/projetos").with(ana()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.conteudo", Matchers.hasSize(2)))
+                .andExpect(jsonPath("$.conteudo[?(@.nome=='Sem fluxo')].fluxoConfigurado")
+                        .value(false))
+                .andExpect(jsonPath("$.conteudo[?(@.nome=='Com fluxo')].fluxoConfigurado")
+                        .value(true));
+    }
+
+    @Test
     @DisplayName("RF-001 — a sessao autoprovisiona o usuario pelo sub, sem cadastro local")
     void sessaoAutoprovisionaPeloSub() throws Exception {
         mockMvc.perform(get("/v1/sessao").with(ana()))

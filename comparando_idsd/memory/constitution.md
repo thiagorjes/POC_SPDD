@@ -56,6 +56,7 @@ _Criada em: 2026-09-03_
 | [SDR-002](../docs/decisions/SDR-002-concorrencia-por-estado-de-origem-declarado.md) | Concorrência e idempotência por estado de origem declarado | Aceito |
 | [SDR-003](../docs/decisions/SDR-003-testcontainers-e-playwright.md) | Testcontainers no lugar do H2 e Playwright para os cenários E2E | Aceito |
 | [SDR-004](../docs/decisions/SDR-004-seq-no-banco-e-publicador-unico.md) | Sequência de eventos gerada no banco e publicador único do broadcast | Aceito |
+| [SDR-005](../docs/decisions/SDR-005-substituicao-de-fluxo-serializada-no-projeto.md) | Substituição de fluxo serializada por bloqueio pessimista do projeto | Aceito |
 
 ### DDR
 

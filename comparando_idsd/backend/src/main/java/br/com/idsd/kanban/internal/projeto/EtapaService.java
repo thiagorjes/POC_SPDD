@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -12,6 +13,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,21 +79,34 @@ public class EtapaService {
         return repositorio.findByProjetoIdAndArquivadaEmIsNullOrderByOrdemAsc(projetoId);
     }
 
-    /** Se o projeto ja tem fluxo configurado (RN-038). */
-    @Transactional(readOnly = true)
-    public boolean temFluxo(UUID projetoId) {
-        return !fluxoVigente(projetoId).isEmpty();
-    }
-
     /**
      * Substitui o fluxo inteiro do projeto e devolve o resultado.
      *
-     * <p>A ordem dos passos e a propria regra: terminal primeiro, contra a
-     * requisicao; depois o fluxo vigente; depois a recusa de arquivamento; e so
-     * entao a escrita.
+     * <p>A ordem dos passos e a propria regra: o bloqueio do projeto primeiro;
+     * terminal, contra a requisicao; depois o fluxo vigente; depois a recusa de
+     * arquivamento; e so entao a escrita.
      */
-    @Transactional
+    // ACH-01. O teto da transacao e o companheiro do `lock_timeout` da sessao: um
+    // limita quanto se espera para **entrar**, o outro quanto se pode segurar
+    // depois de entrar. Sem o segundo, quem adquiriu o bloqueio e travou em
+    // qualquer outro ponto mantem os demais esperando ate o `lock_timeout` de cada
+    // um, repetidamente. Dez segundos sao folgados para a operacao: um projeto,
+    // teto de cem etapas, e ela e administrativa e rara.
+    @Transactional(timeout = 10)
     public List<Etapa> substituirFluxo(UUID projetoId, FluxoRequisicao requisicao) {
+        Objects.requireNonNull(requisicao, "a requisicao e obrigatoria");
+
+        // SDR-005 — antes de ler o fluxo vigente, e nao depois. Tudo o que vem
+        // abaixo, inclusive as recusas, decide sobre um conjunto que mais ninguem
+        // pode estar substituindo ao mesmo tempo. Bloquear depois da leitura nao
+        // serviria de nada: o conjunto lido ja poderia estar obsoleto, e o dano
+        // concorrente aqui e por ausencia — a etapa que o outro criou nao esta no
+        // corpo de quem perdeu, logo nao e arquivada nem reordenada, e some sem
+        // aviso. Versao otimista nao alcanca o caso: nao ha linha sobre a qual
+        // conflitar.
+        repositorio.bloquearProjeto(projetoId);
+
+        exigirConjuntoBemFormado(requisicao.etapas());
         List<FluxoRequisicao.EtapaDesejada> desejadas = exigirTerminal(requisicao);
 
         Map<UUID, Etapa> vigentes = new LinkedHashMap<>();
@@ -116,7 +131,13 @@ public class EtapaService {
         // Passo intermediario exigido pelo indice unico parcial, que nao e adiavel:
         // sem ele, um fluxo que apenas troca duas etapas de posicao viola a
         // unicidade no meio da transacao, com estado final valido.
-        repositorio.liberarOrdens(List.copyOf(vigentes.values()));
+        //
+        // Ele so roda quando alguma ordem vigente e de fato disputada (ACH-16): sem
+        // a condicao, toda substituicao pagava dois UPDATE por etapa vigente,
+        // inclusive a que nao muda nada.
+        if (haDisputaDeOrdem(desejadas, vigentes, ordensOriginais)) {
+            repositorio.liberarOrdens(List.copyOf(vigentes.values()));
+        }
 
         List<Etapa> resultado = new ArrayList<>(desejadas.size());
         List<Etapa> tocadas = new ArrayList<>();
@@ -129,20 +150,30 @@ public class EtapaService {
         // O que sobrou em `vigentes` e o que o corpo omitiu, e omitir e o que
         // arquiva.
         Instant agora = Instant.now();
-        for (Etapa etapa : vigentes.values()) {
-            // A ordem original e devolvida antes de arquivar. A etapa arquivada sai
-            // do indice parcial e nada mais a le como posicao, mas ela permanece na
-            // serie de tempo: deixa-la com a ordem da faixa de trabalho gravaria em
-            // disco um numero que nunca foi a posicao dela no fluxo.
-            etapa.reconfigurar(
-                    etapa.getNome(),
-                    ordensOriginais.getOrDefault(etapa.getId(), etapa.getOrdem()),
-                    etapa.isTerminal());
+        List<Etapa> arquivadas = List.copyOf(vigentes.values());
+        for (Etapa etapa : arquivadas) {
             etapa.arquivar(agora);
             tocadas.add(etapa);
         }
 
         repositorio.substituirFluxo(projetoId, List.copyOf(tocadas));
+
+        // A ordem original e devolvida <b>depois</b> de a linha estar arquivada em
+        // disco, e a ordem dos dois passos e a garantia (ACH-17). Restituir antes
+        // funcionava por acidente: dependia de o Hibernate emitir INSERT antes de
+        // UPDATE na fila de acoes e de a linha sair do indice parcial no mesmo
+        // statement que restaura a ordem — um flush intermediario acrescentado por
+        // qualquer motivo futuro quebrava o caminho, com 500 intermitente. Depois do
+        // flush acima a etapa ja nao esta no indice parcial, e a ordem restituida
+        // nao disputa nada. Ela e devolvida porque a etapa permanece na serie de
+        // tempo: deixa-la com a ordem da faixa de trabalho gravaria em disco um
+        // numero que nunca foi a posicao dela no fluxo.
+        for (Etapa etapa : arquivadas) {
+            etapa.reconfigurar(
+                    etapa.getNome(),
+                    ordensOriginais.getOrDefault(etapa.getId(), etapa.getOrdem()),
+                    etapa.isTerminal());
+        }
 
         resultado.sort(POR_ORDEM);
         return List.copyOf(resultado);
@@ -156,8 +187,7 @@ public class EtapaService {
      * proprio abriria a porta para os dois divergirem.
      */
     private List<FluxoRequisicao.EtapaDesejada> exigirTerminal(FluxoRequisicao requisicao) {
-        List<FluxoRequisicao.EtapaDesejada> desejadas =
-                requisicao == null || requisicao.etapas() == null ? List.of() : requisicao.etapas();
+        List<FluxoRequisicao.EtapaDesejada> desejadas = requisicao.etapas();
 
         if (desejadas.stream().noneMatch(FluxoRequisicao.EtapaDesejada::terminal)) {
             throw new RegraDeNegocioViolada(
@@ -167,6 +197,98 @@ public class EtapaService {
                             + "é considerada encerrada. O fluxo atual do projeto não foi alterado.");
         }
         return desejadas;
+    }
+
+    /**
+     * A forma do <b>conjunto</b>, que anotacao por campo nao alcanca.
+     *
+     * <p>Os tres defeitos abaixo chegavam ao servico e saiam como {@code 500}
+     * (ACH-01, ACH-02 e ACH-03 da revisao de TASK-02.2), quando o contrato pede
+     * {@code 422}: {@code @Valid} cascateia em cada item e nao diz nada sobre
+     * unicidade de {@code id}, unicidade de {@code ordem} nem presenca do item.
+     *
+     * <p>O {@code id} repetido derrubava a rota porque a segunda ocorrencia
+     * encontrava o mapa de vigentes ja esvaziado. A {@code ordem} repetida so
+     * colidia no flush, como violacao de {@code etapa_projeto_ordem_unico} sem
+     * tradutor. Nenhum dos dois chega mais a escrita alguma: <b>toda recusa
+     * acontece antes</b>, que e a regra que a task escreveu por extenso.
+     */
+    private void exigirConjuntoBemFormado(List<FluxoRequisicao.EtapaDesejada> desejadas) {
+        Objects.requireNonNull(desejadas, "as etapas sao obrigatorias");
+
+        if (desejadas.stream().anyMatch(Objects::isNull)) {
+            throw new RegraDeNegocioViolada(
+                    "etapa-ausente-na-lista",
+                    "Etapa vazia na lista",
+                    "A lista de etapas contém um item vazio. Recarregue a configuração "
+                            + "e tente de novo. O fluxo atual do projeto não foi alterado.");
+        }
+
+        recusarRepetidos(
+                desejadas.stream().map(FluxoRequisicao.EtapaDesejada::id).filter(Objects::nonNull),
+                "etapaId",
+                "etapa-repetida",
+                "Etapa repetida na configuração",
+                "A mesma etapa aparece mais de uma vez na configuração enviada. "
+                        + "O fluxo atual do projeto não foi alterado.");
+
+        recusarRepetidos(
+                desejadas.stream().map(FluxoRequisicao.EtapaDesejada::ordem),
+                "ordem",
+                "ordem-repetida",
+                "Duas etapas na mesma posição",
+                "Duas etapas foram enviadas com a mesma posição no fluxo, e a posição "
+                        + "é única por projeto. O fluxo atual do projeto não foi alterado.");
+    }
+
+    /** Recusa, nomeando cada valor que apareceu mais de uma vez. */
+    private void recusarRepetidos(
+            Stream<?> valores,
+            String campo,
+            String slug,
+            String titulo,
+            String detalhe) {
+        Set<Object> vistos = new LinkedHashSet<>();
+        List<Map<String, Object>> repetidos = new ArrayList<>();
+        valores.forEach(valor -> {
+            if (!vistos.add(valor)) {
+                repetidos.add(Map.of(campo, valor));
+            }
+        });
+
+        if (!repetidos.isEmpty()) {
+            throw new RegraDeNegocioViolada(slug, titulo, detalhe).comErros(repetidos);
+        }
+    }
+
+    /**
+     * Se alguma ordem vigente e disputada nesta substituicao.
+     *
+     * <p>Ela e disputada quando uma etapa vigente muda de posicao, ou quando uma
+     * posicao hoje ocupada passa a ser de outra etapa — inclusive de uma criada
+     * agora, ou liberada por arquivamento. Fora desses casos o passo intermediario
+     * nao evita colisao nenhuma e so custa dois {@code UPDATE} por etapa.
+     */
+    private boolean haDisputaDeOrdem(
+            List<FluxoRequisicao.EtapaDesejada> desejadas,
+            Map<UUID, Etapa> vigentes,
+            Map<UUID, Integer> ordensOriginais) {
+        if (vigentes.isEmpty()) {
+            return false;
+        }
+        for (FluxoRequisicao.EtapaDesejada desejada : desejadas) {
+            Integer original = desejada.id() == null ? null : ordensOriginais.get(desejada.id());
+            if (original == null || original != desejada.ordem()) {
+                // Posicao pedida por quem ainda nao a tinha: se ela ja pertence a
+                // alguma vigente, as duas se cruzam dentro da transacao.
+                boolean ocupada = ordensOriginais.values().stream()
+                        .anyMatch(ordem -> ordem == desejada.ordem());
+                if (ocupada) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -215,8 +337,11 @@ public class EtapaService {
             return new Etapa(projetoId, desejada.nome(), desejada.ordem(), desejada.terminal());
         }
 
-        // O identificador ja foi conferido contra o fluxo vigente antes de qualquer
-        // escrita, e por isso aqui ele existe.
+        // O identificador ja foi conferido contra o fluxo vigente <b>e</b> contra a
+        // repeticao dentro do proprio corpo, as duas antes de qualquer escrita, e
+        // por isso aqui ele existe. Era so a primeira das duas conferencias que
+        // existia, e a segunda ocorrencia de um id repetido encontrava o mapa ja
+        // esvaziado por esta mesma linha (ACH-01).
         Etapa vigente = vigentes.remove(desejada.id());
         vigente.reconfigurar(desejada.nome(), desejada.ordem(), desejada.terminal());
         return vigente;
@@ -234,10 +359,15 @@ public class EtapaService {
             return;
         }
 
-        TarefasAtivasPorEtapa contador = tarefasAtivas.get();
+        // Uma consulta para todas as etapas, e nao uma por etapa (ACH-07): esta
+        // transacao ja segura o bloqueio pessimista do projeto, e cada ida ao banco
+        // aqui e tempo em que ninguem mais configura este projeto.
+        Map<UUID, Long> contagem = tarefasAtivas.get().contarEm(
+                aArquivar.stream().map(Etapa::getId).toList());
+
         List<Map<String, Object>> bloqueadas = new ArrayList<>();
         for (Etapa etapa : aArquivar) {
-            long ativas = contador.contarEm(etapa.getId());
+            long ativas = contagem.getOrDefault(etapa.getId(), 0L);
             if (ativas > 0) {
                 bloqueadas.add(Map.of(
                         "etapaId", etapa.getId(),
