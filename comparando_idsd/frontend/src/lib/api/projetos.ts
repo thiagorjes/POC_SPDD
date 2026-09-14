@@ -16,13 +16,15 @@ export type ProjetoResumo = {
   permissoes: Permissao[]
   acessoPorAdministracaoGlobal: boolean
   /**
-   * Opcional de propósito. O contrato o promete e o serviço ainda não o emite —
-   * ele nasce com a tabela `etapa`, em TASK-02.2. A marca de "fluxo não
-   * configurado" só é renderizada quando o campo **chega** como falso: derivar
-   * a ausência de etapas no cliente marcaria como não configurado todo projeto
-   * de uma resposta que simplesmente não carrega o campo.
+   * Obrigatório desde TASK-02.2, que passou a emiti-lo (RN-038, SCN-002.4). Era
+   * opcional enquanto o serviço não o mandava, para que a marca de "fluxo não
+   * configurado" não fosse derivada de ausência de campo — o que marcaria como
+   * não configurado todo projeto de uma resposta que simplesmente não o
+   * carregava. Com o campo chegando sempre, manter o opcional preservaria esse
+   * mesmo silêncio: um dia em que o serviço parasse de emiti-lo, nenhum projeto
+   * apareceria pendente e nada acusaria a perda.
    */
-  fluxoConfigurado?: boolean
+  fluxoConfigurado: boolean
 }
 
 export type PaginaDeProjetos = {

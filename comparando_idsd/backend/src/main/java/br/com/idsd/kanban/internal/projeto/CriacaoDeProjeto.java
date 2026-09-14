@@ -40,19 +40,19 @@ public record CriacaoDeProjeto(
      * transitorio: o projeto nasce sem fluxo (RN-038), e configura-lo e o segundo
      * passo obrigatorio do caminho de partida.
      *
-     * <p><b>A constante e verdadeira e nao verificada</b> (ACH-07 da revisao de
-     * TASK-01.8): enquanto a tabela {@code etapa} nao existir, nao ha de onde
-     * derivar a colecao, e a assercao {@code etapas: []} do criterio 3 fica verde
-     * por construcao. <b>Gatilho:</b> quando TASK-02.2 criar a tabela, esta fabrica
-     * passa a ler as etapas do projeto — se continuar constante, todo projeto
-     * respondera sem fluxo logo depois de o fluxo ser configurado, e nenhum teste
-     * desta task falhara por isso.
+     * <p><b>A colecao deixou de ser constante em TASK-02.2</b>, que era o gatilho
+     * escrito aqui por ACH-07 da revisao de TASK-01.8. Enquanto a tabela
+     * {@code etapa} nao existia, {@code List.of()} era verdadeiro e nao verificado:
+     * a assercao {@code etapas: []} ficava verde por construcao, e teria continuado
+     * verde no dia em que a resposta passasse a estar errada. Agora o fluxo chega de
+     * quem o le, e o valor vazio do projeto recem-criado e um <i>resultado</i> e nao
+     * uma promessa.
      */
-    public record Criado(UUID id, String nome, String descricao, List<Object> etapas) {
+    public record Criado(UUID id, String nome, String descricao, List<EtapaResposta> etapas) {
 
-        public static Criado de(Projeto projeto) {
+        public static Criado de(Projeto projeto, List<EtapaResposta> etapas) {
             return new Criado(
-                    projeto.getId(), projeto.getNome(), projeto.getDescricao(), List.of());
+                    projeto.getId(), projeto.getNome(), projeto.getDescricao(), List.copyOf(etapas));
         }
     }
 }

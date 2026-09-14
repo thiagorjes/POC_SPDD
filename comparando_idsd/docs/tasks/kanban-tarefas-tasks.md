@@ -346,18 +346,18 @@ A ordem dentro do épico é serial — as tasks compartilham o mesmo PR.
 
 ### TASK-02.1 — Migration 2 e entidades de etapa e raia
 
-- **Status:** pendente
+- **Status:** concluída
 - **Sistema:** idsd
 - **Executor:** agente
 - **Tentativas:** 3
-- **Depende de:** nenhuma
+- **Depende de:** TASK-01.3
 - **Cenários cobertos:** SCN-017.1
 - **Origem:** RF-017, RF-018, RN-021, RN-023, modelo de dados §3
 - **Detalhe:** `docs/tasks/kanban-tarefas/TASK-02.1-migration-etapa-e-raia.md`
 
 ### TASK-02.2 — Consulta e substituição do fluxo de etapas
 
-- **Status:** pendente
+- **Status:** concluída
 - **Sistema:** idsd
 - **Executor:** agente
 - **Tentativas:** 3

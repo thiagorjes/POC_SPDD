@@ -17,6 +17,12 @@ import java.util.UUID;
  * pessoa tambem participa do projeto, porque e o alcance que dispensa a checagem
  * de participacao.
  *
+ * <p>{@code fluxoConfigurado} e a pendencia de RN-038 <b>visivel na relacao</b>: o
+ * projeto nasce sem fluxo, nao aceita tarefa ate te-lo, e nada no primeiro passo
+ * lembraria do segundo se a lista nao o marcasse. E metadado de configuracao e nao
+ * conteudo do projeto — por isso acompanha a relacao apesar do paragrafo abaixo:
+ * ele diz que <i>existe</i> uma pendencia, jamais o que ha dentro do projeto.
+ *
  * <p><b>Nao ha {@code descricao} aqui, e a ausencia e a regra.</b> A relacao
  * lista por participacao, entao o participante sem papel algum recebe este item
  * e recebe {@code 403} no detalhe: o que vem na relacao e, por construcao, o que
@@ -33,7 +39,8 @@ public record ProjetoResumo(
         String nome,
         List<Papel> papeis,
         Set<Permissao> permissoes,
-        boolean acessoPorAdministracaoGlobal) {
+        boolean acessoPorAdministracaoGlobal,
+        boolean fluxoConfigurado) {
 
     /**
      * O envelope da relacao.

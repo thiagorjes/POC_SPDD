@@ -123,9 +123,20 @@ contagem de tarefas ativas, não integridade referencial.
 | `ordem` | `integer` NOT NULL | |
 | `arquivada_em` | `timestamptz` NULL | |
 
-RN-023: raia não restringe transição e não entra em agregação. Consequência no
-esquema: **nenhuma tabela do anel de projeção referencia `raia`**. A ausência é a
-regra.
+RN-023: raia não restringe transição e não entra em agregação. A consequência no
+esquema é estreita e precisa ser lida como está escrita, porque a generalização
+que soa melhor é falsa e foi corrigida aqui (ACH-04 da revisão de TASK-02.1,
+2026-09-14): **`tarefa` carrega `raia_id`** — é o agrupamento visual do cartão
+(§5, `board-e-tarefas.md`) —, e o que nenhuma tabela carrega é raia **na série de
+tempo**: `evento_tarefa` e `intervalo_tarefa` não a referenciam, e nenhuma rota
+agregada aceita `raiaId` (`fila-e-consultas.md`, "como filtro — não existe").
+
+É essa ausência estreita, e não uma ausência geral, que torna RN-023 propriedade
+do esquema: agregar por raia exigiria juntar a série de tempo a `tarefa` pelo
+estado **corrente**, e o estado corrente não diz em que raia a tarefa estava
+quando o intervalo correu. A generalização anterior — "nenhuma tabela do anel de
+projeção referencia `raia`" — contradizia `:250` dentro deste mesmo §5, e é a
+leitura que a task de esquema copiou para o comentário da migration.
 
 ### `participacao` e `participacao_papel`
 
@@ -247,7 +258,7 @@ verifica, e a linha mais fácil de errar deste catálogo.
 | `titulo` | `text` NOT NULL | RF-004: obrigatório (SCN-004.2) |
 | `descricao` | `text` | |
 | `etapa_id` | `uuid` FK NOT NULL | Dimensão 1 de RN-002 |
-| `raia_id` | `uuid` FK NULL | |
+| `raia_id` | `uuid` FK NULL | Agrupamento visual do cartão (RN-023, `board-e-tarefas.md`). Só o estado corrente a carrega: a série de tempo não, e é isso que impede a agregação por raia — ver §3, `raia` |
 | `condicao` | `text` NOT NULL | Dimensão 2 de RN-002. Domínio de RN-003 |
 | _(sem coluna)_ | — | Dimensão 3 de RN-002 — a marca de impedimento é derivada da existência de linha em `impedimento` com `desfecho IS NULL`, nunca replicada aqui |
 | `responsavel_id` | `uuid` FK NULL | `NULL` quando aguardando tomada (RN-006) |

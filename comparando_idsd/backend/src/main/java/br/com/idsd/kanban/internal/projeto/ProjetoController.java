@@ -68,18 +68,21 @@ public class ProjetoController {
     private final ResolvedorDePermissao resolvedor;
     private final ProjetoServico servico;
     private final SessaoService sessoes;
+    private final EtapaService etapas;
 
     public ProjetoController(
             ProjetoRepository projetos,
             UsuarioRepository usuarios,
             ResolvedorDePermissao resolvedor,
             ProjetoServico servico,
-            SessaoService sessoes) {
+            SessaoService sessoes,
+            EtapaService etapas) {
         this.projetos = projetos;
         this.usuarios = usuarios;
         this.resolvedor = resolvedor;
         this.servico = servico;
         this.sessoes = sessoes;
+        this.etapas = etapas;
     }
 
     /**
@@ -115,7 +118,8 @@ public class ProjetoController {
         Projeto criado = servico.criar(pedido);
         return ResponseEntity.created(URI.create("/v1/projetos/" + criado.getId()))
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(CriacaoDeProjeto.Criado.de(criado));
+                .body(CriacaoDeProjeto.Criado.de(
+                        criado, EtapaResposta.de(etapas.fluxoVigente(criado.getId()))));
     }
 
     @GetMapping
@@ -315,7 +319,8 @@ public class ProjetoController {
                     projeto.nome(),
                     papeis,
                     acesso.permissoes(),
-                    acesso.porAdministracaoGlobal());
+                    acesso.porAdministracaoGlobal(),
+                    projeto.fluxoConfigurado());
         }
 
         ProjetoDetalhe comoDetalhe() {

@@ -21,13 +21,18 @@ import java.util.UUID;
  *     vazio, que distingue participante sem papel de nao-participante.
  * @param papel {@code null} quando ha participacao sem papel algum, ou quando nao
  *     ha participacao.
+ * @param fluxoConfigurado se o projeto ja tem ao menos uma etapa ativa (RN-038).
+ *     Derivado por {@code exists} na propria consulta, e nao navegando a colecao de
+ *     etapas — a razao e a mesma que justifica a projecao inteira. Repete-se em
+ *     todas as linhas do mesmo projeto, como {@code nome} e {@code descricao}.
  */
 public record ProjetoConsulta(
         UUID projetoId,
         String nome,
         String descricao,
         UUID participacaoId,
-        Papel papel) {
+        Papel papel,
+        boolean fluxoConfigurado) {
 
     public boolean participa() {
         return participacaoId != null;

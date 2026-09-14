@@ -167,6 +167,7 @@ DEFAULT `[]`), `aberto_por` (`uuid` FK NOT NULL), `desfecho` (`text` NULL),
 | 7 | Três intervalos abertos de tipos diferentes na mesma tarefa são possíveis | inserção dos três tipos com `fim` nulo |
 | 8 | Não existe coluna de pessoa nem de total em `intervalo_tarefa` | inspeção do esquema |
 | 9 | Não existe gatilho de notificação no banco | inspeção dos gatilhos do esquema |
+| 10 | A role de aplicação também não consegue apagar `etapa` nem `raia` | o `REVOKE DELETE` da migration de concessão restrita (`data-model.md` §8, ordem 4) cobre `etapa` e `raia` junto de `evento_tarefa`, e a tentativa por cada caminho exposto é recusada. Vem de ACH-09 da revisão de TASK-02.1: a remoção das duas é **lógica** por `arquivada_em`, e apagar a linha destruiria a série de tempo por etapa que RF-016 existe para produzir. Não foi feito lá porque a aplicação conecta como o dono do schema, e `REVOKE` contra o dono não surte efeito — é aqui, junto da role de aplicação distinta, que a garantia deixa de ser de um lado só |
 
 #### Histórico
 

@@ -25,10 +25,21 @@ public interface ProjetoRepository extends JpaRepository<Projeto, UUID> {
      *
      * <p>A ordenacao por nome existe para que a relacao seja estavel entre
      * requisicoes; sem ela o agrupamento em memoria herdaria a ordem do plano.
+     *
+     * <p><b>{@code fluxoConfigurado} e derivado por subconsulta correlacionada,
+     * dentro desta consulta</b> (RN-038, SCN-002.4). Navegar a colecao de etapas de
+     * cada projeto produziria o mesmo corpo de resposta e uma consulta por item — o
+     * N+1 que {@code AusenciaDeNMaisUmIT} mede pela invariancia a massa, e que
+     * inspecao de JPQL nao pega depois de uma refatoracao. O {@code exists} custa
+     * uma consulta e so uma, independentemente de quantos projetos voltem.
      */
     @Query("""
             select new br.com.idsd.kanban.internal.projeto.ProjetoConsulta(
-                       p.id, p.nome, p.descricao, part.id, pp)
+                       p.id, p.nome, p.descricao, part.id, pp,
+                       case when exists (select 1 from Etapa e
+                                          where e.projetoId = p.id
+                                            and e.arquivadaEm is null)
+                            then true else false end)
               from Projeto p
               left join Participacao part
                      on part.projeto = p and part.usuario.id = :usuarioId
@@ -58,7 +69,11 @@ public interface ProjetoRepository extends JpaRepository<Projeto, UUID> {
      */
     @Query("""
             select new br.com.idsd.kanban.internal.projeto.ProjetoConsulta(
-                       p.id, p.nome, p.descricao, part.id, pp)
+                       p.id, p.nome, p.descricao, part.id, pp,
+                       case when exists (select 1 from Etapa e
+                                          where e.projetoId = p.id
+                                            and e.arquivadaEm is null)
+                            then true else false end)
               from Projeto p
               left join Participacao part
                      on part.projeto = p and part.usuario.id = :usuarioId

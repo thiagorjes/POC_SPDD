@@ -74,20 +74,19 @@ export function FormularioDeNovoProjeto() {
         </div>
 
         {/*
-          A frase que prometia a marca no cartão da lista saiu (ACH-07 da
-          revisão de TASK-01.7). Ela é a segunda sinalização que a emenda de
-          2026-09-10 instituiu junto com esta, e não chega: o campo que a
-          condiciona só é emitido pelo serviço a partir de TASK-02.2, e o
-          critério 9 desta task declara isso. Prometer o lembrete faz quem
-          escolhe “depois” confiar em algo que não existe — e o custo de RN-038
-          é justamente que nada no primeiro passo lembra do segundo. Enquanto a
-          marca não chegar, esta tela é o único aviso, e por isso ele diz o que
-          fazer em vez de apontar para onde a pendência apareceria.
+          A frase voltou em TASK-02.2 (critério 10), que era a condição escrita
+          quando ela saiu por ACH-07 da revisão de TASK-01.7. Ela é a segunda
+          sinalização que a emenda de 2026-09-10 instituiu junto com esta, e
+          tinha sido retirada porque prometia um lembrete que não chegava: o
+          campo `fluxoConfigurado` que a condiciona só passou a ser emitido em
+          `GET /v1/projetos` agora. Com ele emitido, quem escolhe “depois”
+          reencontra a pendência onde ela foi prometida, e as duas sinalizações
+          de RN-038 voltam a estar completas.
         */}
         <p className="text-sm text-texto-secundario">
           Escolher “depois” deixa o projeto utilizável apenas para configuração: a criação de tarefa
-          é recusada com essa razão até haver etapa. Guarde a pendência — configurar o fluxo é o que
-          abre o projeto para uso.
+          é recusada com essa razão até haver etapa. O projeto fica marcado como pendente de
+          configuração na sua lista de projetos, e é de lá que você retoma.
         </p>
       </div>
     )
