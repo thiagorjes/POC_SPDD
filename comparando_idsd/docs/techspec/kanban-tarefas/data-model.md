@@ -205,6 +205,30 @@ Log append-only. Fonte de tudo o que a projeção afirma.
 | `seq` | `bigint` NOT NULL | Sequência por projeto, para o payload do `NOTIFY` e a resincronização client-side do ADR-004. **Único** por `(projeto_id, seq)`. Geração abaixo |
 | `dados` | `jsonb` NULL | Motivo do impedimento, desfecho, título na criação. Nunca dado de cliente (IDSD 4.10.1) |
 
+### Formato de `dados`
+
+A coluna era descrita só por exemplos, e isso bastava enquanto ninguém a lia. A
+reconstrução de SDR-006 a lê, e leitor sem formato declarado é acoplamento ao
+que o escritor fez naquele dia. Um objeto JSON por tipo de evento, e **nenhuma
+chave além das declaradas**:
+
+| Tipo | Chaves | Origem |
+| --- | --- | --- |
+| `TAREFA_CRIADA` | `titulo` (string, obrigatória) | RF-004 |
+| `IMPEDIMENTO_ABERTO` | `motivo` (string, obrigatória) | RF-009 |
+| `IMPEDIMENTO_ANOTADO` | `anotacao` (string, obrigatória) | RN-010 |
+| `IMPEDIMENTO_RESOLVIDO` | `desfecho` (string, obrigatória) | RF-010 |
+| demais tipos | — | `dados` é `NULL` |
+
+`descricao` **não** entra: ela não é reconstruível (SDR-006) e gravá-la no log
+sem que a reconstrução a use seria dado de cliente num registro imutável sem
+leitor — o que RNF-008 mais encarece e IDSD 4.10.1 proíbe.
+
+Teto de 8 KiB por documento, validado como JSON antes da gravação. Não é limite
+de negócio: é o que impede que um log imutável, que não tem caminho de
+retificação, receba conteúdo que ninguém consegue tirar de lá. Achado ACH-15 da
+revisão de TASK-02.4.
+
 ### Geração do `seq` (SDR-004)
 
 O número é atribuído **no banco, dentro da transação de escrita**, por
@@ -510,9 +534,35 @@ o esquema sob teste é o esquema de produção, não uma aproximação.
 
 A alegação de que a projeção é descartável só vale se houver como refazê-la.
 
-A rotina lê `evento_tarefa` em ordem de `id`, por projeto, e reescreve `tarefa`,
-`intervalo_tarefa` e `impedimento` do zero. É idempotente e não toca no anel de
-verdade.
+A rotina lê `evento_tarefa` em ordem de `id`, por projeto, e tem **dois alcances
+diferentes** (SDR-006). É idempotente e não toca no anel de verdade.
+
+**`intervalo_tarefa` — reconstrução total.** A série de tempo é integralmente
+determinada pelo catálogo de §4 mais `ocorrido_em`: a rotina a reproduz inteira,
+e divergência entre a série gravada e a reexecutada é defeito.
+
+**`tarefa` e `impedimento` — reconstrução parcial, sobre linha existente.** A
+rotina reescreve só os campos que o log determina e preserva os demais; **não
+cria e não remove** linha nessas duas tabelas.
+
+| Tabela | Reescrito | Preservado |
+| --- | --- | --- |
+| `tarefa` | `etapa_id`, `condicao`, `responsavel_id`, `assumida_em`, `episodio_atual` | `titulo`, `descricao`, `raia_id`, `criada_em` |
+| `impedimento` | `desfecho`, `resolvido_por`, `anotacoes` | `id`, `intervalo_id`, `motivo`, `aberto_por` |
+
+A versão anterior desta seção prometia as três tabelas **do zero**, e o log não
+sustenta isso: `raia_id` não existe em evento nenhum — e não por esquecimento,
+mas porque é a ausência dela na série de tempo que torna a agregação por raia
+impossível (RN-023, ver §3 `raia`) —, `descricao` não tem evento que a registre,
+e `impedimento.id` é UUID gerado que o log não carrega, enquanto
+`impedimento.intervalo_id` é FK. O esquema já impedia o "do zero" antes que a
+spec percebesse: foi por isso que a implementação precisou casar linha gravada
+com linha reexecutada e reescrever no lugar. Achado ACH-02 da revisão de
+TASK-02.4.
+
+**O limite é real e fica declarado:** `titulo`, `descricao` e `raia_id`
+corrompidos não são curáveis por esta rotina. Tarefa presente no log e ausente
+de `tarefa` é divergência que ela **reporta e não corrige**.
 
 **Exige janela sem escrita no projeto.** Reconstruir concorrentemente com escritas
 novas produz projeção divergente do log — o defeito exato que a rotina existe para
@@ -522,6 +572,7 @@ administrativa e rara; tratá-la como online custaria mais do que a raridade
 justifica.
 
 O teste que a sustenta: executar um percurso completo de tarefa, capturar a
-projeção, reconstruir, comparar. Divergência reprova. Sem esse teste, "a projeção
+projeção, reconstruir, comparar — a série de tempo inteira, e de `tarefa` e
+`impedimento` os campos reescritos da tabela acima. Divergência reprova. Sem esse teste, "a projeção
 é reconstruível" é afirmação sem lastro — e a divergência silenciosa entre log e
 projeção é o risco que SDR-001 assume ao escolher este desenho.
