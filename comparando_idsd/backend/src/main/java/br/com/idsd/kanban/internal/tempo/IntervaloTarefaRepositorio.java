@@ -64,8 +64,29 @@ public interface IntervaloTarefaRepositorio extends Repository<IntervaloTarefa, 
      * porque o log nao registra o que a projecao perdeu. Em lote, o unico jeito
      * de chamar e tendo calculado antes qual e o excedente, que e o que a rotina
      * de reconstrucao faz.
+     *
+     * <p><b>Chame {@link #apagarPorIdEmLotes(List)}</b>, nao este. A lista vai
+     * inteira para o {@code in} e o protocolo do PostgreSQL nao aceita mais de
+     * 65535 parametros ligados por comando: acima disso a remocao falha no meio de
+     * uma reconstrucao que ja reescreveu linhas (ACH-18). O metodo continua
+     * publicado porque e ele que o loteamento chama.
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from IntervaloTarefa i where i.id in :ids")
     void apagarPorId(@Param("ids") Collection<Long> ids);
+
+    /** Teto folgado sobre o limite de parametros ligados do protocolo. */
+    int LOTE_DE_REMOCAO = 1000;
+
+    /**
+     * {@link #apagarPorId} em lotes de {@value #LOTE_DE_REMOCAO}.
+     *
+     * <p>Nao e atomico por lote nem precisa ser: a chamada inteira roda dentro da
+     * transacao da reconstrucao, e o que reverte reverte junto.
+     */
+    default void apagarPorIdEmLotes(List<Long> ids) {
+        for (int i = 0; i < ids.size(); i += LOTE_DE_REMOCAO) {
+            apagarPorId(ids.subList(i, Math.min(i + LOTE_DE_REMOCAO, ids.size())));
+        }
+    }
 }

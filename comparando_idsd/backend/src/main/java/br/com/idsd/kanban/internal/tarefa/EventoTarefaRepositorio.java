@@ -2,6 +2,7 @@ package br.com.idsd.kanban.internal.tarefa;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 
@@ -23,13 +24,14 @@ import org.springframework.data.repository.Repository;
  * ausencia sozinha nao sobrevive a um bug de servico nem a alguem com o console
  * aberto usando a credencial da aplicacao.
  *
- * <p><b>Hoje so a metade deste arquivo esta em vigor.</b> A aplicacao conecta
- * com {@code BANCO_USUARIO}, que e o {@code POSTGRES_USER} da imagem —
- * superusuario e dono do schema —, e contra ele toda revogacao e inerte. A
- * concessao da migration esta correta e foi medida com uma role fabricada, mas
- * nenhuma conexao do produto passa por ela. Enquanto isso durar, RNF-008 e
- * garantido apenas por esta ausencia de metodo. Ver ACH-01 da revisao de
- * TASK-02.3 e a pendencia 21 do estado operacional.
+ * <p><b>As duas metades estao em vigor desde TASK-02.9.</b> A aplicacao deixou
+ * de conectar como o dono do schema e passou a conectar como {@code kanban_app},
+ * role de login membro de {@code aplicacao_kanban}, sem {@code SUPERUSER} e sem
+ * posse de objeto — e e contra superusuario e contra dono que {@code REVOKE} era
+ * decoracao. A perna de banco saiu de "escrita e inerte" para medida: contra
+ * essa credencial, {@code UPDATE}, {@code DELETE} e {@code TRUNCATE} do log saem
+ * em {@code permission denied}. A pendencia 21 esta fechada; este paragrafo
+ * afirmava o contrario e era o ACH-07 da revisao de TASK-02.4.
  *
  * <p><b>Nao ha metodo de insercao tambem, e isso e outra coisa.</b> Quem grava e
  * {@code RegistradorDeEvento}, por {@code EntityManager.persist} — a operacao que
@@ -53,6 +55,23 @@ public interface EventoTarefaRepositorio extends Repository<EventoTarefa, Long> 
      * define a ordem em que os eventos de fato entraram.
      */
     List<EventoTarefa> findByProjetoIdOrderByIdAsc(UUID projetoId);
+
+    /**
+     * O mesmo log, em lote, a partir de um ponto.
+     *
+     * <p>Existe para a reconstrucao nao carregar o log inteiro de uma vez
+     * (ACH-14). O log e a unica tabela do sistema que cresce sem teto — um evento
+     * por acao, para sempre, e nada o poda, porque poda-lo seria negar SDR-001 —,
+     * de modo que a leitura integral e exaustao de heap adiada, e adiada para
+     * dentro da transacao que segura o bloqueio exclusivo do projeto: o pior
+     * momento possivel, porque a falha chega com as escritas ja barradas.
+     *
+     * <p>Paginacao por chave e nao por deslocamento: {@code OFFSET} relê e
+     * descarta as linhas anteriores a cada lote, o que torna a varredura
+     * quadratica justamente no projeto grande que motivou a mudanca.
+     */
+    List<EventoTarefa> findByProjetoIdAndIdGreaterThanOrderByIdAsc(
+            UUID projetoId, Long apos, Pageable pagina);
 
     /**
      * Os projetos que tem log.

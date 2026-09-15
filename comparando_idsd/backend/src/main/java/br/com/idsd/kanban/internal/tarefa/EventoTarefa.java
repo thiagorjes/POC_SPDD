@@ -20,11 +20,11 @@ import org.hibernate.type.SqlTypes;
  * um evento se cria e se le, nunca se corrige. A garantia foi desenhada tripla —
  * nenhum campo e mutavel daqui, {@link EventoTarefaRepositorio} nao expoe
  * atualizacao nem remocao, e o grupo {@code aplicacao_kanban} recebe apenas
- * {@code SELECT, INSERT} nesta tabela (RNF-008). <b>A terceira perna esta
- * escrita e nao esta em vigor:</b> a aplicacao conecta como dono do schema e
- * superusuario, contra quem a revogacao e inerte — ver
- * {@link EventoTarefaRepositorio}, ACH-01 da revisao de TASK-02.3 e a pendencia
- * 21. Valem hoje as duas primeiras.
+ * {@code SELECT, INSERT} nesta tabela (RNF-008). <b>As tres estao em vigor
+ * desde TASK-02.9</b>, que deu a aplicacao uma credencial propria —
+ * {@code kanban_app}, sem {@code SUPERUSER} e sem posse de objeto — no lugar do
+ * dono do schema, contra quem toda revogacao era inerte. Este paragrafo dizia o
+ * contrario e era o ACH-07 da revisao de TASK-02.4.
  *
  * <p>O construtor de criacao entrou nesta task, que e a do primeiro escritor
  * (ACH-13 da revisao de TASK-02.1: assinatura nasce com o consumidor). Ele nao
@@ -98,11 +98,27 @@ public class EventoTarefa {
     @Column(name = "etapa_destino_id")
     private UUID etapaDestinoId;
 
+    /**
+     * A condicao da tarefa antes e depois do evento.
+     *
+     * <p>Tipadas como {@link Condicao} e persistidas por nome, como {@code tipo}
+     * (ACH-10). Eram {@code String} enquanto {@code tipo} ja era enum, e a
+     * assimetria nao tinha razao: o dominio dos tres valores e o mesmo enum, a
+     * coluna tem restricao de dominio no banco desde TASK-02.3, e texto livre em
+     * campo de dominio fechado e o caminho por onde entra a grafia que nenhuma
+     * leitura reconhece — numa tabela sem retificacao.
+     *
+     * <p>{@code STRING} e nao {@code ORDINAL} pela razao de sempre: a coluna e
+     * texto, e o ordinal gravado tornaria a reordenacao do enum uma reescrita
+     * silenciosa de toda linha ja gravada.
+     */
+    @Enumerated(EnumType.STRING)
     @Column(name = "condicao_origem")
-    private String condicaoOrigem;
+    private Condicao condicaoOrigem;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "condicao_destino")
-    private String condicaoDestino;
+    private Condicao condicaoDestino;
 
     /**
      * Sequencia por projeto (SDR-004), atribuida no banco dentro da transacao
@@ -115,6 +131,14 @@ public class EventoTarefa {
     /**
      * Motivo do impedimento, desfecho, titulo na criacao. <b>Nunca dado de
      * cliente</b> (IDSD 4.10.1).
+     *
+     * <p>{@code RegistradorDeEvento} recusa o que nao for JSON valido e o que
+     * passar do teto de tamanho (ACH-15). O que ele <b>nao</b> faz e distinguir um
+     * motivo escrito pelo servico de um colado do corpo da requisicao: a regra
+     * acima segue sendo disciplina de chamador, e o mecanismo que a torna
+     * estrutural pertence a borda, que nasce em TASK-02.5. Importa porque esta
+     * coluna vive num log imutavel — dado pessoal que entre aqui nao tem caminho
+     * de retificacao nem de eliminacao.
      */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "dados")
@@ -143,8 +167,8 @@ public class EventoTarefa {
         this.episodio = novo.episodio();
         this.etapaOrigemId = novo.etapaOrigemId();
         this.etapaDestinoId = novo.etapaDestinoId();
-        this.condicaoOrigem = novo.condicaoOrigem() == null ? null : novo.condicaoOrigem().name();
-        this.condicaoDestino = novo.condicaoDestino() == null ? null : novo.condicaoDestino().name();
+        this.condicaoOrigem = novo.condicaoOrigem();
+        this.condicaoDestino = novo.condicaoDestino();
         this.dados = novo.dados();
         this.seq = seq;
         this.ocorridoEm = ocorridoEm;
@@ -233,11 +257,11 @@ public class EventoTarefa {
         return etapaDestinoId;
     }
 
-    public String getCondicaoOrigem() {
+    public Condicao getCondicaoOrigem() {
         return condicaoOrigem;
     }
 
-    public String getCondicaoDestino() {
+    public Condicao getCondicaoDestino() {
         return condicaoDestino;
     }
 

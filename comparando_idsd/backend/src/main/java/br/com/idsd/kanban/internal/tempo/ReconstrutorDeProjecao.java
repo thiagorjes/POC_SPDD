@@ -4,6 +4,9 @@ import br.com.idsd.kanban.internal.tarefa.EventoTarefa;
 import br.com.idsd.kanban.internal.tarefa.EventoTarefaRepositorio;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,6 +16,9 @@ import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -46,6 +52,9 @@ public class ReconstrutorDeProjecao {
 
     private static final Logger LOG = LoggerFactory.getLogger(ReconstrutorDeProjecao.class);
 
+    /** Eventos por ida ao banco na reexecucao do log (ACH-14). */
+    private static final int LOTE_DE_LEITURA = 500;
+
     private final EventoTarefaRepositorio eventos;
     private final IntervaloTarefaRepositorio intervalos;
     private final TransactionTemplate transacoes;
@@ -71,13 +80,26 @@ public class ReconstrutorDeProjecao {
      * corretas, produziriam dois bloqueios que se ignoram, e a janela sem escrita
      * deixaria de existir sem que nada falhasse.
      *
-     * <p>O {@code xor} das duas metades do UUID cabe nos 64 bits que
-     * {@code pg_advisory_xact_lock} aceita. Colisao entre projetos diferentes e
-     * possivel e o efeito dela e benigno: um projeto espera a reconstrucao de
-     * outro. Perda de exclusao seria o dano; excesso dela nao e.
+     * <p>Os 64 bits que {@code pg_advisory_xact_lock} aceita saem de um resumo
+     * SHA-256 dos 16 bytes do UUID, e <b>nao</b> do {@code xor} das duas metades
+     * (ACH-16). Colisao continua possivel — 64 bits nao comportam 128 —, e o
+     * efeito de uma colisao acidental segue benigno: um projeto espera a
+     * reconstrucao de outro. O que muda e a colisao <b>construida</b>: com o
+     * {@code xor}, casar a chave de um projeto alheio era aritmetica de um passo
+     * para quem tivesse qualquer influencia sobre o identificador gerado, e o
+     * efeito, somado ao bloqueio dos escritores, alcancaria projeto que o autor
+     * nao acessa. Resumo criptografico nao se inverte assim.
      */
     public static long chaveDeBloqueio(UUID projetoId) {
-        return projetoId.getMostSignificantBits() ^ projetoId.getLeastSignificantBits();
+        var bytes = ByteBuffer.allocate(16)
+                .putLong(projetoId.getMostSignificantBits())
+                .putLong(projetoId.getLeastSignificantBits())
+                .array();
+        try {
+            return ByteBuffer.wrap(MessageDigest.getInstance("SHA-256").digest(bytes)).getLong();
+        } catch (NoSuchAlgorithmException impossivel) {
+            throw new IllegalStateException("SHA-256 ausente da plataforma", impossivel);
+        }
     }
 
     /**
@@ -88,6 +110,7 @@ public class ReconstrutorDeProjecao {
      * bloquearia o sistema inteiro pelo tempo do maior projeto.
      */
     public void reconstruirTudo() {
+        exigirAutorizacaoAdministrativa();
         for (UUID projetoId : eventos.projetosComLog()) {
             reconstruir(projetoId);
         }
@@ -112,7 +135,32 @@ public class ReconstrutorDeProjecao {
      * porque o resultado e funcao do log e de mais nada.
      */
     public void reconstruir(UUID projetoId) {
+        exigirAutorizacaoAdministrativa();
         transacoes.executeWithoutResult(status -> reconstruirNaTransacao(projetoId));
+    }
+
+    /**
+     * O gate de ACH-17.
+     *
+     * <p>Ausencia de autenticacao <b>autoriza</b>, e a inversao e deliberada: a
+     * rotina nasceu como operacao de processo e continua sendo uma: job agendado,
+     * console administrativo, arnes de teste. Nenhum deles tem principal. O que o
+     * gate impede e o caso oposto e perigoso — chegar aqui <b>por dentro de uma
+     * requisicao autenticada qualquer</b>, que e exatamente o que aconteceria no
+     * dia em que a rotina ganhasse rota sem ninguem decidir quem pode disparar
+     * uma varredura que bloqueia as escritas do projeto.
+     */
+    private void exigirAutorizacaoAdministrativa() {
+        var autenticacao = SecurityContextHolder.getContext().getAuthentication();
+        if (autenticacao == null || !autenticacao.isAuthenticated()) {
+            return;
+        }
+        boolean admin = autenticacao.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN_GLOBAL".equals(a.getAuthority()));
+        if (!admin) {
+            throw new AccessDeniedException(
+                    "reconstrucao da projecao e operacao administrativa");
+        }
     }
 
     /**
@@ -134,6 +182,13 @@ public class ReconstrutorDeProjecao {
         Map<Chave, List<IntervaloTarefa>> existente = agrupar(
                 intervalos.findByProjetoIdOrderByIdAsc(projetoId));
 
+        // ACH-08: o pareamento por posicao dentro de (tarefa_id, tipo) nao
+        // pressupoe que a linha gravada esteja correta — pressupoe apenas que
+        // exista. Todo campo mutavel e sobrescrito por reescrever(), e o que
+        // sobra e apagado, de modo que projecao corrompida sai desta rotina igual
+        // a projecao ausente. O que o pareamento preserva de proposito e o
+        // identificador, porque impedimento.intervalo_id o referencia e o log nao
+        // o carrega — preserva-lo e o motivo de a rotina nao ser apaga-e-insere.
         var excedente = new ArrayList<Long>();
         for (var grupo : existente.entrySet()) {
             List<Linha> linhas = desejado.getOrDefault(grupo.getKey(), List.of());
@@ -150,7 +205,7 @@ public class ReconstrutorDeProjecao {
             }
         }
         if (!excedente.isEmpty()) {
-            intervalos.apagarPorId(excedente);
+            intervalos.apagarPorIdEmLotes(excedente);
         }
 
         // As faltantes entram depois das remocoes, senao o indice unico parcial
@@ -182,13 +237,30 @@ public class ReconstrutorDeProjecao {
      * consultado e o mesmo de {@link AplicadorDeIntervalos}: se fosse outro, a
      * projecao reconstruida divergiria da gravada por diferenca de tabela, e a
      * divergencia apareceria como defeito desta rotina.
+     *
+     * <p><b>Em lotes, com o contexto limpo a cada um</b> (ACH-14). O log nao tem
+     * teto, e carrega-lo inteiro punha duas copias de cada evento na heap — a
+     * linha e a entidade gerenciada — dentro da transacao que segura o bloqueio.
+     * O {@code clear} e seguro aqui e so aqui: nada do que esta fase produz e
+     * entidade gerenciada, so {@link Linha}, e os intervalos existentes ainda nao
+     * foram carregados. Limpar depois deles desanexaria justamente as linhas que
+     * a rotina vai reescrever.
+     *
+     * <p>O que resta na memoria e o mapa de {@link Linha}, proporcional aos
+     * intervalos que o log determina — isto e, as tarefas e episodios do projeto —
+     * e nao ao numero de eventos. Cresce, e muito mais devagar: e o log que nao
+     * tem poda, porque poda-lo seria negar SDR-001.
      */
     private Map<Chave, List<Linha>> reexecutarOLog(UUID projetoId) {
         var resultado = new LinkedHashMap<Chave, List<Linha>>();
         var abertos = new HashMap<UUID, Map<TipoDeIntervalo, Linha>>();
         var etapaCorrente = new HashMap<UUID, UUID>();
 
-        for (EventoTarefa evento : eventos.findByProjetoIdOrderByIdAsc(projetoId)) {
+        long ultimoLido = 0L;
+        List<EventoTarefa> lote;
+        while (!(lote = eventos.findByProjetoIdAndIdGreaterThanOrderByIdAsc(
+                projetoId, ultimoLido, PageRequest.of(0, LOTE_DE_LEITURA))).isEmpty()) {
+        for (EventoTarefa evento : lote) {
             UUID tarefaId = evento.getTarefaId();
             Instant quando = evento.getOcorridoEm();
             if (evento.getEtapaDestinoId() != null) {
@@ -208,6 +280,9 @@ public class ReconstrutorDeProjecao {
                 resultado.computeIfAbsent(new Chave(tarefaId, tipo), c -> new ArrayList<>())
                         .add(linha);
             }
+        }
+            ultimoLido = lote.get(lote.size() - 1).getId();
+            em.clear();
         }
         return resultado;
     }
