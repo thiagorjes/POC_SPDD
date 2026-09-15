@@ -1,6 +1,6 @@
 # Plano de Verificação — kanban-tarefas
 
-_Versão 1.8 — 2026-09-14_
+_Versão 1.9 — 2026-09-15_
 
 Feature: `kanban-tarefas`
 Origem: PRD v1.5 (70 cenários congelados), TechSpec v1.7, Tasks (8 épicos, 43 tasks)
@@ -103,6 +103,69 @@ vermelhas:** sem `liberarOrdens`, sem `and e.arquivadaEm is null`, com o traduto
 Suíte em **189 testes, 91 verdes / 98 vermelhos** — os 18 novos entraram verdes e
 a lista de vermelhos é idêntica à linha de base. Nenhum `.feature`, ID ou redação
 de cenário mudou. O bloco "Além dos cenários" passa de 13 para **16 classes**.
+
+### Correção de 2026-09-15 (v1.9) — o arnês mentia sobre o tempo, e o teste pedia o que o esquema recusa
+
+ACH-03 e ACH-04 da revisão de TASK-02.4, os dois na suíte congelada e os dois
+tornando o critério 6 — reconstrução reproduz o estado capturado — insatisfazível
+por implementação correta nenhuma.
+
+**ACH-03.** `Cenario.recuarInicioDoIntervalo` desloca `intervalo_tarefa.inicio` e
+nunca `evento_tarefa.ocorrido_em`. Para os vinte e oito pontos que o usam isso é
+inofensivo, porque eles leem a projeção e não o log; para
+`ReconstrucaoDaProjecaoIT` é fatal, porque lá a comparação é exatamente entre a
+projeção gravada e o que o log sustenta — a divergência era fabricada pelo arnês
+e apareceria como defeito da rotina.
+
+**Não existe conserto do método que preserve a semântica dele.** Os intervalos de
+uma tarefa se sobrepõem (RN-008) e `TAREFA_MOVIDA` fecha e abre `PERMANENCIA` no
+mesmo instante, de modo que deslocar o log coerentemente só é possível
+transladando um prefixo inteiro — e translação de prefixo não produz recuos
+independentes por intervalo: dois recuos seguidos na mesma tarefa compõem, e as
+durações que os testes de leitura afirmam deixariam de valer. Tentar deslocar só
+o evento que abre o intervalo é pior: o mesmo evento fecha o anterior, e encurtá-lo
+produz duração negativa.
+
+A correção, então, não é no método e sim no ponto de uso. `recuarInicioDoIntervalo`
+fica, agora declarado no Javadoc como **fixture do modelo de leitura e só dele**,
+com a razão escrita para que o próximo teste sensível ao log não caia nele. E
+nasce `Cenario.envelhecerProjeto`, que é uma **translação rígida**: todo evento,
+toda fronteira de intervalo e `tarefa.assumida_em` do projeto recuam o mesmo
+tanto. Log e projeção se movem juntos, de modo que nada é fabricado. Duração de
+intervalo fechado não muda; a de intervalo aberto cresce o recuo, porque o fim
+dela é o agora. `ReconstrucaoDaProjecaoIT` troca os três recuos por um
+envelhecimento de seis horas.
+
+Perder as durações inflacionadas dos intervalos fechados não custa poder de
+falha: a asserção principal compara o **dump completo** da série de tempo —
+`tarefa_id`, `etapa_id`, `tipo`, `episodio`, `inicio`, `fim` —, e intervalo
+perdido, episódio errado ou etapa trocada reprovam ali qualquer que seja a
+duração.
+
+**ACH-04.** `apagarAProjecao` fazia `TRUNCATE intervalo_tarefa`, e
+`impedimento.intervalo_id` é FK `NOT NULL` para essa tabela. **Medido** contra
+`postgres:16-alpine` com as nove migrations aplicadas: `cannot truncate a table
+referenced in a foreign key constraint`.
+
+`CASCADE` não é a saída, e não por conveniência: por SDR-006 a rotina de
+reconstrução **não cria linha de `impedimento`**, de modo que apagar o
+impedimento junto destruiria insumo e não modelo de leitura — o teste passaria a
+exigir da rotina o que ela declaradamente não promete. O método vira
+`corromperAProjecao` e destrói até onde o esquema permite: apaga toda linha que
+nenhum impedimento referencia e, nas que sobram, corrompe `inicio` e anula `fim`
+— justamente os dois campos que o log determina, de modo que rotina que não os
+reescreva no lugar deixa a corrupção visível na comparação. A asserção
+intermediária deixa de ser "a projeção está vazia" e passa a ser "a projeção
+diverge do que foi capturado", que é o que de fato precisa valer antes de
+reconstruir.
+
+**Execução.** `test-compile` no contêiner de ADR-012: os mesmos três arquivos
+que já não compilavam por dependerem de TASK-02.5, **nenhum erro novo**. As cinco
+sentenças SQL novas foram validadas contra o esquema real. O critério 6 continua
+**sem medição**, e pela razão de sempre: `ReconstrucaoDaProjecaoIT` morre em
+`404` de `POST /v1/projetos/{id}/tarefas`, rota de TASK-02.5. O que esta versão
+entrega é que ele deixou de ser insatisfazível — quando a rota existir, ele será
+decidido pelo mérito da rotina e não por defeito do arnês.
 
 ### Correção de 2026-09-14 (v1.7) — o poder de falha não existia, e agora está medido
 
@@ -543,6 +606,7 @@ defeito que este congelamento existe para impedir.
 | 2026-09-10 | Correção das asserções de SCN-002.1 (`[*]` no caminho com filtro, positiva antes da negativa) e da ordem de `AdminGlobalIT` em SCN-021.2; SCN-002.4 deixa de ser declarado coberto; `ExistenciaECapacidadeIT` acrescentado além dos cenários | correção de defeito da suíte | achados ACH-01, ACH-04, ACH-05, ACH-06 e ACH-07 da revisão de TASK-01.5: duas asserções não verificavam o que afirmavam e uma cobertura era declarada sem teste. Nenhum `.feature` tocado, nenhum ID alterado, nenhuma asserção afrouxada. **Não independente**: ver a declaração de independência | Thiago Goncalves Cavalcante (autorizou a correção dos achados; a natureza não independente foi declarada antes da execução) |
 | 2026-09-11 | `AusenciaDeNMaisUmIT` e o arnês `ContagemDeConsultas` acrescentados além dos cenários; `ExistenciaECapacidadeIT` ganha a asserção de que a relação não carrega `descricao` | acréscimo além dos cenários | achados ACH-08 e ACH-09 da revisão de TASK-01.5: o critério de ausência de N+1 era marcado por inspeção, e o corolário de contrato instituído na emenda da TechSpec precisava de verificador. Nenhum `.feature` tocado, nenhum cenário alterado. **Não independente**: ver a declaração de independência | Thiago Goncalves Cavalcante (autorizou a correção dos achados) |
 | 2026-09-14 | `LimitesDaConfiguracaoDoFluxoIT`, `TradutorDeIntegridadeTest` e `TetoDeCorpoIT` acrescentados além dos cenários (16 testes); `SubstituicaoDeFluxoConcorrenteIT` ganha 2 testes e correções de método; `Cenario.executarHttp` passa a falhar rápido em não-2xx | acréscimo além dos cenários e correção de defeito da suíte | os 11 achados do `/tests` na reexecução de TASK-02.2. Doze mecanismos criados para fechar bloqueantes da 1ª revisão não tinham verificação alguma. Nenhum `.feature` tocado, nenhum cenário alterado, nenhuma asserção afrouxada. Assimetria medida em 4 mutações, todas vermelhas. **Não independente**: ver a declaração de independência | Thiago Goncalves Cavalcante (autorizou a correção dos achados) |
+| 2026-09-15 | `Cenario.recuarInicioDoIntervalo` declarado fixture do modelo de leitura; `Cenario.envelhecerProjeto` criado; `ReconstrucaoDaProjecaoIT` troca os três recuos por um envelhecimento e `apagarAProjecao` vira `corromperAProjecao` | correção de defeito da suíte | achados ACH-03 e ACH-04 da revisão de TASK-02.4: o arnês fabricava divergência entre log e projeção, e o `TRUNCATE` é recusado pelo PostgreSQL por causa da FK de `impedimento` — medido. Os dois tornavam o critério 6 insatisfazível por implementação correta nenhuma. Nenhum `.feature` tocado, nenhum cenário alterado, nenhuma asserção afrouxada — a comparação final continua exigindo igualdade exata do dump. **Não independente**: ver a declaração de independência | Thiago Goncalves Cavalcante (autorizou a correção dos achados) |
 | 2026-09-10 | Acréscimo de SCN-022.1, SCN-022.2 e SCN-022.3 — `CriacaoDeProjetoIT` criado, um teste novo em `CriacaoDeTarefaIT`, suporte E2E migrado para a rota real | emenda de cenário no PRD | emenda v1.3 do PRD, que criou RF-022 e fechou a lacuna de especificação registrada nesta etapa. Nenhum cenário preexistente teve ID, redação ou teste alterados | Thiago Goncalves Cavalcante (aprovador do gate de spec na reconfirmação da emenda v1.3) |
 
 ---

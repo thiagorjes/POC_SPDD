@@ -122,6 +122,21 @@ public class Cenario {
      * Recua o inicio de um intervalo em curso, para exercitar as contagens sem
      * que o teste espere o tempo passar. Toca apenas o instante de inicio: o
      * intervalo continua sendo o que a implementacao abriu.
+     *
+     * <p><b>Fixture do modelo de leitura, e so dele.</b> Este metodo escreve na
+     * projecao sem escrever no log, de modo que depois dele a projecao deixa de
+     * ser reproduzivel a partir de {@code evento_tarefa}. Para os testes de
+     * duracao isso e inofensivo — eles leem a projecao e nunca o log. Para
+     * qualquer teste que compare a projecao com o que o log sustenta, e fatal:
+     * a divergencia foi fabricada pelo arnes e apareceria como defeito da
+     * implementacao. Foi ACH-03 da revisao de TASK-02.4.
+     *
+     * <p>Nao ha versao deste metodo que seja coerente com o log e preserve a
+     * semantica atual: como os intervalos de uma tarefa se sobrepoem (RN-008),
+     * deslocar o log so e consistente por translacao de todo um prefixo, e
+     * translacao de prefixo nao produz recuos independentes por intervalo. Quem
+     * precisa de tempo decorrido <i>com</i> log coerente usa
+     * {@link #envelhecerProjeto}.
      */
     public void recuarInicioDoIntervalo(UUID tarefaId, String tipo, java.time.Duration recuo) {
         executar(
@@ -131,6 +146,45 @@ public class Cenario {
                     stmt.setString(1, recuo.toMinutes() + " minutes");
                     stmt.setObject(2, tarefaId);
                     stmt.setString(3, tipo);
+                });
+    }
+
+    /**
+     * Envelhece um projeto inteiro: todo evento e toda fronteira de intervalo
+     * recuam o mesmo tanto. E uma translacao rigida, e por isso a unica forma
+     * de fabricar tempo decorrido sem mentir — a projecao continua sendo
+     * exatamente o que o log sustenta, porque log e projecao se moveram juntos.
+     *
+     * <p>Duracao de intervalo fechado nao muda; a de intervalo aberto cresce o
+     * recuo, porque o fim dela e o agora, que nao se moveu.
+     */
+    public void envelhecerProjeto(UUID projetoId, java.time.Duration recuo) {
+        String intervalo = recuo.toMinutes() + " minutes";
+        executar(
+                "UPDATE evento_tarefa SET ocorrido_em = ocorrido_em - ?::interval"
+                        + " WHERE projeto_id = ?",
+                stmt -> {
+                    stmt.setString(1, intervalo);
+                    stmt.setObject(2, projetoId);
+                });
+        executar(
+                "UPDATE intervalo_tarefa SET inicio = inicio - ?::interval,"
+                        + " fim = fim - ?::interval"
+                        + " WHERE projeto_id = ?",
+                stmt -> {
+                    stmt.setString(1, intervalo);
+                    stmt.setString(2, intervalo);
+                    stmt.setObject(3, projetoId);
+                });
+        // `assumida_em` tambem e determinada pelo log (SDR-006) e precisa
+        // acompanhar, sob pena de a reconstrucao a corrigir e a correcao
+        // parecer divergencia.
+        executar(
+                "UPDATE tarefa SET assumida_em = assumida_em - ?::interval"
+                        + " WHERE projeto_id = ? AND assumida_em IS NOT NULL",
+                stmt -> {
+                    stmt.setString(1, intervalo);
+                    stmt.setObject(2, projetoId);
                 });
     }
 

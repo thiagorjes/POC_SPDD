@@ -38,7 +38,7 @@ sete critérios de aceite dela.
 | Critério 3 — log e projeção commitam juntos | não | sim | não medido; o registrador recusa rodar fora de transação e não abre uma própria |
 | Critério 4 — publicação só após o commit | não | sim | não medido; `afterCommit` e não `afterCompletion` |
 | Critério 5 — nenhum caminho exposto altera ou apaga evento | sim | sim | nenhum repositório publica escrita sobre o log; a entidade não tem acessor de escrita |
-| Critério 6 — reconstrução reproduz o estado capturado | não | parcial | inalcançável: ACH-03 e ACH-04 na suíte, ACH-02 na spec |
+| Critério 6 — reconstrução reproduz o estado capturado | não | parcial | **2026-09-15: deixou de ser inalcançável** — ACH-02 fechado por SDR-006, ACH-03 e ACH-04 pelo plano v1.9. Segue sem medição por ACH-05: a classe morre em `404` da rota de TASK-02.5 |
 | Critério 7 — escrita na janela de reconstrução recebe `409` | não | parcial | não medido; mecanismo presente, mas ACH-01 o faz disparar quando não deve |
 
 - **Escopo além do especificado:** `TipoDeEvento` e `TipoDeIntervalo` não constam
@@ -71,8 +71,8 @@ por leitura está correta e é o critério 5.
 | --- | --- | --- | --- | --- | --- |
 | ACH-01 | bloqueante | código | `RegistradorDeEvento.java:113` | O bloqueio consultivo tomado pelo escritor é **exclusivo**, e escritores disputam-no entre si: a segunda escrita concorrente no mesmo projeto recebe `409 reconstrucao-em-curso` sem que reconstrução alguma esteja em curso | /implement |
 | ACH-02 | bloqueante | spec | `kanban-tarefas-techspec.md` §9 | A reconstrução prometida — `tarefa`, `intervalo_tarefa` e `impedimento` do zero — não é alcançável com o log como está especificado | /techspec |
-| ACH-03 | bloqueante | código de teste | `suporte/Cenario.java` — `recuarInicioDoIntervalo` | Desloca só a projeção e nunca o log, de modo que o critério 6 não é satisfazível por implementação correta nenhuma | /tests |
-| ACH-04 | bloqueante | código de teste | `alem/ReconstrucaoDaProjecaoIT.java:124` | `TRUNCATE intervalo_tarefa` com a FK de `impedimento` apontando para a tabela: o PostgreSQL recusa | /tests |
+| ACH-03 | bloqueante | código de teste | `suporte/Cenario.java` — `recuarInicioDoIntervalo` | Desloca só a projeção e nunca o log, de modo que o critério 6 não é satisfazível por implementação correta nenhuma. **Fechado em 2026-09-15** (plano v1.9): o método fica como fixture declarada do modelo de leitura e `ReconstrucaoDaProjecaoIT` passa a usar `envelhecerProjeto`, translação rígida de log e projeção | /tests |
+| ACH-04 | bloqueante | código de teste | `alem/ReconstrucaoDaProjecaoIT.java:124` | `TRUNCATE intervalo_tarefa` com a FK de `impedimento` apontando para a tabela: o PostgreSQL recusa — **medido**. **Fechado em 2026-09-15** (plano v1.9): vira `corromperAProjecao`, que apaga o não referenciado e corrompe o resto; `CASCADE` recusado porque destruiria insumo que SDR-006 não manda a rotina recriar | /tests |
 | ACH-05 | bloqueante | código | `TASK-02.4-nucleo-de-escrita.md` — critérios 1 a 7 | Os sete critérios de aceite sem medição, e com eles RNF-002 e a perna de aplicação de RNF-008. **Medido em 2026-09-15: a causa não é ambiente e sim a rota de TASK-02.5 — ver emenda no Veredicto.** Destino reatribuído | /tasks |
 | ACH-06 | relevante | código | `RegistradorDeEvento.java:92` | `UPDATE ... RETURNING` por `createNativeQuery(...).getSingleResult()` não é uso garantido no Hibernate 6, e é o ponto de que todo o caminho de escrita depende | /implement |
 | ACH-07 | relevante | código | `EventoTarefa.java:22`, `EventoTarefaRepositorio.java:26` | Afirmam que a perna de banco de RNF-008 "está escrita e não está em vigor". TASK-02.9 a pôs em vigor no commit imediatamente anterior | /implement |
@@ -168,9 +168,10 @@ alcança — mesmo padrão registrado na revisão de TASK-02.3.
 
 - **GATE-REVISAO-TECNICA:** reprovado
 - **GATE-NFR:** reprovado
-- **Bloqueantes em aberto:** 4 — ACH-02 (`/techspec`), ACH-03 e ACH-04
-  (`/tests`) e ACH-05 (`/tasks`). ACH-01 foi fechado e o mecanismo, medido; os
-  cinco de segurança foram rebaixados com aprovador nomeado, abaixo
+- **Bloqueantes em aberto:** 1 — ACH-05 (`/tasks`). ACH-01 foi fechado e o
+  mecanismo, medido; ACH-02 fechou pelo `/techspec` (SDR-006, TechSpec v1.16) e
+  ACH-03 e ACH-04 pelo `/tests` (plano v1.9); os cinco de segurança foram
+  rebaixados com aprovador nomeado, abaixo
 
 Os cinco últimos entraram como bloqueantes **por regra, não por gravidade
 aferida**: achado de segurança é bloqueante por padrão, e rebaixar exige

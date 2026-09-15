@@ -42,25 +42,27 @@ class ReconstrucaoDaProjecaoIT extends TesteDeIntegracao {
         // Uma historia que passa por todas as transicoes que produzem
         // intervalo, incluindo reabertura, para que o episodio entre na conta.
         var comum = cenario.criarTarefa(projeto, "Percurso completo", ana());
-        cenario.recuarInicioDoIntervalo(comum, "ESPERA_TOMADA", Duration.ofMinutes(30));
         cenario.assumir(comum, bruno());
         cenario.mover(comum, etapas.get(1).id(), bruno());
-        cenario.recuarInicioDoIntervalo(comum, "PERMANENCIA", Duration.ofMinutes(120));
 
         var travada = cenario.criarTarefa(projeto, "Com impedimento", ana());
         var impedimento = cenario.abrirImpedimento(travada, "aguardando o fornecedor", ana());
-        cenario.recuarInicioDoIntervalo(travada, "IMPEDIMENTO", Duration.ofMinutes(90));
         resolver(travada, impedimento);
 
         var devolvida = cenario.criarTarefa(projeto, "Devolvida", ana());
         cenario.assumir(devolvida, bruno());
         devolver(devolvida);
 
+        // Translacao rigida, e nao `recuarInicioDoIntervalo`: aquele metodo
+        // desloca a projecao sem deslocar o log, e a divergencia que ele
+        // fabrica apareceria aqui como defeito da reconstrucao (ACH-03).
+        cenario.envelhecerProjeto(projeto, Duration.ofHours(6));
+
         String antes = leituraDeReferencia(projeto);
         String intervalosAntes = intervalosEmTexto();
 
-        apagarAProjecao();
-        Assertions.assertThat(intervalosEmTexto()).isEmpty();
+        corromperAProjecao();
+        Assertions.assertThat(intervalosEmTexto()).isNotEqualTo(intervalosAntes);
 
         reconstruir();
 
@@ -119,10 +121,37 @@ class ReconstrucaoDaProjecaoIT extends TesteDeIntegracao {
         return texto.toString();
     }
 
-    private void apagarAProjecao() throws Exception {
-        try (Connection conexao = conectar();
-                var stmt = conexao.prepareStatement("TRUNCATE intervalo_tarefa")) {
-            stmt.executeUpdate();
+    /**
+     * Destroi a serie de tempo ate onde o esquema permite.
+     *
+     * <p>Nao e {@code TRUNCATE}: {@code impedimento.intervalo_id} e FK NOT NULL
+     * para esta tabela, e o PostgreSQL recusa (ACH-04). Nao e contornavel com
+     * {@code CASCADE}, e nao deve ser: por SDR-006 a rotina nao cria linha de
+     * {@code impedimento}, de modo que apagar o impedimento junto destruiria
+     * insumo e nao modelo de leitura — o teste passaria a exigir da rotina o
+     * que ela declaradamente nao promete.
+     *
+     * <p>A destruicao possivel, entao, e em duas partes: apagar toda linha que
+     * ninguem referencia e corromper as que sobram. Nas que sobram, os dois
+     * campos corrompidos — {@code inicio} e {@code fim} — sao justamente os que
+     * o log determina, de modo que uma rotina que nao os reescreva no lugar
+     * deixa a corrupcao visivel na comparacao.
+     */
+    private void corromperAProjecao() throws Exception {
+        try (Connection conexao = conectar()) {
+            try (var stmt = conexao.prepareStatement("""
+                    DELETE FROM intervalo_tarefa
+                     WHERE id NOT IN (SELECT intervalo_id FROM impedimento)
+                    """)) {
+                stmt.executeUpdate();
+            }
+            try (var stmt = conexao.prepareStatement("""
+                    UPDATE intervalo_tarefa
+                       SET inicio = inicio - interval '999 minutes',
+                           fim    = NULL
+                    """)) {
+                stmt.executeUpdate();
+            }
         }
     }
 
