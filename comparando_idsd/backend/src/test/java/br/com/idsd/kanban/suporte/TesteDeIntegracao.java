@@ -48,11 +48,22 @@ public abstract class TesteDeIntegracao {
         POSTGRES.start();
     }
 
-    @Autowired
-    protected MockMvc mockMvc;
+    /**
+     * A credencial com que a aplicacao sob teste conecta — a mesma role
+     * restrita que o compose aponta para o backend (TASK-02.9).
+     *
+     * <p>Ela <b>nao</b> e o usuario do contêiner. O usuario do contêiner e dono
+     * do schema e superusuario, e contra ele toda revogacao e inerte: rodar a
+     * suite com ele fazia a verificacao de RNF-008 medir outra coisa que nao a
+     * aplicacao. Ver ACH-01 da revisao de TASK-02.3.
+     */
+    protected static final String USUARIO_APLICACAO = "kanban_app";
+
+    /** Segredo de teste. O de producao vem de arquivo montado, nunca daqui. */
+    protected static final String SENHA_APLICACAO = "kanban_app_teste";
 
     @Autowired
-    private javax.sql.DataSource fonteDeDados;
+    protected MockMvc mockMvc;
 
     /**
      * Massa de teste montada pela propria API HTTP, e nunca por escrita direta
@@ -83,9 +94,19 @@ public abstract class TesteDeIntegracao {
      * <p>A varredura e pelo catalogo do proprio banco, e nao por uma lista de
      * tabelas escrita a mao: lista a mao envelhece calada na proxima migration, e
      * o sintoma reaparece como contaminacao de estado meses depois.
+     *
+     * <p><b>Conecta com a credencial do dono, e nao com a da aplicacao.</b> Era
+     * aqui que a suite se contradizia (pendencia 22): {@code ImutabilidadeDoLogIT}
+     * exige que {@code TRUNCATE evento_tarefa} falhe para a aplicacao, e esta
+     * limpeza truncava tudo com a mesma credencial — nenhuma configuracao de
+     * privilegio satisfaz as duas. A saida nao foi relaxar o privilegio: foi
+     * reconhecer que preparar o ambiente e exercer o produto sao papeis
+     * diferentes. Limpar banco entre testes e ato de dono, e nunca foi coisa que
+     * o produto faca.
      */
     protected void esvaziarBanco() throws java.sql.SQLException {
-        try (var conexao = fonteDeDados.getConnection();
+        try (var conexao = java.sql.DriverManager.getConnection(
+                        POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
                 var comando = conexao.createStatement()) {
             var tabelas = new java.util.ArrayList<String>();
             try (var linhas = comando.executeQuery("""
@@ -109,8 +130,12 @@ public abstract class TesteDeIntegracao {
     @DynamicPropertySource
     static void propriedades(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
+        // A aplicacao conecta pela role restrita, nunca pelo dono do schema. E
+        // o que faz a suite exercitar o mesmo arranjo de privilegio que vai
+        // para producao — e nao uma variante em que tudo e permitido e a
+        // garantia de RNF-008 so existe no papel.
+        registry.add("spring.datasource.username", () -> USUARIO_APLICACAO);
+        registry.add("spring.datasource.password", () -> SENHA_APLICACAO);
         // A aplicacao nunca migra: o schema e aplicado por servico dedicado
         // (ADR-011). Aqui a extensao faz o papel desse servico, e a aplicacao
         // sobe validando, exatamente como em producao.

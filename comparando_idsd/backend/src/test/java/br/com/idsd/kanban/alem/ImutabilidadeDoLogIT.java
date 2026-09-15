@@ -86,8 +86,16 @@ class ImutabilidadeDoLogIT extends TesteDeIntegracao {
         }
     }
 
+    /**
+     * Conecta com a credencial que a aplicacao de fato usa.
+     *
+     * <p>Antes de TASK-02.9 este metodo devolvia o usuario do contêiner, que e
+     * dono do schema e superusuario — de modo que a verificacao dizia medir a
+     * credencial da aplicacao e media o oposto dela. A correcao e de duas
+     * linhas e e o que da sentido as tres asercoes acima.
+     */
     private Connection conectarComoAplicacao() throws Exception {
         return DriverManager.getConnection(
-                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+                POSTGRES.getJdbcUrl(), USUARIO_APLICACAO, SENHA_APLICACAO);
     }
 }

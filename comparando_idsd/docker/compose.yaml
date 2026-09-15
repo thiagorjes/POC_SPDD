@@ -20,8 +20,15 @@ volumes:
   idsd-pgdata:
 
 secrets:
+  # Credencial do DONO do schema. Quem a usa: o proprio Postgres no bootstrap e
+  # o servico de migracao, porque migrar e ato de dono (ADR-011).
   banco-senha:
     file: ${BANCO_SENHA_FILE:-./secrets/banco-senha.dev}
+  # Credencial da ROLE DE APLICACAO (`kanban_app`), que nao e dona de nada e
+  # nao e superusuaria. So o backend a usa, e e ela que torna efetivas as
+  # revogacoes sobre `evento_tarefa` — RNF-008, ACH-01 da revisao de TASK-02.3.
+  app-senha:
+    file: ${APP_SENHA_FILE:-./secrets/app-senha.dev}
 
 services:
 
@@ -75,6 +82,10 @@ services:
       FLYWAY_USER: ${BANCO_USUARIO:-kanban}
     secrets:
       - banco-senha
+      # A senha da role de aplicacao entra aqui, e nao no backend: quem a
+      # ATRIBUI e a migracao, pelo callback `afterMigrate`. O backend so a
+      # apresenta. Rotacionar e trocar o arquivo e subir a migracao de novo.
+      - app-senha
 
   # -------------------------------------------------------------- keycloak
   keycloak:
@@ -144,7 +155,10 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: dev
       BANCO_URL: jdbc:postgresql://postgres:5432/${BANCO_NOME:-kanban}
-      BANCO_USUARIO: ${BANCO_USUARIO:-kanban}
+      # A role restrita, e nao o dono do schema. E esta linha que faz as
+      # revogacoes das migrations surtirem efeito: contra o dono, e contra o
+      # superusuario, REVOKE e decoracao. Ver ACH-01 da revisao de TASK-02.3.
+      BANCO_USUARIO: ${BANCO_USUARIO_APP:-kanban_app}
       # O issuer e o endereco publicado, porque e ele que aparece no `iss` do
       # token emitido ao browser. A chave de assinatura, porem, e buscada pela
       # rede interna: `localhost:8180` nao existe dentro deste contêiner.
@@ -162,8 +176,12 @@ services:
       IDSD_ADMIN_GLOBAL_SUBJECT_ID: ${IDSD_ADMIN_GLOBAL_SUBJECT_ID:-6f9d4c2a-0000-4000-8000-000000000005}
     secrets:
       # Montado em /run/secrets/banco-senha, que e o caminho que o
-      # `application.yml` importa por configtree.
-      - banco-senha
+      # `application.yml` importa por configtree. O ARQUIVO e o da role de
+      # aplicacao; o nome do alvo continua `banco-senha` porque e o nome da
+      # propriedade que a aplicacao le, e ela nao precisa saber de qual role se
+      # trata. O backend nao recebe a credencial do dono em momento nenhum.
+      - source: app-senha
+        target: banco-senha
     ports:
       - "${PORTA_BACKEND:-8080}:8080"
     healthcheck:

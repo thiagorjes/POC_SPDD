@@ -98,11 +98,15 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: dev
       BANCO_URL: jdbc:postgresql://postgres:5432/${BANCO_NOME:-kanban}
-      BANCO_USUARIO: ${BANCO_USUARIO:-kanban}
+      # A role restrita, como no compose de desenvolvimento. As tres replicas
+      # do arnes de broadcast exercitam o mesmo arranjo de privilegio da
+      # aplicacao — arnes que conecta como dono mede outra coisa.
+      BANCO_USUARIO: ${BANCO_USUARIO_APP:-kanban_app}
       IDENTIDADE_ISSUER_URI: ${IDENTIDADE_HOSTNAME:-http://localhost:8180}/realms/${IDENTIDADE_REALM:-idsd}
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/${IDENTIDADE_REALM:-idsd}/protocol/openid-connect/certs
     secrets:
-      - banco-senha
+      - source: app-senha
+        target: banco-senha
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
       interval: 10s
@@ -124,3 +128,5 @@ services:
 secrets:
   banco-senha:
     file: ${BANCO_SENHA_FILE:-./secrets/banco-senha.dev}
+  app-senha:
+    file: ${APP_SENHA_FILE:-./secrets/app-senha.dev}

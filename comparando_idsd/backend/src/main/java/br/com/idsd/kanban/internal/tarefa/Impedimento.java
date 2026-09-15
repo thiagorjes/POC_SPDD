@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -86,6 +87,21 @@ public class Impedimento {
     @Column(name = "resolvido_em")
     private Instant resolvidoEm;
 
+    /**
+     * Bloqueio otimista de SDR-002, como em {@link Tarefa}.
+     *
+     * <p>Existe por causa de {@link #getAnotacoes()}. A segunda sinalizacao de
+     * RN-010 nao insere linha: ela le o array, anexa um elemento e regrava o
+     * documento inteiro (SCN-009.3). Sem versao, duas sinalizacoes concorrentes
+     * sobre a mesma tarefa leem o mesmo array e a ultima grava por cima — uma
+     * anotacao some sem erro e sem rastro. O indice unico parcial nao cobre o
+     * caso: ele impede dois impedimentos <b>abertos</b>, nao duas escritas no
+     * mesmo. ACH-03 da revisao de TASK-02.3, decidido na TechSpec v1.15.
+     */
+    @Version
+    @Column(name = "versao", nullable = false)
+    private Long versao;
+
     public UUID getId() {
         return id;
     }
@@ -164,5 +180,13 @@ public class Impedimento {
 
     public void setResolvidoEm(Instant resolvidoEm) {
         this.resolvidoEm = resolvidoEm;
+    }
+
+    public Long getVersao() {
+        return versao;
+    }
+
+    public void setVersao(Long versao) {
+        this.versao = versao;
     }
 }

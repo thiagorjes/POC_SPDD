@@ -29,6 +29,13 @@ public class SchemaMigradoExtension implements BeforeAllCallback {
                         TesteDeIntegracao.POSTGRES.getUsername(),
                         TesteDeIntegracao.POSTGRES.getPassword())
                 .locations("classpath:db/migration")
+                // O callback `afterMigrate` atribui a senha da role de login da
+                // aplicacao, e o valor nunca esta no arquivo. Em producao ele
+                // vem do segredo montado; aqui, da constante do arnes. Sem o
+                // placeholder o Flyway falha, e falhar e o certo: a alternativa
+                // seria a role existir sem senha e ninguem descobrir.
+                .placeholders(java.util.Map.of(
+                        "senha_aplicacao", TesteDeIntegracao.SENHA_APLICACAO))
                 .load()
                 .migrate();
         aplicado = true;

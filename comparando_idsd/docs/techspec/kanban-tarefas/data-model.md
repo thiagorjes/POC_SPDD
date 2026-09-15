@@ -295,7 +295,7 @@ Consequências diretas:
 | Campo | Tipo | Notas |
 | --- | --- | --- |
 | `id` | `bigserial` PK | |
-| `tarefa_id` | `uuid` NOT NULL | |
+| `tarefa_id` | `uuid` FK NOT NULL | Ver a nota de integridade referencial em `impedimento`, abaixo |
 | `projeto_id` | `uuid` NOT NULL | |
 | `etapa_id` | `uuid` NOT NULL | Etapa vigente na **abertura** do intervalo. Em `IMPEDIMENTO`, é instantâneo, não vínculo — ver abaixo |
 | `tipo` | `text` NOT NULL | `PERMANENCIA`, `ESPERA_TOMADA`, `IMPEDIMENTO` |
@@ -328,7 +328,7 @@ duplicado de RN-010 no nível do banco, e não só na regra de serviço.
 | Campo | Tipo | Notas |
 | --- | --- | --- |
 | `id` | `uuid` PK | |
-| `tarefa_id` | `uuid` NOT NULL | |
+| `tarefa_id` | `uuid` FK NOT NULL | Ver a nota de integridade referencial abaixo |
 | `projeto_id` | `uuid` NOT NULL | Desnormalizado, como em `evento_tarefa` e `intervalo_tarefa`: RF-014 filtra pelo conjunto de projetos da pessoa e RF-015 por um projeto |
 | `intervalo_id` | `bigint` FK NOT NULL | Aponta para o `intervalo_tarefa` de tipo `IMPEDIMENTO` |
 | `motivo` | `text` NOT NULL | RF-009: obrigatório (SCN-009.2) |
@@ -336,9 +336,40 @@ duplicado de RN-010 no nível do banco, e não só na regra de serviço.
 | `aberto_por` | `uuid` FK NOT NULL | Habilita SCN-010.2 — quem sinalizou pode resolver |
 | `desfecho` | `text` NULL | Preenchido na resolução |
 | `resolvido_por` | `uuid` FK NULL | |
+| `versao` | `bigint` NOT NULL | Bloqueio otimista (`@Version`). SDR-002 — ver abaixo |
 
 Índice único parcial sobre `tarefa_id` com `desfecho IS NULL`: no máximo um
 impedimento aberto por tarefa (RN-010).
+
+**`anotacoes` exige bloqueio otimista, e é por isso que `versao` existe aqui.**
+A segunda sinalização de RN-010 não insere linha: ela lê o array de `anotacoes`,
+anexa um elemento e regrava o documento inteiro (SCN-009.3). Duas sinalizações
+concorrentes sobre a mesma tarefa leem o mesmo array e a última grava por cima —
+uma anotação desaparece sem erro e sem rastro, que é exatamente a perda de
+escrita silenciosa que SDR-002 existe para impedir e que `tarefa` já evita com
+`@Version`. O índice único parcial **não** cobre esse caso: ele impede dois
+impedimentos *abertos*, não duas escritas no mesmo impedimento. A versão foi
+omitida da versão anterior deste modelo por analogia indevida com
+`intervalo_tarefa`, cuja escrita é insere-e-fecha e nunca leitura-modificação-
+escrita. Achado ACH-03 da revisão de TASK-02.3.
+
+**Integridade referencial dentro do anel de projeção.** `impedimento.tarefa_id`
+e `intervalo_tarefa.tarefa_id` são chave estrangeira para `tarefa`, sem cascata:
+a tarefa não é removida fisicamente em nenhum caminho do produto, e a restrição
+existe para tornar a linha órfã impossível, não para propagar remoção. Isso dá à
+rotina de §9 a ordem que ela pressupõe — apagar impedimento e intervalo antes de
+`tarefa`, reinserir na ordem inversa — como garantia do banco e não como
+disciplina de quem escreve a rotina.
+
+As referências que **não** são chave estrangeira são as que apontam para fora do
+anel: `projeto_id` em qualquer das três tabelas e `etapa_id` em
+`intervalo_tarefa`. A razão é a mesma que vale para `evento_tarefa` e é agora
+declarada em vez de subentendida: são instantâneos históricos, não vínculos
+vivos. `intervalo_tarefa.etapa_id` registra a etapa vigente na abertura do
+intervalo, e uma etapa arquivada ou substituída pela reconfiguração de fluxo não
+pode invalidar a série de tempo que já a atravessou. Chave estrangeira ali
+amarraria o passado ao ciclo de vida do anel de configuração. Achado ACH-06 da
+revisão de TASK-02.3.
 
 ---
 
@@ -350,7 +381,7 @@ compostos que as consultas do PRD exigem.
 | Índice | Tabela | Serve |
 | --- | --- | --- |
 | `(projeto_id, etapa_id, condicao)` | `tarefa` | Board de RF-003; contagem por etapa de RF-015 |
-| `(condicao, projeto_id)` parcial em `AGUARDANDO_TOMADA` | `tarefa` | Fila de RF-014, que atravessa projetos |
+| `(projeto_id)` parcial em `condicao = 'AGUARDANDO_TOMADA'` | `tarefa` | Fila de RF-014, que atravessa projetos. **Corrigido (ACH-07):** a lista anterior prescrevia `(condicao, projeto_id)`, e dentro de um índice parcial cujo predicado fixa `condicao` a coluna-chave `condicao` é constante em toda tupla — nunca discrimina, ocupa espaço em cada entrada e empurra `projeto_id` para a segunda posição. O índice serve a mesma consulta, menor |
 | `(responsavel_id)` | `tarefa` | Devolução ao pool na remoção de participação (RN-027) |
 | `(projeto_id, etapa_id, tipo, inicio)` | `intervalo_tarefa` | Recorte da janela de RF-016 |
 | `(projeto_id, etapa_id, tipo, duracao)` parcial em `fim IS NOT NULL` | `intervalo_tarefa` | Percentis de RF-016. Sem ele, o plano é varredura do recorte mais ordenação por duração calculada |
