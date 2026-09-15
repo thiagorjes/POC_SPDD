@@ -80,12 +80,12 @@ por leitura está correta e é o critério 5.
 | ACH-09 | menor | código | `RegistradorDeEvento.java:65` | O comentário justifica o `flush` por uma razão que não se sustenta: o aplicador não lê o identificador do evento | /implement |
 | ACH-10 | menor | código | `EventoTarefa.java:101` | `condicaoOrigem`/`condicaoDestino` seguem `String` enquanto `tipo` virou enum na mesma task, sem razão declarada para a assimetria | /implement |
 | ACH-11 | menor | spec | `TASK-02.4` — tabela de arquivos | Diz que o registrador "delega intervalos", e omite os dois enums. A suíte congelada prova que quem chama o aplicador é o serviço de domínio | /tasks |
-| ACH-12 | bloqueante | segurança | `RegistradorDeEvento.java:56`, `EventoTarefa.java:164` | O caminho único de escrita não confere coerência entre `tarefaId`, `projetoId` e `atorId`: um `Novo` montado pelo construtor cheio grava no log de outro projeto e consome a sequência dele, e a autoria do único registro de auditoria é parâmetro livre nunca confrontado com o principal autenticado | /implement |
-| ACH-13 | bloqueante | segurança | `RegistradorDeEvento.java:135` | Exceção no gancho `afterCommit` transforma escrita já comitada em `500`, induzindo o cliente a repetir o que já ocorreu. A proteção pertence a quem registra a sincronização, não a cada implementação da porta | /implement |
+| ACH-12 | relevante | segurança | `RegistradorDeEvento.java:56`, `EventoTarefa.java:164` | O caminho único de escrita não confere coerência entre `tarefaId`, `projetoId` e `atorId`: um `Novo` montado pelo construtor cheio grava no log de outro projeto e consome a sequência dele, e a autoria do único registro de auditoria é parâmetro livre nunca confrontado com o principal autenticado | /implement |
+| ACH-13 | relevante | segurança | `RegistradorDeEvento.java:135` | Exceção no gancho `afterCommit` transforma escrita já comitada em `500`, induzindo o cliente a repetir o que já ocorreu. A proteção pertence a quem registra a sincronização, não a cada implementação da porta | /implement |
 | ACH-14 | relevante | código | `ReconstrutorDeProjecao.java:186`, `:215` | Log e projeção do projeto carregados integralmente em memória, sem paginação nem streaming, dentro da transação que segura o bloqueio exclusivo: em projeto de vida longa é exaustão de heap durante a janela sem escrita | /implement |
-| ACH-15 | bloqueante | segurança | `EventoTarefa.java:119`, `EventoTarefa.java:161` | `dados` é `String` livre, sem validação de JSON, sem teto e sem sanitização, num log imutável sem caminho de retificação. O rebaixamento de ACH-08 de TASK-02.3 valia por não haver escritor; **esta task é o primeiro escritor** e o argumento caducou | /implement |
-| ACH-16 | bloqueante | segurança | `ReconstrutorDeProjecao.java:79` | A chave do bloqueio é o `xor` das metades do UUID, que é construtível: se algum caminho permitir influenciar o identificador de projeto, colidir com a chave de um projeto alheio é aritmética de um passo — e, somado a ACH-01, bloqueia escritas de quem o atacante não alcança | /implement |
-| ACH-17 | bloqueante | segurança | `ReconstrutorDeProjecao.java:90`, `:114` | Métodos públicos que apagam e reescrevem a projeção de um projeto arbitrário, sem verificação de autorização. A defesa documentada — "quem executa tem acesso ao processo" — é a ausência de rota, que é circunstancial e não controle | /implement |
+| ACH-15 | relevante | segurança | `EventoTarefa.java:119`, `EventoTarefa.java:161` | `dados` é `String` livre, sem validação de JSON, sem teto e sem sanitização, num log imutável sem caminho de retificação. O rebaixamento de ACH-08 de TASK-02.3 valia por não haver escritor; **esta task é o primeiro escritor** e o argumento caducou | /implement |
+| ACH-16 | menor | segurança | `ReconstrutorDeProjecao.java:79` | A chave do bloqueio é o `xor` das metades do UUID, que é construtível: se algum caminho permitir influenciar o identificador de projeto, colidir com a chave de um projeto alheio é aritmética de um passo — e, somado a ACH-01, bloqueia escritas de quem o atacante não alcança | /implement |
+| ACH-17 | menor | segurança | `ReconstrutorDeProjecao.java:90`, `:114` | Métodos públicos que apagam e reescrevem a projeção de um projeto arbitrário, sem verificação de autorização. A defesa documentada — "quem executa tem acesso ao processo" — é a ausência de rota, que é circunstancial e não controle | /implement |
 | ACH-18 | menor | código | `IntervaloTarefaRepositorio.java:70` | A coleção de identificadores vai inteira para um `in :ids`, sem lote: acima do limite de parâmetros do protocolo a remoção falha no meio de uma reconstrução que já reescreveu linhas | /implement |
 | ACH-19 | menor | código | `RegistradorDeEvento.java:97` | Projeto inexistente faz `getSingleResult` lançar e sair como `500 erro-interno`, confundindo defeito com pedido sobre recurso ausente | /implement |
 
@@ -168,17 +168,35 @@ alcança — mesmo padrão registrado na revisão de TASK-02.3.
 
 - **GATE-REVISAO-TECNICA:** reprovado
 - **GATE-NFR:** reprovado
-- **Bloqueantes em aberto:** 10 — ACH-01 (`/implement`), ACH-02 (`/techspec`),
-  ACH-03 e ACH-04 (`/tests`), ACH-05 (`/implement`, condicionado a ambiente) e
-  os cinco de segurança ACH-12, ACH-13, ACH-15, ACH-16 e ACH-17 (`/implement`)
+- **Bloqueantes em aberto:** 4 — ACH-02 (`/techspec`), ACH-03 e ACH-04
+  (`/tests`) e ACH-05 (`/tasks`). ACH-01 foi fechado e o mecanismo, medido; os
+  cinco de segurança foram rebaixados com aprovador nomeado, abaixo
 
-Os cinco últimos entram como bloqueantes **por regra, não por gravidade
+Os cinco últimos entraram como bloqueantes **por regra, não por gravidade
 aferida**: achado de segurança é bloqueante por padrão, e rebaixar exige
-justificativa registrada e aprovador humano nomeado. O revisor não tem essa
-autoridade — pela leitura técnica, ACH-12, ACH-13 e ACH-15 são relevantes e
-ACH-16 e ACH-17 são menores, e é essa a proposta de rebaixamento que aguarda
-decisão do demandante, no mesmo formato de ACH-08 em TASK-02.3.
-- **Revisor humano:** pendente
+justificativa registrada e aprovador humano nomeado, autoridade que o revisor
+não tem.
+
+**Rebaixados em 2026-09-15 — aprovador humano: Thiago Goncalves Cavalcante
+(demandante).** ACH-12, ACH-13 e ACH-15 a **relevante**; ACH-16 e ACH-17 a
+**menor**. A justificativa é única e tem prazo declarado: os cinco estão
+fechados na parte que o escopo de arquivo desta task alcança, e o que resta de
+cada um **depende da borda, que não existe**. Sem rota, não há superfície por
+onde dado de cliente ou principal divergente entre, e nenhum envelope fica
+descoberto — RNF-008 segue garantido pelas duas pernas, porque ACH-17 alcança a
+projeção, que SDR-001 define como descartável, e nunca o log; RNF-002 era o que
+ACH-12 ameaçava, e essa metade fechou quando a coerência tarefa↔projeto passou a
+ser conferida antes de a sequência ser consumida; RN-008 e RN-014 não são
+alcançadas por nenhum dos cinco.
+
+É a mesma forma do rebaixamento de ACH-08 em TASK-02.3, e vale lembrar como
+aquele terminou: o argumento era "não há escritor", e **caducou nesta task**,
+que é o primeiro escritor. Este argumento é "não há chamador externo", e
+**caduca em TASK-02.5**, que cria a borda. As metades abertas de ACH-12 —
+`atorId` contra o principal — e de ACH-15 — distinguir dado de cliente de dado
+de serviço — são obrigação daquela task, não dívida perdoada.
+- **Revisor humano:** Thiago Goncalves Cavalcante — rebaixamento dos cinco
+  achados de segurança aprovado em 2026-09-15
 
 Dos cinco bloqueantes, **um é defeito de produção**: ACH-01. Dois são da suíte
 congelada e estão fora do alcance de quem implementa — foram abertos pelo
