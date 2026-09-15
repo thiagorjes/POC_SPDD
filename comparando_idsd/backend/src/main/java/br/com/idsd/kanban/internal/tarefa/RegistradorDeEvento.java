@@ -155,12 +155,12 @@ public class RegistradorDeEvento {
      * indistinguivel de mensagem perdida — resincronizacao eterna no board de quem
      * nada fez.
      *
-     * <p><b>O que esta guarda nao cobre</b>: {@code atorId} continua sendo
-     * parametro livre, nunca confrontado com o principal autenticado — e ele e a
-     * autoria do unico registro de auditoria do sistema. Conferi-lo aqui acoplaria
-     * o caminho unico de escrita ao contexto de seguranca web e o quebraria para o
-     * job e para o arnes, que legitimamente nao tem principal. O lugar e a borda,
-     * que nasce em TASK-02.5. Achado remanescente, destino {@code /tasks}.
+     * <p><b>{@code atorId} nao e conferido aqui, e nao deve ser</b>: confronta-lo
+     * com o principal autenticado acoplaria o caminho unico de escrita ao contexto
+     * de seguranca web e o quebraria para o job e para o arnes, que legitimamente
+     * nao tem principal. A garantia e da borda e e estrutural — o corpo das rotas
+     * de escrita nao tem campo de ator, e o controlador o extrai do contexto
+     * autenticado (ver {@link NovaTarefaRequisicao}).
      */
     private void exigirCoerencia(EventoTarefa.Novo novo) {
         UUID projetoDaTarefa = em.createQuery(
@@ -190,11 +190,12 @@ public class RegistradorDeEvento {
      *
      * <p>O peso desta validacao nao esta na forma e sim no destino: o log e
      * imutavel por decisao de arquitetura (SDR-001, RNF-008), de modo que nao ha
-     * caminho de retificacao nem de eliminacao para o que entrar aqui. A regra
-     * "nunca dado de cliente" ({@code IDSD 4.10.1}) segue sendo disciplina de
-     * chamador e nao mecanismo — nenhuma validacao de forma distingue um motivo
-     * escrito pelo servico de um colado do corpo da requisicao. Esse mecanismo
-     * pertence a borda, e a borda nasce em TASK-02.5.
+     * caminho de retificacao nem de eliminacao para o que entrar aqui. Validacao de
+     * forma nao distingue um motivo escrito pelo servico de um colado do corpo da
+     * requisicao, e por isso a regra "nunca dado de cliente"
+     * ({@code IDSD 4.10.1}) nao e garantida aqui e sim na borda, onde o documento e
+     * <b>construido</b> chave a chave a partir do que {@code data-model.md} §4
+     * declara para o tipo — ver {@code CriacaoDeTarefaService.dadosDaCriacao}.
      */
     private void exigirDadosAceitaveis(String dados) {
         if (dados == null) {
