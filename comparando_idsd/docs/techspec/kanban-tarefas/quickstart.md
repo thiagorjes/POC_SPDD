@@ -285,6 +285,14 @@ passa em teste e viola a especificação.
     (ADR-010). Nunca por e-mail.
 17. **Reconstruir a projeção exige janela sem escrita no projeto**, com bloqueio
     consultivo. Reconstruir concorrentemente produz o defeito que a rotina cura.
-18. **Os cenários estão congelados.** Divergência entre código e cenário se
+    O bloqueio é **assimétrico**: quem escreve toma em modo compartilhado — de
+    modo que escritores convivem entre si —, e só a reconstrução toma em modo
+    exclusivo.
+18. **A reconstrução é total na série de tempo e parcial no estado** (SDR-006).
+    `intervalo_tarefa` é reproduzida por inteiro; em `tarefa` e `impedimento` a
+    rotina reescreve só os campos que o log determina e **não cria nem remove
+    linha**. `raia_id`, `titulo` e `descricao` não são curáveis por ela — o log
+    não os carrega, e acrescentá-los desfaria RN-023.
+19. **Os cenários estão congelados.** Divergência entre código e cenário se
     resolve por emenda no PRD ou por correção do código — nunca reescrevendo o
     cenário durante `/implement`.
