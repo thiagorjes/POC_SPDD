@@ -73,7 +73,7 @@ por leitura está correta e é o critério 5.
 | ACH-02 | bloqueante | spec | `kanban-tarefas-techspec.md` §9 | A reconstrução prometida — `tarefa`, `intervalo_tarefa` e `impedimento` do zero — não é alcançável com o log como está especificado | /techspec |
 | ACH-03 | bloqueante | código de teste | `suporte/Cenario.java` — `recuarInicioDoIntervalo` | Desloca só a projeção e nunca o log, de modo que o critério 6 não é satisfazível por implementação correta nenhuma | /tests |
 | ACH-04 | bloqueante | código de teste | `alem/ReconstrucaoDaProjecaoIT.java:124` | `TRUNCATE intervalo_tarefa` com a FK de `impedimento` apontando para a tabela: o PostgreSQL recusa | /tests |
-| ACH-05 | bloqueante | código | `TASK-02.4-nucleo-de-escrita.md` — critérios 1 a 7 | Os sete critérios de aceite sem medição, e com eles RNF-002 e a perna de aplicação de RNF-008 | /implement |
+| ACH-05 | bloqueante | código | `TASK-02.4-nucleo-de-escrita.md` — critérios 1 a 7 | Os sete critérios de aceite sem medição, e com eles RNF-002 e a perna de aplicação de RNF-008. **Medido em 2026-09-15: a causa não é ambiente e sim a rota de TASK-02.5 — ver emenda no Veredicto.** Destino reatribuído | /tasks |
 | ACH-06 | relevante | código | `RegistradorDeEvento.java:92` | `UPDATE ... RETURNING` por `createNativeQuery(...).getSingleResult()` não é uso garantido no Hibernate 6, e é o ponto de que todo o caminho de escrita depende | /implement |
 | ACH-07 | relevante | código | `EventoTarefa.java:22`, `EventoTarefaRepositorio.java:26` | Afirmam que a perna de banco de RNF-008 "está escrita e não está em vigor". TASK-02.9 a pôs em vigor no commit imediatamente anterior | /implement |
 | ACH-08 | relevante | código | `ReconstrutorDeProjecao.java:137` | A reescrita in-place pressupõe que a projeção existente esteja bem-formada — precisamente a hipótese que a rotina existe para dispensar | /implement |
@@ -184,6 +184,35 @@ Dos cinco bloqueantes, **um é defeito de produção**: ACH-01. Dois são da su�
 congelada e estão fora do alcance de quem implementa — foram abertos pelo
 próprio `/implement` e esta revisão os confirma. Um é da spec. O quinto é
 ausência de medição, e depende de o Docker voltar à máquina.
+
+### Emenda de 2026-09-15 — a medição foi feita, e ACH-05 muda de razão
+
+O Docker voltou (29.7.2) e a suíte rodou inteira no contêiner de ADR-012:
+**190 testes, 96 verdes / 94 vermelhos**, contra a base 189 / 96 / 93. O teste a
+mais é o arquivo a mais que passou a compilar; ele sai vermelho pela mesma
+dependência das demais. **Zero regressão.**
+
+**Os sete critérios seguem sem medição, e agora se sabe por quê.** As três
+classes que os exercitariam — `SeqSobConcorrenciaIT`, `ReconstrucaoDaProjecaoIT`
+e `ImutabilidadeDoLogIT` — morrem antes de qualquer asserção, em `404` de
+`POST /v1/projetos/{id}/tarefas`, rota que nasce em TASK-02.5. A falha
+`Expected size: 40 but was: 0` do critério 1 é consequência disso e não do
+mecanismo: nenhuma escrita chegou a ocorrer. **ACH-05 permanece aberto, mas
+deixa de ser pendência de ambiente e passa a ser dependência de task** — ele só
+fecha quando a rota de criação existir, o que o põe fora do alcance de quem
+implementa esta task.
+
+**O mecanismo de ACH-01 foi medido direto contra `postgres:16-alpine`**, pelo
+mesmo recurso que TASK-02.3 usou quando a suíte não alcançava o critério: duas
+sessões tomam `pg_try_advisory_xact_lock_shared` na mesma chave e **ambas
+recebem `true`**; a exclusiva sobre a mesma chave, com um compartilhado vivo,
+recebe `false`. É exatamente a assimetria que o desenho exige — escritores
+convivem entre si, nenhum convive com a reconstrução. A correção está
+verificada no mecanismo; o que falta é o critério de ponta a ponta.
+
+A hipótese de que `exigirAutorizacaoAdministrativa` (ACH-17) teria quebrado
+`ReconstrucaoDaProjecaoIT` foi testada e é falsa: **zero `AccessDeniedException`
+na suíte inteira**.
 
 O trabalho de estrutura está correto e bem fundamentado: o caminho único de
 escrita existe, a sequência vem do banco dentro da transação, o log não tem
