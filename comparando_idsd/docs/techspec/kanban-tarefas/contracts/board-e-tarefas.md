@@ -52,8 +52,38 @@ exceder o limite de requisições (TechSpec Seção 8).
 
 ## `GET /v1/projetos/{projetoId}/board` — RF-003
 
-- **Saída `200`:** `{ seq, etapas: [ { id, nome, ordem, terminal, raias: [ { id, nome, tarefas: [ <cartão> ] } ] } ] }`.
-- **Cartão:** `{ id, titulo, condicao, raiaId, responsavel, versao, esperaTomada: { desde, decorrido } | null, impedimento: { desde, decorrido, motivo } | null, permanencia: { desde, decorrido } }`.
+- **Saída `200`:** `{ seq, acessoPorAdministracaoGlobal, etapas: [ { id, nome, ordem, terminal, raias: [ { id, nome, tarefas: [ <cartão> ] } ] } ] }`.
+- **Cartão:** `{ id, etapaId, titulo, condicao, raiaId, responsavel, assumidaEm, versao, esperaTomada: { desde, decorrido } | null, impedimento: { desde, decorrido, motivo } | null, permanencia: { desde, decorrido } | null }`.
+- **`acessoPorAdministracaoGlobal` é do board e não só da relação de projetos.**
+  A marca já existia em `GET /v1/projetos` e no detalhe (`sessao-e-projetos.md`),
+  e faltava aqui — mas a suíte congelada a exige **sobre esta rota**:
+  `AdminGlobalIT` afirma a marca e a grade na **mesma** requisição ao board.
+  A razão é a mesma que a instituiu lá: quem chega ao board por administração
+  global e não por participação está vendo trabalho alheio, e RN-035 manda que
+  o alcance seja visível na resposta e não deduzido pelo cliente. Deduzi-lo no
+  board seria pior que na relação, porque ali o cliente teria de correlacionar
+  duas respostas de rotas diferentes para saber em que condição está lendo.
+- **`assumidaEm` é do cartão** e não da saída da tomada. A versão anterior deste
+  contrato descrevia o cartão sem o campo e o prometia em dois outros lugares —
+  na saída de `POST .../tomada` e em `estadoAtual` do `409` —, o que só é
+  coerente se ele pertencer ao cartão, porque nos dois casos o corpo **é** o
+  cartão. `TomadaIT` o afirma sobre o cartão devolvido, e `tarefa.assumida_em`
+  existe no esquema desde a primeira migration do anel de projeção. A omissão
+  era do contrato.
+- **`permanencia` é anulável**, como as outras duas séries. A marcação sem
+  `| null` era acidente de redação: a permanência é intervalo **aberto**, e
+  tarefa em condição terminal não tem nenhum — `ReaberturaIT` lê exatamente esse
+  cartão na etapa terminal. Declarar o bloco obrigatório obrigaria o board a
+  fabricar uma permanência que não corre, e um `decorrido` que cresce depois da
+  conclusão é o tipo de número que ninguém desconfia até somá-lo.
+- **`etapaId` é do cartão e não da posição na lista** (ACH-07 da revisão de
+  TASK-02.5). No board a etapa é dedutível do aninhamento, mas o cartão é o
+  mesmo objeto devolvido por `POST /tarefas`, pelos movimentos e por
+  `GET /tarefas/{id}`, onde não há lista alguma — e é dele que o cliente monta
+  a `origem` de SDR-002, que exige `etapaId` na escrita seguinte. Sem o campo,
+  a única escrita possível depois de criar uma tarefa seria precedida de uma
+  releitura do board. A suíte congelada já o exige (`CriacaoDeTarefaIT` afirma
+  `$.etapaId`), de modo que a omissão era do contrato e não da implementação.
 - Etapa sem tarefa vem na lista com `tarefas: []` — SCN-003.2 exige exibir a etapa
   vazia, não omiti-la.
 - `esperaTomada` e `impedimento` podem estar **ambos** preenchidos e a soma nunca
@@ -64,6 +94,62 @@ exceder o limite de requisições (TechSpec Seção 8).
   a etapa pela posição na lista, `condicao`, e `impedimento != null`.
 - `seq` é o último número de sequência do projeto, e é o que o cliente compara com
   o `seq` recebido por WebSocket para detectar lacuna (ADR-004).
+
+### A grade tem duas faixas sintéticas, e é a mesma regra nos dois eixos
+
+A grade é o produto cartesiano **etapa × raia**, e nenhum dos dois eixos é
+total: a raia é opcional por RN-023, e a etapa é arquivável logicamente por
+RN-021. Em ambos os casos existe cartão que não cabe em célula alguma, e cartão
+que não cabe **some do board sem erro** — a pior forma de perder trabalho em
+curso, porque não há sintoma a investigar.
+
+| Eixo | Faixa sintética | Quem cai nela |
+| --- | --- | --- |
+| Raia | `id: null`, `nome: "Sem raia"`, última da etapa | cartão sem `raiaId`, ou apontando para raia arquivada |
+| Etapa | `id: null`, `nome: "Fora do fluxo"`, `ordem` após a última, `terminal: false`, **última da lista** | cartão cuja `etapaId` aponta para etapa arquivada |
+
+**A célula da etapa arquivada é alcançável por operação permitida**, e não por
+defeito: `PUT .../etapas` só recusa arquivar etapa com tarefa **ativa**, e a
+contagem exclui declaradamente `CONCLUIDA` e `ENCERRADA_SEM_CONCLUSAO`. Arquivar
+uma etapa terminal com histórico é, portanto, aceito — e sem a coluna sintética
+todo o trabalho que passou por ela desaparece da tela no instante do
+arquivamento.
+
+**Regra única das duas faixas: a sintética existe quando, e só quando, há ao
+menos um cartão que precise dela.** Faixa sintética vazia seria etapa ou raia
+que ninguém configurou sendo apresentada como se existisse, contra SCN-003.2,
+que trata a etapa vazia como informação sobre o **fluxo**. A consequência a
+declarar é que o comprimento das listas varia com os dados, e cliente e
+verificação indexam por `id` e nunca por posição.
+
+A faixa sintética é **de leitura**. Nada nela é destino de escrita: mover um
+cartão para fora dela é movimentação comum, porque a `origem` de SDR-002 carrega
+a `etapaId` real e arquivada que o cartão sempre teve, e o destino é etapa
+vigente alcançável por RN-005.
+
+### O recorte de terminais — RN-039 e RNF-011
+
+O board devolve tarefa **terminal** apenas enquanto o desfecho tiver ocorrido nos
+últimos **30 dias**. As mais antigas saem da tela e continuam integralmente
+acessíveis por `GET /v1/tarefas/{tarefaId}` e pelas consultas de andamento e de
+tempo por etapa — **o recorte é da tela, nunca do registro**: nenhum evento é
+apagado e nenhum intervalo é fechado por causa dele (RN-022, RNF-008).
+
+- O corte é aplicado **na consulta de tarefas**, não na montagem em memória.
+  Filtrar depois de trazer tudo cumpriria RN-039 e não cumpriria RNF-011, que é
+  a razão pela qual a regra existe.
+- A janela é contada do instante do desfecho até o instante da leitura, e o
+  instante da leitura é o único da transação (`readOnly`), para que dois cartões
+  do mesmo board nunca sejam julgados por relógios diferentes.
+- Tarefa **não terminal** nunca é recortada, por mais antiga que seja: trabalho
+  parado é justamente o que o board precisa mostrar.
+- Reabrir uma tarefa (RF-013) a devolve ao board pela porta comum — ela deixa de
+  ser terminal e o recorte não a alcança mais.
+- **Envelope (RNF-011):** p95 ≤ 2 s com 5.000 tarefas no projeto, com o recorte
+  em vigor, medido pelo mesmo arnês de carga sintética de RNF-009.
+
+O instante do desfecho é projetado em `tarefa.tornou_se_terminal_em`
+(`data-model.md` §5) e não derivado em tempo de leitura — ver **SDR-007**.
 
 ## `POST /v1/projetos/{projetoId}/tarefas` — RF-004
 

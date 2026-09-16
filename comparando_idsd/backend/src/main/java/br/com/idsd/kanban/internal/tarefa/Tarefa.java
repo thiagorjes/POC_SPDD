@@ -72,6 +72,21 @@ public class Tarefa {
     @Column(name = "assumida_em")
     private Instant assumidaEm;
 
+    /**
+     * Instante do desfecho — conclusao ou encerramento sem conclusao (SDR-007).
+     *
+     * <p>Nulo enquanto a tarefa nao e terminal, e <b>volta a ser nulo na
+     * reabertura</b> (RN-019). Preserva-lo na reabertura manteria fora do board
+     * uma tarefa reaberta ha dez minutos cujo desfecho anterior e de meses atras.
+     *
+     * <p>Sustenta o recorte de 30 dias do board (RN-039) e o envelope de
+     * RNF-011. E projecao, e o log a determina inteiramente: por isso e
+     * reconstruivel por SDR-006, ao contrario de {@code raiaId} e
+     * {@code descricao}.
+     */
+    @Column(name = "tornou_se_terminal_em")
+    private Instant tornouSeTerminalEm;
+
     /** 1 na criacao; incrementa a cada reabertura (RN-019, RN-034). */
     @Column(name = "episodio_atual", nullable = false)
     private int episodioAtual = 1;
@@ -157,6 +172,14 @@ public class Tarefa {
 
     public void setAssumidaEm(Instant assumidaEm) {
         this.assumidaEm = assumidaEm;
+    }
+
+    public Instant getTornouSeTerminalEm() {
+        return tornouSeTerminalEm;
+    }
+
+    public void setTornouSeTerminalEm(Instant tornouSeTerminalEm) {
+        this.tornouSeTerminalEm = tornouSeTerminalEm;
     }
 
     public int getEpisodioAtual() {

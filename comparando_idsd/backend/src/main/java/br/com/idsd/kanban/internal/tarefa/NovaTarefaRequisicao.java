@@ -18,10 +18,13 @@ import java.util.UUID;
  * ha o que conferir quando nao ha o que divergir — e acrescentar um campo de ator
  * aqui reabriria exatamente o achado.
  *
- * <p>{@code titulo} nao carrega anotacao de validacao. A recusa e de
- * {@link CriacaoDeTarefaService}, porque {@code CriacaoDeTarefaServiceTest} a
- * verifica sem contexto Spring e sem passar por HTTP: validacao por anotacao so
- * existe quando um validador roda, e ali nao roda nenhum.
+ * <p>Nenhum campo carrega anotacao de validacao, e os tres sao validados: a recusa
+ * inteira — obrigatoriedade e teto de {@code titulo} e de {@code descricao}
+ * (ACH-05), pertencimento de {@code raiaId} ao projeto (ACH-01) — vive em
+ * {@link CriacaoDeTarefaService}. E deliberado: {@code CriacaoDeTarefaServiceTest}
+ * verifica a recusa sem contexto Spring e sem passar por HTTP, e validacao por
+ * anotacao so existe quando um validador roda. Teto que so vale pela rota web nao
+ * e teto do dominio.
  */
 public record NovaTarefaRequisicao(String titulo, String descricao, UUID raiaId) {
 }

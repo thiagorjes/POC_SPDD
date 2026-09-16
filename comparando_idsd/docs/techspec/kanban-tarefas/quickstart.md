@@ -219,6 +219,26 @@ Três respostas possíveis e todas esperadas: `200` com o cartão; `200` sem nov
 evento quando o efeito já estava aplicado (RN-031); `409` com `estadoAtual`
 quando outra pessoa chegou antes.
 
+**Quatro coisas do board que não se deduzem da forma da resposta** — as quatro
+vieram da revisão técnica do board e estão inteiras em `contracts/board-e-tarefas.md`:
+
+- O corpo traz `acessoPorAdministracaoGlobal` ao lado de `seq`. A suíte
+  congelada o exige **sobre esta rota**, não só na relação de projetos.
+- **A grade tem faixa sintética nos dois eixos**, com `id: null`: "Sem raia" e
+  "Fora do fluxo". A segunda recolhe o cartão cuja etapa foi arquivada, e a
+  célula é alcançável por operação permitida — arquivar etapa terminal com
+  histórico é aceito, porque a contagem de tarefas ativas exclui as condições
+  terminais. Sem ela o trabalho some da tela **sem erro**. Regra única: a faixa
+  existe quando, e só quando, há cartão que precise dela — logo o comprimento
+  das listas varia com os dados, e **nada deve indexá-las por posição**.
+- **Recorte de RN-039:** tarefa terminal só aparece se o desfecho for dos
+  últimos 30 dias. O predicado vai **na consulta** e compara com
+  `tarefa.tornou_se_terminal_em` (SDR-007) — filtrar em memória cumpre a regra e
+  perde o envelope de RNF-011, que é a razão de a regra existir. `:agora` é o
+  instante único da transação, um por requisição e não um por cartão.
+- No cartão, `permanencia` é **anulável** como as outras duas séries, e
+  `assumidaEm` faz parte dele.
+
 ### Fila e consultas — RF-014 a RF-016
 
 ```

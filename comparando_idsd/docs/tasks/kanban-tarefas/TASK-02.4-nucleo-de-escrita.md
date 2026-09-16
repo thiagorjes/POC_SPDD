@@ -114,6 +114,16 @@ janela recebe `409`.
 | 6 | Reconstruir a projeção depois de um percurso completo reproduz o estado capturado | executar percurso, capturar, reconstruir, comparar |
 | 7 | Escrita durante a janela de reconstrução recebe `409` | teste com bloqueio tomado |
 
+**Medição dos sete critérios — ACH-05, resolvido pelo `/tasks` em 2026-09-16.**
+O achado mudou de natureza duas vezes: nasceu como pendência de ambiente, virou
+dependência de task quando o Docker apareceu e a medição mostrou que
+`SeqSobConcorrenciaIT`, `ReconstrucaoDaProjecaoIT` e `ImutabilidadeDoLogIT` param
+antes da primeira asserção. A causa final é **uma rota sem dono**: o percurso que
+esses critérios exigem passa por `POST /v1/projetos/{id}/tarefas`, entregue por
+TASK-02.5, e a leitura que o confere passa por `GET /v1/tarefas/{tarefaId}`, que
+só passou a ter dono agora — **TASK-02.10**. A medição é pré-condição de
+fechamento daquela task. Não há conserto dentro do escopo de arquivo desta.
+
 #### Histórico
 
 | Data | Evento | Detalhe |

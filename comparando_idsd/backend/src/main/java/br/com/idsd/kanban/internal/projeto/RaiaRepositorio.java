@@ -23,4 +23,21 @@ import org.springframework.data.repository.Repository;
  * torna a agregacao por raia inescrivivel — ver {@link Raia}.
  */
 public interface RaiaRepositorio extends Repository<Raia, UUID> {
+
+    /**
+     * A raia existe, e vigente e <b>pertence a este projeto</b>?
+     *
+     * <p>Nasce com o consumidor, que e a criacao de tarefa — ACH-01 da revisao de
+     * TASK-02.5. A chave estrangeira de {@code tarefa.raia_id} e global e nao
+     * escopada por projeto, de modo que ela aceita raia de qualquer projeto e
+     * raia arquivada; pertencimento e vigencia sao regra, e regra nao cabe numa
+     * FK. Sem esta pergunta, quem escreve no projeto A cria tarefa apontando para
+     * raia do projeto B, e o identificador alheio volta no cartao.
+     *
+     * <p>Devolve booleano e nao a entidade de proposito: quem chama decide sobre
+     * o pertencimento e nao precisa do nome nem da ordem da raia, e carregar a
+     * linha inteira daria acesso a dado de outro projeto no caminho que existe
+     * justamente para recusa-lo.
+     */
+    boolean existsByIdAndProjetoIdAndArquivadaEmIsNull(UUID id, UUID projetoId);
 }

@@ -58,6 +58,7 @@ _Criada em: 2026-09-03_
 | [SDR-004](../docs/decisions/SDR-004-seq-no-banco-e-publicador-unico.md) | Sequência de eventos gerada no banco e publicador único do broadcast | Aceito |
 | [SDR-005](../docs/decisions/SDR-005-substituicao-de-fluxo-serializada-no-projeto.md) | Substituição de fluxo serializada por bloqueio pessimista do projeto | Aceito |
 | [SDR-006](../docs/decisions/SDR-006-reconstrucao-total-dos-intervalos-parcial-do-estado.md) | Reconstrução total da série de tempo, parcial e declarada do estado | Aceito |
+| [SDR-007](../docs/decisions/SDR-007-recorte-de-terminais-no-board-por-instante-projetado.md) | Recorte de terminais no board por instante projetado em `tarefa` | Aceito |
 
 ### DDR
 

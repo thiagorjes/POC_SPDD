@@ -42,8 +42,8 @@ TechSpec para saber o que fazer**. Isso implica cópia integral, não referênci
 
 | ID | Épico | Sistema | Cenários entregues | Tasks | Executor | Pode iniciar |
 | --- | --- | --- | --- | --- | --- | --- |
-| EPIC-01 | Acesso, sessão e projetos visíveis | idsd | SCN-001.1, SCN-001.2, SCN-001.3, SCN-002.1, SCN-002.2, SCN-002.3, SCN-021.1, SCN-021.2, SCN-021.3, SCN-022.1, SCN-022.2 | 8 | misto | imediatamente |
-| EPIC-02 | Fluxo de etapas, criação de tarefa e board | idsd | SCN-002.4, SCN-017.1, SCN-017.2, SCN-017.3, SCN-004.1, SCN-004.2, SCN-004.3, SCN-022.3, SCN-003.1, SCN-003.2 | 8 | misto | após EPIC-01 |
+| EPIC-01 | Acesso, sessão e projetos visíveis | idsd | SCN-001.1, SCN-001.2, SCN-001.3, SCN-002.1, SCN-002.2, SCN-002.3, SCN-021.1, SCN-021.2, SCN-021.3, SCN-022.1, SCN-022.2 | 9 | misto | imediatamente |
+| EPIC-02 | Fluxo de etapas, criação de tarefa e board | idsd | SCN-002.4, SCN-017.1, SCN-017.2, SCN-017.3, SCN-004.1, SCN-004.2, SCN-004.3, SCN-022.3, SCN-003.1, SCN-003.2 | 10 | misto | após EPIC-01 |
 | EPIC-03 | Handoff: mover, assumir e devolver | idsd | SCN-005.1, SCN-005.2, SCN-005.3, SCN-006.1, SCN-006.2, SCN-007.1, SCN-007.2, SCN-007.3, SCN-008.1, SCN-008.2 | 5 | misto | após EPIC-02 |
 | EPIC-04 | Impedimento como terceira dimensão | idsd | SCN-009.1, SCN-009.2, SCN-009.3, SCN-010.1, SCN-010.2, SCN-010.3, SCN-003.3, SCN-006.3, SCN-007.4, SCN-008.3 | 4 | misto | após EPIC-03 |
 | EPIC-05 | Desfechos: conclusão, encerramento e reabertura | idsd | SCN-011.1, SCN-011.2, SCN-011.3, SCN-012.1, SCN-012.2, SCN-012.3, SCN-012.4, SCN-013.1, SCN-013.2, SCN-013.3 | 5 | misto | após EPIC-04 |
@@ -138,9 +138,11 @@ Deixá-los no épico de origem exigiria implementar meio impedimento ali.
 
 70 cenários, 9 `e2e`, 56 `integração`, 5 `unitário` — a mesma contagem do PRD
 v1.5 e da TechSpec v1.7. SCN-002.4 veio da emenda de 2026-09-10 que fechou
-INC-22 e fica no EPIC-01, na mesma task da listagem: a marca de fluxo não
-configurado é campo da resposta de `GET /v1/projetos`, e não depende de etapa,
-tarefa nem board para ser verificada. Os três últimos vieram da emenda de 2026-09-10, que
+INC-22 e fica no **EPIC-02**, em TASK-02.2: a marca de fluxo não configurado é
+campo da resposta de `GET /v1/projetos`, mas só é **verificável** quando existe
+projeto com fluxo e projeto sem — e etapa nasce no EPIC-02. Esta prosa dizia
+EPIC-01 e contradizia a tabela de cobertura, que sempre disse EPIC-02; corrigida
+em 2026-09-16, sem mudança de atribuição. Os três últimos vieram da emenda de 2026-09-10, que
 criou RF-022: SCN-022.1 e SCN-022.2 ficam no EPIC-01, onde já mora a
 administração global; SCN-022.3 fica no EPIC-02, porque verifica a **recusa da
 criação de tarefa** em projeto sem fluxo, e nada disso é executável antes de o
@@ -150,8 +152,8 @@ fluxo e a tarefa existirem.
 
 | Épico | Tasks | Situação |
 | --- | --- | --- |
-| EPIC-01 | 8 | ok (≤ 8) |
-| EPIC-02 | 8 | ok (≤ 8) |
+| EPIC-01 | 9 | aceito (9 a 12) — TASK-01.9 é dívida com prazo próprio, fora do gate do épico, que está fechado |
+| EPIC-02 | 10 | aceito (9 a 12) — TASK-02.9 nasceu de bloqueante de revisão e TASK-02.10 de rota sem dono; nenhuma acrescenta cenário |
 | EPIC-03 | 5 | ok (≤ 8) |
 | EPIC-04 | 4 | ok (≤ 8) |
 | EPIC-05 | 5 | ok (≤ 8) |
@@ -172,7 +174,9 @@ EPIC-01
   ├── TASK-01.5 (depende de TASK-01.4)
   ├── TASK-01.6 (depende de TASK-01.4)
   ├── TASK-01.8 (depende de TASK-01.5)
-  └── TASK-01.7 (depende de TASK-01.5, TASK-01.6, TASK-01.8)
+  ├── TASK-01.7 (depende de TASK-01.5, TASK-01.6, TASK-01.8)
+  └── TASK-01.9 (depende de TASK-01.4) — fora do gate do épico; vence com o
+      primeiro realm federado, não por posição na fila
 
 EPIC-02 (depende de EPIC-01)
   ├── TASK-02.1
@@ -181,6 +185,10 @@ EPIC-02 (depende de EPIC-01)
   ├── TASK-02.4 (depende de TASK-02.3)
   ├── TASK-02.5 (depende de TASK-02.4, TASK-02.2)
   ├── TASK-02.6 (depende de TASK-02.5)
+  ├── TASK-02.9 (depende de TASK-02.3) — role de aplicação, nascida de
+  │   bloqueante da revisão de TASK-02.3
+  ├── TASK-02.10 (depende de TASK-02.6) — ficha da tarefa; destrava a medição
+  │   dos critérios em aberto de TASK-02.4 e TASK-02.5
   ├── TASK-02.7 (depende de TASK-02.2)
   └── TASK-02.8 (depende de TASK-02.6, TASK-02.7)
 
@@ -322,7 +330,7 @@ A ordem dentro do épico é serial — as tasks compartilham o mesmo PR.
 
 ### TASK-01.8 — Criação de projeto pelo administrador global
 
-- **Status:** pendente
+- **Status:** concluída
 - **Sistema:** idsd
 - **Executor:** agente
 - **Tentativas:** 3
@@ -330,6 +338,21 @@ A ordem dentro do épico é serial — as tasks compartilham o mesmo PR.
 - **Cenários cobertos:** SCN-022.1, SCN-022.2
 - **Origem:** RF-022, RN-035, RN-036, RN-037, RN-038, ADR-010, BDR-001
 - **Detalhe:** `docs/tasks/kanban-tarefas/TASK-01.8-criacao-de-projeto.md`
+
+### TASK-01.9 — Claim ausente no autoprovisionamento
+
+- **Status:** pendente — dívida declarada, **fora do gate de EPIC-01**
+- **Sistema:** idsd
+- **Executor:** agente
+- **Tentativas:** 2
+- **Depende de:** TASK-01.4
+- **Cenários cobertos:** —
+- **Prazo:** antes de o produto encostar em realm federado
+- **Origem:** Q-012 da TechSpec (v1.8), RF-001, ADR-006, ADR-010
+- **Detalhe:** `docs/tasks/kanban-tarefas/TASK-01.9-claim-ausente-no-autoprovisionamento.md`
+- **Por que não reabre o épico:** enquanto o realm for o do `compose`, as duas
+  claims chegam sempre. A dívida vence por evento externo, não por posição na
+  fila — é a única questão da TechSpec que estava com dono `/tasks` e sem task.
 
 ---
 
@@ -368,7 +391,7 @@ A ordem dentro do épico é serial — as tasks compartilham o mesmo PR.
 
 ### TASK-02.3 — Migrations 3 a 6 do anel de verdade e da projeção
 
-- **Status:** pendente
+- **Status:** concluída — dez critérios medidos, dez satisfeitos; 8 achados fechados
 - **Sistema:** idsd
 - **Executor:** agente
 - **Tentativas:** 3
@@ -379,7 +402,7 @@ A ordem dentro do épico é serial — as tasks compartilham o mesmo PR.
 
 ### TASK-02.4 — Núcleo de escrita: evento, sequência e projeção
 
-- **Status:** pendente
+- **Status:** concluída — 13 achados de código fechados; critérios sem medição até TASK-02.10 (ACH-05)
 - **Sistema:** idsd
 - **Executor:** agente
 - **Tentativas:** 3
@@ -390,7 +413,7 @@ A ordem dentro do épico é serial — as tasks compartilham o mesmo PR.
 
 ### TASK-02.5 — Criação de tarefa
 
-- **Status:** pendente
+- **Status:** concluída — 3 bloqueantes de código fechados e medidos; ACH-04 resolvido pelo plano, medição em TASK-02.10
 - **Sistema:** idsd
 - **Executor:** agente
 - **Tentativas:** 3
@@ -404,7 +427,7 @@ A ordem dentro do épico é serial — as tasks compartilham o mesmo PR.
 
 ### TASK-02.6 — Leitura do board
 
-- **Status:** pendente
+- **Status:** concluída — 5 de 7 critérios medidos; 3 achados fechados em 2026-09-16
 - **Sistema:** idsd
 - **Executor:** agente
 - **Tentativas:** 3
@@ -412,6 +435,36 @@ A ordem dentro do épico é serial — as tasks compartilham o mesmo PR.
 - **Cenários cobertos:** SCN-003.1, SCN-003.2
 - **Origem:** RF-003, RN-002, RN-008, RN-015, RNF-009
 - **Detalhe:** `docs/tasks/kanban-tarefas/TASK-02.6-leitura-do-board.md`
+
+### TASK-02.9 — Role de aplicação distinta do dono do schema
+
+- **Status:** concluída
+- **Sistema:** idsd
+- **Executor:** agente
+- **Tentativas:** 3
+- **Depende de:** TASK-02.3
+- **Cenários cobertos:** —
+- **Origem:** RNF-008, ADR-011, ACH-01 da revisão de TASK-02.3
+- **Detalhe:** `docs/tasks/kanban-tarefas/TASK-02.9-role-de-aplicacao.md`
+- **Task de infraestrutura**, nascida de bloqueante de revisão e decidida pelo
+  demandante: contra superusuário e contra dono, `REVOKE` é decoração, e sem ela
+  a perna de banco de RNF-008 era promessa.
+
+### TASK-02.10 — Ficha da tarefa: leitura de detalhe com o log
+
+- **Status:** pendente
+- **Sistema:** idsd
+- **Executor:** agente
+- **Tentativas:** 3
+- **Depende de:** TASK-02.6
+- **Cenários cobertos:** —
+- **Origem:** `contracts/board-e-tarefas.md`, RN-008, RN-015, RN-019, RNF-008,
+  ACH-02 da revisão de TASK-02.6
+- **Detalhe:** `docs/tasks/kanban-tarefas/TASK-02.10-ficha-da-tarefa.md`
+- **Rota sem dono até 2026-09-16.** `GET /v1/tarefas/{tarefaId}` é declarada pelo
+  contrato desde a v1.0 e exercitada por **onze classes** da suíte congelada, e
+  não pertencia a task nenhuma. **Destrava a medição** dos critérios 1, 3, 6, 7 e
+  8 de TASK-02.5 (ACH-04) e 1 e 3 de TASK-02.4 (ACH-05).
 
 ### TASK-02.7 — Frontend: configuração do fluxo de etapas
 

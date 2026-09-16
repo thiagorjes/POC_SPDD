@@ -1,5 +1,9 @@
 package br.com.idsd.kanban.internal.tarefa;
 
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Set;
+
 /**
  * Dimensao 2 de RN-002: a condicao da tarefa.
  *
@@ -25,5 +29,27 @@ public enum Condicao {
     CONCLUIDA,
 
     /** Terminal absoluto (RN-018): nao ha aresta de saida. */
-    ENCERRADA_SEM_CONCLUSAO
+    ENCERRADA_SEM_CONCLUSAO;
+
+    /**
+     * As condicoes de onde nao ha saida por movimento.
+     *
+     * <p>O conjunto mora aqui e nao em cada consumidor porque ja sao tres os que
+     * o consultam por razoes diferentes — o arquivamento de etapa, que nao conta
+     * tarefa terminal; o recorte do board, que so recorta tarefa terminal
+     * (RN-039); e a propria leitura do cartao. Duas copias divergem no dia em que
+     * uma condicao terminal nova nascer, e a divergencia apareceria como cartao
+     * que some do board, que e o sintoma mais dificil de atribuir.
+     */
+    public boolean terminal() {
+        return TERMINAIS.contains(this);
+    }
+
+    /** O mesmo conjunto, para quem precisa dele como parametro de consulta. */
+    public static Set<Condicao> terminais() {
+        return TERMINAIS;
+    }
+
+    private static final Set<Condicao> TERMINAIS =
+            Collections.unmodifiableSet(EnumSet.of(CONCLUIDA, ENCERRADA_SEM_CONCLUSAO));
 }

@@ -287,6 +287,7 @@ verifica, e a linha mais fácil de errar deste catálogo.
 | _(sem coluna)_ | — | Dimensão 3 de RN-002 — a marca de impedimento é derivada da existência de linha em `impedimento` com `desfecho IS NULL`, nunca replicada aqui |
 | `responsavel_id` | `uuid` FK NULL | `NULL` quando aguardando tomada (RN-006) |
 | `assumida_em` | `timestamptz` NULL | |
+| `tornou_se_terminal_em` | `timestamptz` NULL | Instante do desfecho — conclusão ou encerramento sem conclusão. `NULL` enquanto a tarefa não é terminal, e **volta a `NULL` na reabertura** (RN-019). Sustenta o recorte de 30 dias do board (RN-039) e o envelope de RNF-011. Ver **SDR-007** |
 | `episodio_atual` | `integer` NOT NULL DEFAULT 1 | |
 | `versao` | `bigint` NOT NULL | Bloqueio otimista (`@Version`). SDR-002 |
 | `criada_em` | `timestamptz` NOT NULL | |
@@ -407,6 +408,7 @@ compostos que as consultas do PRD exigem.
 | `(projeto_id, etapa_id, condicao)` | `tarefa` | Board de RF-003; contagem por etapa de RF-015 |
 | `(projeto_id)` parcial em `condicao = 'AGUARDANDO_TOMADA'` | `tarefa` | Fila de RF-014, que atravessa projetos. **Corrigido (ACH-07):** a lista anterior prescrevia `(condicao, projeto_id)`, e dentro de um índice parcial cujo predicado fixa `condicao` a coluna-chave `condicao` é constante em toda tupla — nunca discrimina, ocupa espaço em cada entrada e empurra `projeto_id` para a segunda posição. O índice serve a mesma consulta, menor |
 | `(responsavel_id)` | `tarefa` | Devolução ao pool na remoção de participação (RN-027) |
+| `(projeto_id, tornou_se_terminal_em)` parcial em `tornou_se_terminal_em IS NOT NULL` | `tarefa` | Recorte de 30 dias do board (RN-039). Parcial porque só a tarefa terminal é recortada, e num projeto vivo ela é a minoria da tabela — índice total carregaria em cada entrada a linha que o predicado do board nunca alcança |
 | `(projeto_id, etapa_id, tipo, inicio)` | `intervalo_tarefa` | Recorte da janela de RF-016 |
 | `(projeto_id, etapa_id, tipo, duracao)` parcial em `fim IS NOT NULL` | `intervalo_tarefa` | Percentis de RF-016. Sem ele, o plano é varredura do recorte mais ordenação por duração calculada |
 | `(tarefa_id, tipo)` parcial em `fim IS NULL` | `intervalo_tarefa` | Intervalos abertos; único, ver §5 |
@@ -502,6 +504,7 @@ de se autocorrigir — que é o comportamento correto.
 | 5 | `intervalo_tarefa`, `impedimento` e os índices únicos parciais |
 | 6 | unicidade de `(projeto_id, seq)` e a coluna gerada `duracao` com seu índice |
 | 7 | `ALTER TABLE usuario ALTER COLUMN email DROP NOT NULL` |
+| 8 | `ALTER TABLE tarefa ADD COLUMN tornou_se_terminal_em timestamptz NULL` e o índice parcial de §6. Migration nova, e não alteração da 3, que já foi aplicada. **Retroativa:** o `UPDATE` de povoamento inicial deriva o instante de `evento_tarefa`, tomando o `ocorrido_em` do último evento terminal de cada tarefa hoje em condição terminal — o log o determina, que é a mesma razão pela qual a coluna é reconstruível por SDR-006 |
 
 A ordem 7 existe porque a 1 já foi aplicada pela TASK-01.3, e migration aplicada
 não se altera — corrige-se com uma nova. Ela é barata (`DROP NOT NULL` não
@@ -547,7 +550,7 @@ cria e não remove** linha nessas duas tabelas.
 
 | Tabela | Reescrito | Preservado |
 | --- | --- | --- |
-| `tarefa` | `etapa_id`, `condicao`, `responsavel_id`, `assumida_em`, `episodio_atual` | `titulo`, `descricao`, `raia_id`, `criada_em` |
+| `tarefa` | `etapa_id`, `condicao`, `responsavel_id`, `assumida_em`, `tornou_se_terminal_em`, `episodio_atual` | `titulo`, `descricao`, `raia_id`, `criada_em` |
 | `impedimento` | `desfecho`, `resolvido_por`, `anotacoes` | `id`, `intervalo_id`, `motivo`, `aberto_por` |
 
 A versão anterior desta seção prometia as três tabelas **do zero**, e o log não

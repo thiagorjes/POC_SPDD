@@ -44,6 +44,7 @@ contando dois intervalos.
 | `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/NovaTarefaRequisicao.java` | criar | registro de entrada |
 | `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/CartaoResposta.java` | criar | forma do cartão, reusada pelo board |
 | `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/ContagemDeTarefasAtivas.java` | criar | implementa `internal/projeto/TarefasAtivasPorEtapa`; é o adaptador que liga a recusa de RF-017 |
+| `backend/src/main/java/br/com/idsd/kanban/internal/projeto/RaiaRepositorio.java` | alterar | acrescentado em 2026-09-16: o fechamento de ACH-01/ACH-02 da revisão exigiu `EXISTS` escopado por projeto e por vigência, e pertencimento de raia é pergunta do domínio de projeto |
 | `backend/src/main/java/br/com/idsd/kanban/internal/tarefa/RegistradorDeEvento.java` | alterar, se necessário | só para retirar os dois Javadoc que apontam esta task como o lugar das metades abertas de ACH-12 e ACH-15, depois que elas estiverem fechadas aqui |
 
 **Proibido tocar:** `docs/prd/kanban-tarefas/*.feature`, `docs/prd/`,
@@ -83,7 +84,11 @@ título em `dados`.
   `Optional<TarefasAtivasPorEtapa>` e, sem bean publicado, **conta zero** — o
   caminho de recusa de RN-020 existe, está escrito e fica inerte por falta de
   massa. Publicar o bean é o que o liga. Assinatura literal a implementar:
-  `long contarEm(UUID etapaId)`, em `br.com.idsd.kanban.internal.projeto`. A
+  `Map<UUID, Long> contarEm(Collection<UUID> etapaIds)`, em
+  `br.com.idsd.kanban.internal.projeto` — **corrigida em 2026-09-16 (ACH-13)**;
+  esta task dizia `long contarEm(UUID)`, que é a forma anterior a ACH-07 da
+  reexecução de TASK-02.2, mudada justamente para tornar possível a consulta
+  única dentro da seção crítica com o projeto travado. A
   direção da dependência é obrigatória — o domínio de tarefa implementa a porta
   do domínio de projeto, e nunca o contrário: importar repositório de tarefa
   dentro de `internal/projeto` faria configuração depender de operação.
@@ -136,6 +141,13 @@ título em `dados`.
 | 8 | Com apenas tarefas terminais na etapa, o mesmo `PUT` arquiva a etapa normalmente | contagem que exclui `CONCLUIDA` e `ENCERRADA_SEM_CONCLUSAO` |
 | 9 | `atorId` do evento gravado é o do principal autenticado, e o corpo não tem como influenciá-lo | leitura do log após criação; ausência de campo de ator em `NovaTarefaRequisicao` |
 | 10 | `dados` do evento gravado contém exatamente as chaves que §4 declara para `TAREFA_CRIADA` | leitura do log |
+
+**Medição dos critérios 1, 3, 6, 7 e 8 — ACH-04, resolvido pelo `/tasks` em
+2026-09-16.** Os cinco não eram mensuráveis dentro do escopo de arquivo desta
+task: as classes que os exercitam morrem em `404` de `GET /v1/tarefas/{tarefaId}`,
+rota que **não pertencia a task nenhuma** até a revisão de TASK-02.6 descobri-lo.
+Ela passa a ser **TASK-02.10**, e a medição destes cinco é pré-condição de
+fechamento daquela task, não desta. Nada a corrigir aqui: o achado era do plano.
 
 #### Histórico
 

@@ -22,3 +22,11 @@ Funcionalidade: RF-003 — Visualizar o board do projeto
     Então vejo a espera de tomada e o tempo de impedimento como grandezas distintas
     E nenhuma delas é apresentada como soma da outra
     E a condição da tarefa continua sendo aguardando tomada, com a marca de impedimento exibida à parte
+
+  Cenário: SCN-003.4 — Conclusão antiga sai do board sem sair do registro
+    Dado que uma tarefa foi concluída há mais de trinta dias
+    E que outra tarefa foi concluída nesta semana
+    Quando abro o board do projeto
+    Então vejo na etapa terminal a tarefa concluída nesta semana
+    E não vejo ali a tarefa concluída há mais de trinta dias
+    E ao abrir a ficha da tarefa mais antiga vejo o histórico dela por inteiro

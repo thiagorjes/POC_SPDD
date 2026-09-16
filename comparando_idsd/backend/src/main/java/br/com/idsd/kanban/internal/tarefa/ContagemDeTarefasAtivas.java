@@ -4,10 +4,8 @@ import br.com.idsd.kanban.internal.projeto.TarefasAtivasPorEtapa;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.Collection;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,10 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Component
 public class ContagemDeTarefasAtivas implements TarefasAtivasPorEtapa {
-
-    /** O complemento de "ativa": as condicoes de onde nao ha saida por movimento. */
-    private static final Set<Condicao> TERMINAIS =
-            EnumSet.of(Condicao.CONCLUIDA, Condicao.ENCERRADA_SEM_CONCLUSAO);
 
     @PersistenceContext
     private EntityManager em;
@@ -66,7 +60,7 @@ public class ContagemDeTarefasAtivas implements TarefasAtivasPorEtapa {
                                 + " group by t.etapaId",
                         Object[].class)
                 .setParameter("etapaIds", etapaIds)
-                .setParameter("terminais", TERMINAIS)
+                .setParameter("terminais", Condicao.terminais())
                 .getResultList()
                 .forEach(linha -> contagem.put((UUID) linha[0], (Long) linha[1]));
         return Map.copyOf(contagem);

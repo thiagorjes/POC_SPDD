@@ -7,7 +7,15 @@
 - **Shape Brief:** `docs/shape/kanban-tarefas-brief.md`
 - **Solução:** `docs/solution/kanban-tarefas-solution.md`
 - **Design:** `docs/design/kanban-tarefas/screen-map.md`
-- **Data:** 2026-09-10
+- **Data:** 2026-09-16
+- **Versão:** 1.6 — emenda vinda da revisão técnica do board. O board, que é a
+  leitura mais exercitada do produto e a que todo cliente refaz a cada reconexão,
+  não tinha envelope de tempo de resposta em requisito não funcional nenhum:
+  RNF-009 cobre as consultas de andamento e de tempo por etapa, e a semelhança de
+  assunto escondia a lacuna. Entram RNF-011, com o envelope, e RN-039, com o
+  recorte das tarefas terminais — o segundo é regra de negócio e não otimização,
+  porque muda o que a pessoa vê no board. Cenário novo SCN-003.4; nenhum cenário
+  preexistente foi alterado.
 - **Versão:** 1.5 — correção de INC-22, o escopo órfão que a v1.4 criou: as duas
   sinalizações desenhadas para pagar o custo do fluxo não configurado entraram
   pelo protótipo sem requisito que as obrigasse. O demandante decidiu
@@ -107,6 +115,7 @@ entrou.
 | RN-036 | Criar projeto é capacidade exclusiva da administração global. Nenhum papel de projeto a possui, porque nenhum papel de projeto existe antes de o projeto existir | informada | Demandante, emenda de 2026-09-10 (pendência 09) |
 | RN-037 | A criação do projeto **nomeia a primeira participação**, com papel `project_admin`, numa única operação. Quem cria não se torna participante por criar: o alcance global já lhe dá acesso, e torná-lo participante misturaria escopo com participação, contra RN-035 | informada | Demandante, emenda de 2026-09-10 (pendência 09) |
 | RN-038 | O projeto nasce **sem fluxo**. Enquanto não houver etapa configurada, a criação de tarefa é recusada com razão explícita. A criação faz uma coisa só, e a configuração do fluxo continua tendo um único lugar. Como o caminho de partida passa a ter dois passos obrigatórios, o segundo é sinalizado em dois momentos, e ambos são obrigatórios: no desfecho bem-sucedido da criação, que **nomeia** a configuração do fluxo como passo seguinte e oferece a ida até ela; e na relação de projetos, em que projeto sem etapa alguma aparece **marcado como fluxo não configurado** para quem o vê ali. Sem as duas, o custo aceito nesta regra ficaria invisível para quem tem de pagá-lo | informada | Demandante, emenda de 2026-09-10 (pendência 09) — alternativa de fluxo padrão apresentada e recusada; sinalização acrescentada em 2026-09-10 (INC-22) |
+| RN-039 | O board exibe as tarefas **terminais** — concluídas ou encerradas sem conclusão — apenas enquanto a conclusão tiver ocorrido nos **últimos 30 dias**. As mais antigas saem do board e continuam integralmente acessíveis pela ficha da tarefa e pelas consultas de andamento e de tempo por etapa: o recorte é da tela, nunca do registro, e nenhum evento é apagado (RN-022, RNF-008). A regra não alcança tarefa não terminal, que permanece no board pelo tempo que levar — o que cresce sem limite é o acúmulo de trabalho **encerrado**, e é só ele que o recorte contém | informada | Demandante, emenda de 2026-09-16 — decisão sobre o achado ACH-03 da revisão técnica do board; alternativas de teto por etapa e de teto combinado apresentadas e recusadas |
 
 ---
 
@@ -223,7 +232,8 @@ Cenário: SCN-002.4 — Projeto ainda sem fluxo aparece marcado
 - **Prioridade:** deve
 - **Procedência:** derivada
 - **Fonte:** RN-002, RN-003, RN-007, RN-023
-- **Regras aplicáveis:** RN-002, RN-003, RN-006, RN-007, RN-008, RN-023, RN-032
+- **Regras aplicáveis:** RN-002, RN-003, RN-006, RN-007, RN-008, RN-023, RN-032,
+  RN-039
 - **Origem no protótipo:** TL-03, estados preenchido e vazio
 
 #### Critérios de aceite
@@ -233,6 +243,7 @@ Cenário: SCN-002.4 — Projeto ainda sem fluxo aparece marcado
 | SCN-003.1 | Board exibe etapa, condição, responsável e contadores | e2e |
 | SCN-003.2 | Etapa sem tarefa é exibida vazia, e não omitida | integração |
 | SCN-003.3 | Tarefa com impedimento aberto e aguardando tomada exibe a condição de trabalho, a marca de impedimento e as duas contagens em curso | integração |
+| SCN-003.4 | Tarefa concluída há mais de 30 dias sai do board e continua acessível pela ficha | integração |
 
 ```gherkin
 Cenário: SCN-003.1 — Board com o trabalho distribuído
@@ -260,6 +271,16 @@ Cenário: SCN-003.3 — Contagens que coexistem
   Então vejo a espera de tomada e o tempo de impedimento como grandezas distintas
   E nenhuma delas é apresentada como soma da outra
   E a condição da tarefa continua sendo aguardando tomada, com a marca de impedimento exibida à parte
+```
+
+```gherkin
+Cenário: SCN-003.4 — Conclusão antiga sai do board sem sair do registro
+  Dado que uma tarefa foi concluída há mais de trinta dias
+  E que outra tarefa foi concluída nesta semana
+  Quando abro o board do projeto
+  Então vejo na etapa terminal a tarefa concluída nesta semana
+  E não vejo ali a tarefa concluída há mais de trinta dias
+  E ao abrir a ficha da tarefa mais antiga vejo o histórico dela por inteiro
 ```
 
 ### RF-004 — Criar tarefa no projeto
@@ -1217,6 +1238,7 @@ Cenário: SCN-022.3 — Projeto nasce sem fluxo e recusa tarefa até ser configu
 | RNF-007 | Instrumentação das quatro métricas de sucesso, que hoje não existe | Espera de tomada, tempo de permanência, tempo de impedimento e proporção do trabalho registrado, apurados por etapa e por projeto e exportáveis para leitura ao fim de cada período | Ao fim do primeiro período de uso, as quatro séries existem e são consultáveis; nenhuma delas é apurável por pessoa | informada (Shape Brief — métrica de sucesso; instrumentação declarada inexistente) |
 | RNF-008 | Histórico de transições e de impedimentos é registro imutável | Nenhuma operação do produto altera ou remove evento já registrado; retenção por todo o tempo de vida do projeto | Tentar alterar tempo já contado por cada caminho exposto pelo produto e verificar a recusa | derivada (RN-022 e a transição proibida "alterar retroativamente tempo já contado") |
 | RNF-009 | Tempo de resposta das consultas de andamento e de tempo por etapa | p95 ≤ 2 s com 12 meses de histórico e 5.000 tarefas no projeto | Carga sintética com 12 meses de histórico, medindo as consultas de RF-015 e RF-016 | inferida pelo agente |
+| RNF-011 | Tempo de resposta da leitura do board (RF-003) | p95 ≤ 2 s com 5.000 tarefas no projeto, incluídas as terminais fora da janela de RN-039. O envelope vale para a resposta completa, e não para a primeira consulta: o board é montado em memória a partir de um número fixo de consultas, e o custo que cresce é o de materializar e serializar o resultado | Carga sintética de 5.000 tarefas num único projeto, com o mesmo arnês de RNF-009, medindo `GET` do board. A medição é feita **com** o recorte de RN-039 em vigor, porque é ele que separa o que o board carrega do que o projeto acumula | informada (Demandante, emenda de 2026-09-16 — ACH-03 da revisão técnica do board) |
 | RNF-010 | Limite de requisições por sujeito autenticado, para que uso anômalo de uma conta não degrade o sistema para as demais | 120 solicitações de leitura por minuto e 30 de escrita por minuto, por sujeito. Excedente é **recusado com razão explícita e com a indicação de quando repetir**, nunca descartado em silêncio. O envelope é ponto de partida sem base empírica e é revisto ao fim do primeiro período de uso | Submeter rajada acima e abaixo de cada limite, verificando o aceite abaixo, a recusa informada acima e que o consumo de um sujeito não afeta a resposta de outro | informada (Demandante, emenda de 2026-09-09 — INC-05) |
 
 > **Envelope** é o limite verificável (ex: p95 < 300 ms). RNF sem envelope e sem
@@ -1228,14 +1250,14 @@ Cenário: SCN-022.3 — Projeto nasce sem fluxo e recusa tarefa até ser configu
 
 | Tipo | Quantidade | IDs |
 | --- | --- | --- |
-| informada | 52 | RN-001, RN-004, RN-005, RN-006, RN-007, RN-008, RN-009, RN-010, RN-012, RN-014, RN-015, RN-016, RN-017, RN-018, RN-020, RN-022, RN-023, RN-024, RN-025, RN-026, RN-027, RN-028, RN-030, RN-032, RN-033, RN-034, RN-035, RF-001, RF-005, RF-006, RF-007, RF-008, RF-009, RF-010, RF-012, RF-013, RF-014, RF-015, RF-016, RF-017, RF-018, RF-019, RF-020, RF-021, RNF-001, RNF-002, RNF-003, RNF-004, RNF-005, RNF-006, RNF-007, RNF-010 |
+| informada | 54 | RN-039, RNF-011, RN-001, RN-004, RN-005, RN-006, RN-007, RN-008, RN-009, RN-010, RN-012, RN-014, RN-015, RN-016, RN-017, RN-018, RN-020, RN-022, RN-023, RN-024, RN-025, RN-026, RN-027, RN-028, RN-030, RN-032, RN-033, RN-034, RN-035, RF-001, RF-005, RF-006, RF-007, RF-008, RF-009, RF-010, RF-012, RF-013, RF-014, RF-015, RF-016, RF-017, RF-018, RF-019, RF-020, RF-021, RNF-001, RNF-002, RNF-003, RNF-004, RNF-005, RNF-006, RNF-007, RNF-010 |
 | derivada | 13 | RN-002, RN-003, RN-011, RN-013, RN-019, RN-021, RN-029, RN-031, RF-002, RF-003, RF-004, RF-011, RNF-008 |
 | extraída de legado | 0 | nenhum |
 | hipótese a validar | 0 | nenhum — as hipóteses do Shape Brief permanecem lá, e nenhuma regra ou requisito deste PRD repousa sobre hipótese não decidida |
 | inferida pelo agente | 1 | RNF-009 |
 
-Total: 35 regras de negócio, 21 requisitos funcionais e 10 não-funcionais,
-com 65 cenários de aceite.
+Total: 36 regras de negócio, 21 requisitos funcionais e 11 não-funcionais,
+com 66 cenários de aceite.
 
 > **Toda** regra e requisito tem exatamente um tipo de procedência.
 > `hipótese a validar` exige experimento e critério de descarte na tabela abaixo.
@@ -1372,6 +1394,29 @@ incorporadas às regras de negócio acima.
   original.
 - **Cenários recongelados a partir desta reconfirmação:** sim
 
+**Reconfirmação do gate — emenda v1.6**
+
+- **Aprovado por:** Thiago Goncalves Cavalcante — Product Owner / Aprovador
+- **Data:** 2026-09-16
+- **Alcance:** o cenário novo SCN-003.4, a regra nova RN-039, o requisito não
+  funcional novo RNF-011 e a linha de regras aplicáveis de RF-003. Nenhum cenário
+  preexistente foi tocado.
+- **Decisão de negócio registrada:** o recorte das tarefas terminais é **regra de
+  negócio e não otimização**, porque muda o que a pessoa vê no board — e por isso
+  entrou como RN, com cenário, e não como decisão técnica. A janela é de **30
+  dias**; as alternativas de teto por etapa terminal e de teto combinado com a
+  janela foram apresentadas e recusadas, pelo argumento de que o teto duro faz o
+  time rápido perder de vista a semana corrente. O recorte é **da tela e nunca do
+  registro**: nada é apagado, e a tarefa fora da janela continua inteira na ficha
+  e nas consultas de andamento — é a distinção que mantém RN-022 e RNF-008
+  intactos.
+- **Por que o RNF não existia:** RNF-009 cobre as consultas de RF-015 e RF-016, e
+  a semelhança de assunto escondeu que a leitura mais exercitada do produto não
+  tinha envelope algum. O envelope de RNF-011 espelha o de RNF-009 e reusa o mesmo
+  arnês de carga, de propósito — dois envelopes distintos para a mesma classe de
+  consulta exigiriam justificar a diferença, e não há uma.
+- **Cenários recongelados a partir desta reconfirmação:** sim
+
 **Reconfirmação do gate — emenda v1.5**
 
 - **Aprovado por:** Thiago Goncalves Cavalcante — Product Owner / Aprovador
@@ -1412,6 +1457,7 @@ incorporadas às regras de negócio acima.
 | 2026-09-09 | SCN-012.4 | Cenário **novo**: o encerramento sem conclusão é recusado enquanto o impedimento não tem desfecho registrado | INC-12 — B-04 prescrevia essa recusa e nenhum requisito, regra ou cenário a realizava; a tabela de cobertura apontava para a recusa de **conclusão**, que é outra operação | Thiago Goncalves Cavalcante |
 | 2026-09-10 | SCN-022.1, SCN-022.2, SCN-022.3 | Cenários **novos** do RF-022, requisito novo | Lacuna encontrada pela `/tests`: não existia rota de criação de projeto em contrato nenhum, e a primeira participação não podia ser concedida por ninguém — a suíte contornava semeando por JDBC | Thiago Goncalves Cavalcante |
 | 2026-09-10 | SCN-002.4 | Cenário **novo**: projeto sem etapa alguma aparece marcado na relação de projetos, e projeto com fluxo configurado não | INC-22 — a marca existia no protótipo sem regra que a obrigasse; sem cenário, ela seria a primeira coisa a desaparecer numa refatoração de tela, e com ela o custo aceito em RN-038 voltaria a ficar invisível | Thiago Goncalves Cavalcante |
+| 2026-09-16 | SCN-003.4 | Cenário **novo**: tarefa concluída há mais de trinta dias sai do board e continua acessível pela ficha | ACH-03 da revisão técnica do board — ele devolvia toda tarefa já criada no projeto, sem recorte, janela ou paginação, e não havia envelope de tempo de resposta em RNF nenhum. Sem cenário, RN-039 seria regra invisível à verificação, e a primeira refatoração da consulta a desfaria sem que nada acusasse | Thiago Goncalves Cavalcante |
 | 2026-09-09 | SCN-012.1 | Ganha a pré-condição de não haver impedimento aberto, e "todas as contagens cessam" passa a nomear as contagens de permanência e de espera de tomada | INC-11 — "todas as contagens" contradizia RN-032, segundo a qual só o desfecho encerra a contagem de impedimento | Thiago Goncalves Cavalcante |
 
 > Na emenda v1.3 nenhum cenário preexistente foi alterado: ela apenas acrescenta
