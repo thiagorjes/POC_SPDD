@@ -1,8 +1,0 @@
----
-description: "Escreve a suíte de verificação a partir dos cenários congelados, antes da implementação e sem acesso a ela. Produz step definitions, testes e o plano de verificação, e congela a suíte. Satisfaz a verificação independente e o congelamento do Gherkin. Use após /tasks e antes de /implement."
-alwaysApply: false
----
-
-<!-- GERADO por .agents/scripts/generate_platform.py — nao editar. -->
-
-@.agents/skills/tests/SKILL.md

@@ -1,6 +1,0 @@
-1- o catálogo é fechado apenas para os usuários comuns, inclusive um admin de projeto. o admin global pode editar papeis. 
-
-2- siga assim, pois da forma que está implementado, fica sempre na 
-mesma raia sem feedback visual que diferencie
-
-3- siga assim.
