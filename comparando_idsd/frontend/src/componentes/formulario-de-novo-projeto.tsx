@@ -60,7 +60,7 @@ export function FormularioDeNovoProjeto() {
 
         <div className="flex flex-wrap gap-3">
           <Link
-            href={`/projetos/${estado.criado.id}/fluxo`}
+            href={`/projetos/${estado.criado.id}/config/fluxo`}
             className="inline-flex h-controle items-center rounded-lg border border-primario bg-primario px-4 text-base font-medium text-primario-contraste"
           >
             Configurar o fluxo agora

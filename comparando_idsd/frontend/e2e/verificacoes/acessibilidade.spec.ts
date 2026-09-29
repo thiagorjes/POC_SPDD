@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 
-import { entrarComo } from '../suporte/cenario'
+import { entrarComo, semearProjeto } from '../suporte/cenario'
 
 /**
  * Verificação **além dos cenários congelados**.
@@ -59,6 +59,16 @@ test('TL-11 — o painel de novo projeto nao tem violacao de nivel AA', async ({
   await entrarComo(page, 'admin')
   await page.goto('/projetos/novo')
   await expect(page.getByRole('heading', { name: 'Novo projeto' })).toBeVisible()
+  const resultado = await auditoria(page).analyze()
+  expect(resultado.violations).toEqual([])
+})
+
+test('TL-08 — a configuracao do fluxo nao tem violacao de nivel AA', async ({ page }) => {
+  // TASK-02.7, criterio 6. `project_admin` e quem alcanca a tela (RN-016).
+  await semearProjeto('Acessofluxo', ['ana:project_admin'])
+  await entrarComo(page, 'ana')
+  await page.goto('/projetos/acessofluxo/config/fluxo')
+  await expect(page.getByRole('heading', { name: /configura[cç][aã]o do fluxo/i })).toBeVisible()
   const resultado = await auditoria(page).analyze()
   expect(resultado.violations).toEqual([])
 })

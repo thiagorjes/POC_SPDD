@@ -1,6 +1,6 @@
 import { Locator, Page, expect, test } from '@playwright/test'
 
-import { entrarComo } from '../suporte/cenario'
+import { entrarComo, semearProjeto } from '../suporte/cenario'
 
 /**
  * Verificação **além dos cenários congelados** — RNF-005.
@@ -101,6 +101,23 @@ for (const largura of LARGURAS) {
         page.getByLabel(/nome/i),
         page.getByRole('button', { name: 'Criar projeto' }),
         page.getByRole('link', { name: /Fechar o formul/i }),
+      ])
+      expect(await rolagemHorizontal(page)).toBeLessThanOrEqual(1)
+    })
+
+    test('TL-08 — a configuração do fluxo', async ({ page }) => {
+      // TASK-02.7, critério 7 (RNF-005). `project_admin` porque é quem
+      // alcança a tela (RN-016); com outro papel não haveria ação a medir.
+      await semearProjeto('Larguraflux', ['ana:project_admin'])
+      await entrarComo(page, 'ana')
+      await page.goto('/projetos/larguraflux/config/fluxo')
+      await expect(
+        page.getByRole('heading', { name: /configura[cç][aã]o do fluxo/i }),
+      ).toBeVisible()
+
+      await acoesAlcancaveis([
+        page.getByRole('button', { name: /adicionar etapa/i }),
+        page.getByRole('button', { name: /salvar fluxo/i }),
       ])
       expect(await rolagemHorizontal(page)).toBeLessThanOrEqual(1)
     })

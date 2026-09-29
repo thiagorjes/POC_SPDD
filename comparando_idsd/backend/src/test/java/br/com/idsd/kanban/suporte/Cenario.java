@@ -158,6 +158,47 @@ public class Cenario {
      * <p>Duracao de intervalo fechado nao muda; a de intervalo aberto cresce o
      * recuo, porque o fim dela e o agora, que nao se moveu.
      */
+    /**
+     * O numero de sequencia do ultimo evento do projeto, lido direto do log.
+     *
+     * <p>E a referencia contra a qual o {@code seq} do board e comparado
+     * (criterio 7 de TASK-02.6): o board o le por outro caminho (o campo
+     * {@code seq_atual} de {@code projeto}, incrementado por SDR-004 a cada
+     * evento), e as duas leituras precisam concordar porque e essa igualdade
+     * que o cliente usa para detectar lacuna no canal de tempo real (ADR-004).
+     */
+    public long ultimoSeqDoLog(UUID projetoId) {
+        try (Connection conexao = conectar();
+                PreparedStatement stmt = conexao.prepareStatement(
+                        "SELECT max(seq) FROM evento_tarefa WHERE projeto_id = ?")) {
+            stmt.setObject(1, projetoId);
+            var resultado = stmt.executeQuery();
+            resultado.next();
+            return resultado.getLong(1);
+        } catch (Exception e) {
+            throw new IllegalStateException("falha ao ler o log", e);
+        }
+    }
+
+    /**
+     * Desloca {@code tornou_se_terminal_em} para o passado, para simular tarefa
+     * concluida ha mais tempo do que o teste levaria para esperar (RN-039,
+     * SDR-007). Mesma forma de {@link #recuarInicioDoIntervalo}: desloca um
+     * valor que a escrita real ja precisa ter produzido, e nao fabrica um onde
+     * nao havia — enquanto nao existir escritor da coluna (achado da revisao de
+     * TASK-02.6, destino EPIC-03/04), a clausula {@code IS NOT NULL} torna esta
+     * chamada um no-op, e e esperado que o teste que a usa continue vermelho.
+     */
+    public void envelhecerConclusao(UUID tarefaId, java.time.Duration recuo) {
+        executar(
+                "UPDATE tarefa SET tornou_se_terminal_em = tornou_se_terminal_em - ?::interval"
+                        + " WHERE id = ? AND tornou_se_terminal_em IS NOT NULL",
+                stmt -> {
+                    stmt.setString(1, recuo.toMinutes() + " minutes");
+                    stmt.setObject(2, tarefaId);
+                });
+    }
+
     public void envelhecerProjeto(UUID projetoId, java.time.Duration recuo) {
         String intervalo = recuo.toMinutes() + " minutes";
         executar(

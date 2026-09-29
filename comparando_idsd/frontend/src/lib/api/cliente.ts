@@ -35,7 +35,7 @@ export class FalhaDaApi extends Error {
 }
 
 type Opcoes = {
-  metodo?: 'GET' | 'POST'
+  metodo?: 'GET' | 'POST' | 'PUT'
   corpo?: unknown
 }
 

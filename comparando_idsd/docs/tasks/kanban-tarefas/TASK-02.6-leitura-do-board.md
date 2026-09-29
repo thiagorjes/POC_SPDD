@@ -129,3 +129,5 @@ arquivada — precisa de faixa, sob pena de sumir do board sem erro.
 | ACH-01 | 2026-09-16 | `CartaoResposta.java` e `CriacaoDeTarefaService.java` entram na tabela de arquivos como **alterar**, com a razão escrita. Os dois são de TASK-02.5, e é lá que o cartão é fixado; o board o reusa, então a correção de forma cabe em quem a descobriu. |
 | ACH-02 | 2026-09-16 | Criada **TASK-02.10 — ficha da tarefa**, que declara `GET /v1/tarefas/{tarefaId}` com contrato, escopo de arquivo e nove critérios. Não cabia nesta task: o board e a ficha são superfícies distintas, e a ficha carrega o log, que o board não tem. |
 | ACH-03 | 2026-09-16 | Texto corrigido para as cinco consultas de projeção mais a leitura do projeto, com a raia sintética declarada junto — ela era decisão de desenho que não estava escrita em lugar nenhum. |
+
+Nota: o ACH-04 **da revisão técnica** (`docs/review/kanban-tarefas/TASK-02.6-review.md`, "cinco dos sete critérios sem verificação que fique") não é o mesmo ACH-04 desta tabela (regra da faixa sintética, já fechado acima). Aquele foi fechado pelo `/tests` em 2026-09-29 — plano de verificação v1.10, seis verificações novas, ver `memory/state.md`.

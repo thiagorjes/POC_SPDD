@@ -1,6 +1,6 @@
 # Plano de Verificação — kanban-tarefas
 
-_Versão 1.9 — 2026-09-15_
+_Versão 1.11 — 2026-09-29_
 
 Feature: `kanban-tarefas`
 Origem: PRD v1.5 (70 cenários congelados), TechSpec v1.7, Tasks (8 épicos, 43 tasks)
@@ -103,6 +103,123 @@ vermelhas:** sem `liberarOrdens`, sem `and e.arquivadaEm is null`, com o traduto
 Suíte em **189 testes, 91 verdes / 98 vermelhos** — os 18 novos entraram verdes e
 a lista de vermelhos é idêntica à linha de base. Nenhum `.feature`, ID ou redação
 de cenário mudou. O bloco "Além dos cenários" passa de 13 para **16 classes**.
+
+### Acréscimo de 2026-09-29 (v1.11) — TASK-02.7, frontend sem suíte
+
+**Esta é a independência plena que a v1.10 não teve.** Nenhum arquivo de
+produção da tela TL-08 existe — `/implement TASK-02.7` parou antes de
+escrever código exatamente porque não havia suíte para dirigi-lo, e devolveu
+a este comando (histórico da task,
+`docs/tasks/kanban-tarefas/TASK-02.7-frontend-configuracao-do-fluxo.md`).
+
+Cinco testes novos em `frontend/e2e/configuracao-do-fluxo.spec.ts`, um por
+critério de aceite 1–5 da task. SCN-017.1/.2/.3 já têm verificação de
+contrato em `internal/projeto/ConfiguracaoDoFluxoIT.java` (backend); estes
+cobrem o que só existe na tela — percurso completo, recusa preservando
+rascunho, identificação da etapa que impede o arquivamento, identidade
+preservada ao renomear, e a operação inteira por teclado. Mais duas entradas
+TL-08 em `verificacoes/largura.spec.ts` (RNF-005, critério 7) e
+`verificacoes/acessibilidade.spec.ts` (AA, critério 6), no mesmo padrão já
+usado para TL-01/TL-02/TL-11.
+
+Os rótulos usados nos locators vêm do protótipo de referência
+(`docs/design/kanban-tarefas/prototypes/TL-08-configuracao-do-fluxo.html`),
+o único insumo de forma disponível — não há contrato de API específico para
+rótulo de tela, e abrir código de produção está fora de cogitação porque ele
+não existe.
+
+**Dois achados, registrados no próprio arquivo de teste e aqui:**
+
+- O protótipo desenha, para "remover etapa com tarefas", um fluxo de
+  **migração** (`<select id="migrar">`, destino escolhido pela pessoa) que a
+  task e o contrato atual não têm — `PUT /etapas` só recusa com `422`
+  nomeando a etapa (SCN-017.3), sem opção de destino. O critério 3 foi
+  testado pela forma que o contrato sustenta **hoje**; a divergência de
+  protótipo é achado para `/prd` ou `/design` decidirem, e não foi
+  contornada inventando uma API que não existe. Destino: `/prd`.
+- `somente-leitura.spec.ts` (congelado, SCN-015.2) navega para
+  `/projetos/alfa/configuracao`; o mapa de telas
+  (`docs/design/kanban-tarefas/screen-map.md:46`) e a própria TASK-02.7
+  declaram `/projetos/:id/config/fluxo`. As duas rotas não podem estar
+  certas ao mesmo tempo. Os testes novos seguem o mapa de telas, porque é a
+  fonte que a task cita; o arquivo congelado não foi tocado — alterá-lo é
+  fora do alcance de quem escreve verificação, e a reconciliação exige
+  decisão de quem pode emendar cenário congelado. Destino: `/tasks` ou
+  revisão humana, antes de TASK-02.7 fechar.
+
+**Execução:** não realizada. As cinco novas specs de `e2e` exigem a pilha
+completa (frontend, backend, Keycloak) de pé via `docker compose`, que não foi
+subida nesta sessão por custo — a mesma razão que já deixou toda a
+suíte de Playwright sem medição desde a v1.0. Validado o que dá para
+validar sem a pilha: `tsc --noEmit` limpo (os dois erros pré-existentes são
+`CartaoDeTarefa.test.tsx` e `TempoPorEtapa.test.tsx`, de componentes de outra
+task, já conhecidos), `eslint` limpo, e `playwright test --list` reconhece os
+18 testes dos três arquivos sem erro de sintaxe ou de import. O resultado
+esperado, quando a pilha existir, é falha por ausência de implementação — a
+mesma categoria dos demais testes de tela ainda não nascida.
+
+### Acréscimo de 2026-09-29 (v1.10) — ACH-04 da revisão do board, em modo `audit`
+
+**A independência não existe para as classes novas, e a exceção é declarada
+aqui.** `BoardIT` já tinha implementação quando esta suíte foi estendida —
+TASK-02.6 fechou em 2026-09-16 — e por isso o acréscimo é `audit` (ACH-04 da
+revisão técnica do board: cinco dos sete critérios de aceite mediam por sonda
+descartável fora da suíte congelada, e nada no repositório os prendia).
+**Nenhum arquivo de produção foi lido** para escrever este acréscimo — nem
+`BoardQuery.java`, nem `BoardController.java`: o formato de saída veio do
+contrato (`contracts/board-e-tarefas.md`, já emendado pelo `/techspec` em
+2026-09-16) e o comportamento esperado, das próprias linhas do achado e da
+task. É uma independência parcial e vale a distinção: mais forte que a de
+`SubstituicaoDeFluxoConcorrenteIT` (v1.6), que leu três arquivos, e mesmo assim
+não é a independência de quem escreve antes do código existir.
+
+Seis verificações novas:
+
+- **Critério 5** (`BoardNaoCresceComAsTarefasIT`, em `alem/`) — número de
+  consultas do board com 5 e com 50 tarefas, pela forma de
+  `ContagemDeConsultas`: invariância à massa, nunca contagem absoluta. Medido
+  e verde: a mesma contagem nos dois volumes.
+- **Critério 6**, a metade que faltava (`BoardIT.projetoInexistenteDevolve404`)
+  — o caso de não-participante já tinha teste (`SessaoEProjetosIT`); faltava
+  projeto **inexistente**, que é o caminho de `BoardController.java:88`
+  citado no ACH-06 da revisão.
+- **Critério 7** (`BoardIT.seqDoBoardEOUltimoDoLog`) — compara `$.seq` do
+  board com `max(seq)` de `evento_tarefa`, lido direto pelo novo
+  `Cenario.ultimoSeqDoLog`.
+- **SCN-003.4 / RN-039** (`BoardIT.conclusaoAntigaSaiDoBoardSemSairDoRegistro`)
+  — tarefa concluída há mais de 30 dias sai do board e continua acessível pela
+  ficha. Usa `Cenario.envelhecerConclusao`, na mesma forma de
+  `recuarInicioDoIntervalo`: desloca um valor que a escrita real precisa ter
+  produzido, não fabrica um onde não havia.
+- **Faixa sintética de etapa** (`BoardIT.cartaoEmEtapaArquivadaVaiParaAFaixaSintetica`)
+  — ACH-02/ACH-04 da revisão: cartão em etapa arquivada vai para `{ id: null,
+  nome: "Fora do fluxo" }`, na última posição, sem perder o `etapaId` real.
+  Cobre o eixo que `RaiasIT` não cobre — ela só verifica o eixo da raia.
+- **Bloco de impedimento conciliado** (ACH-07) — sem seam próprio nesta
+  versão. O achado era duas fontes divergentes numa consulta que existia
+  como duas consultas; a correção do `/implement` as uniu numa só, o que
+  torna o defeito original **estruturalmente inalcançável** e não apenas
+  destestado. A cobertura de comportamento (bloco presente com motivo
+  correto) já existe em `BoardIT.cartaoImpedidoTrazAMarcaSemPerderACondicao`,
+  congelado desde a v1.0. Nenhuma verificação nova foi escrita porque não há
+  o que ela discriminasse que o teste existente já não discrimine.
+
+**As três últimas dependem de peças que esta árvore ainda não tem** —
+`POST /tarefas/{id}/movimentos` (RF-005/006, TASK-02.7) para alcançar a etapa
+terminal, e o registro de `tarefa.tornou_se_terminal_em` no desfecho (RN-019,
+achado da revisão de TASK-02.6, dono nomeado EPIC-03/04). Isso não foi
+contornado por SQL fabricando o estado que a API ainda não sabe produzir —
+seria testar uma suposição de comportamento futuro, não o comportamento atual.
+Os três testes ficam **vermelhos por essa dependência dupla**, na mesma
+categoria de `SCN-003.1` e de todo cenário que já dependia de EPIC-03/04.
+
+**Medição no contêiner de ADR-012, cópia descartável sem os 2 arquivos que não
+compilam:** `BoardIT` foi de 5 para 9 testes (4 passam, 5 erram — os 3 que já
+erravam por depender de `mover`/`abrirImpedimento`, mais os 2 novos que
+dependem da mesma peça); `BoardNaoCresceComAsTarefasIT` nasce em **1/1 verde**.
+Suíte inteira: **203 testes, 120 verdes / 83 vermelhos**, contra a base
+198 / 117 / 81 — **+5 testes, +3 verdes, +2 vermelhos, zero regressão** em
+qualquer classe não tocada por este acréscimo.
 
 ### Correção de 2026-09-15 (v1.9) — o arnês mentia sobre o tempo, e o teste pedia o que o esquema recusa
 
@@ -370,8 +487,8 @@ tabela de congelamento em vez de silenciosamente reescrever a prova.
 
 ## Cenários congelados
 
-70 cenários. A distribuição por tipo é a do PRD: 9 `e2e`,
-56 `integração`, 5 `unitário`. **70 cobertos** desde a v1.6.
+71 cenários desde a emenda de 2026-09-16 (RN-039). A distribuição por tipo é a
+do PRD: 9 `e2e`, 57 `integração`, 5 `unitário`. **71 cobertos** desde a v1.10.
 
 SCN-002.4 passou da v1.1 à v1.5 sem verificador, e a razão está na revisão de
 TASK-01.5 (ACH-06): ele exige `fluxoConfigurado`, derivado por existência sobre
@@ -397,6 +514,7 @@ fechou em TASK-02.2, e o teste entrou na v1.6.
 | SCN-003.1 | RF-003 | EPIC-02 | e2e | `frontend/e2e/board.spec.ts` | coberto |
 | SCN-003.2 | RF-003 | EPIC-02 | integração | `internal/tarefa/BoardIT.java` + `CartaoDeTarefa.test.tsx` | coberto |
 | SCN-003.3 | RF-003 | EPIC-04 | integração | `internal/tarefa/BoardIT.java` + `CartaoDeTarefa.test.tsx` | coberto |
+| SCN-003.4 | RF-003, RN-039 | EPIC-02 | integração | `internal/tarefa/BoardIT.java` | coberto desde a v1.10 — depende de `POST .../movimentos` (TASK-02.7) e do registro de `tornou_se_terminal_em` (EPIC-03/04); vermelho por essa dependência, não por ausência de teste |
 | SCN-004.1 | RF-004 | EPIC-02 | integração | `internal/tarefa/CriacaoDeTarefaIT.java` | coberto |
 | SCN-004.2 | RF-004 | EPIC-02 | unitário | `internal/tarefa/CriacaoDeTarefaServiceTest.java` + `CriacaoDeTarefaIT.java` | coberto |
 | SCN-004.3 | RF-004 | EPIC-02 | integração | `internal/tarefa/CriacaoDeTarefaIT.java` | coberto |
@@ -458,7 +576,7 @@ fechou em TASK-02.2, e o teste entrou na v1.6.
 | SCN-022.2 | RF-022 | EPIC-01 | integração | `internal/projeto/CriacaoDeProjetoIT.java` | coberto |
 | SCN-022.3 | RF-022 | EPIC-02 | integração | `internal/tarefa/CriacaoDeTarefaIT.java` | coberto |
 
-Cobertura: 70/70 desde a v1.6. Cenário sem teste: nenhum. Teste de cenário sem cenário de
+Cobertura: 71/71 desde a v1.10. Cenário sem teste: nenhum. Teste de cenário sem cenário de
 origem: zero — o que a especificação obriga sem cenário está na seção própria,
 em pacote separado.
 
@@ -517,7 +635,7 @@ o que ele prova.
 
 ## Testes além dos cenários
 
-Dezoito verificações que a especificação obriga e que cenário algum descreve.
+Dezenove verificações que a especificação obriga e que cenário algum descreve.
 Vivem em `br.com.idsd.kanban.alem`, em `backend/src/test/carga` e em
 `frontend/e2e/verificacoes`, separadas de propósito: elas não são cobertura de
 cenário, e misturá-las faria a contagem de 70 parecer maior do que é.
@@ -552,6 +670,7 @@ em TASK-07.6. TASK-04.4 e TASK-08.4 não entram porque não estreiam tela.
 | `rnf-009-consultas.js` | RNF-009 | 12 meses, 5.000 tarefas. A massa é semeada por `massa-12-meses.sql`, com a contrapartida declarada no próprio arquivo |
 | `verificacoes/largura.spec.ts` | RNF-005 | O envelope não era nomeado em task nenhuma, em critério nenhum e em nenhuma linha deste plano — varredura devolvia zero nas três fontes. Cada tela é percorrida a 1280 px e a 1024 px, e a asserção é sobre ausência de rolagem horizontal não indicada e sobre as ações continuarem alcançáveis; medir só a 1280 deixaria passar exatamente a largura que o requisito existe para proteger. Origem: ACH-16 da revisão de TASK-01.7 |
 | `verificacoes/acessibilidade.spec.ts` | RNF-006 | Mesma ausência de RNF-005 pela metade: o nível AA já era critério de aceite em toda task de tela, mas não havia linha aqui, de modo que o plano de verificação não dizia quem mede o envelope. Cada tela é auditada com âncora de página declarada antes da análise — sem a âncora, sessão que não se forma deixa a auditoria verde medindo a tela do provedor (ACH-04 da mesma revisão) |
+| `BoardNaoCresceComAsTarefasIT` | Critério 5 de TASK-02.6 (numero fixo de consultas do board) | O criterio era medido por sonda descartavel fora da suite, e apagavel sem que nada acusasse: trocar a montagem em memoria por uma consulta por cartao deixava toda a suite verde. Afirma invariancia a massa (5 e 50 tarefas), nunca contagem absoluta, na mesma forma de `AusenciaDeNMaisUmIT`. Origem: ACH-04 da revisao de TASK-02.6 |
 
 ---
 
